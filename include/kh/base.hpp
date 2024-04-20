@@ -25,7 +25,7 @@
  * basic standard library types in the KirHut namespace.
  */
 
-#include "khglobal.hpp"
+#include "kh/global.hpp"
 
 #include <string>
 #include <string_view>
