@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Library for the Public Benefit
-** khbase.hpp
+** base.hpp
 ** Copyright (C) 2024 KirHut Security Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
@@ -17,11 +17,11 @@
 #pragma once
 
 /*!
- * \file khbase.hpp
+ * \file base.hpp
  *
  * The KirHut Standard (or "Base") include file.
  *
- * This file provides all of the basic types and build information provided by khglobal.hpp and also includes several
+ * This file provides all of the basic types and build information provided by kh/global.hpp and also includes several
  * basic standard library types in the KirHut namespace.
  */
 
@@ -34,6 +34,24 @@
 #include <variant>
 #include <optional>
 
+/*!
+ * The primary namespace for all KirHut software, including libraries, applications, and plugins.
+ *
+ * This namespace is used everywhere in KirHut C++ software, and ensures that no name conflicts should ever occur when
+ * mixing KirHut software with any other software, including software not within a namespace (Like Qt software). Within
+ * this namespace there should be additional namespaces, primarily the application namespaces (which by convention are
+ * simple abbreviations of the software name, like "PSM" for the KirHut Passwords and Secrets Manager or "SDV" for the
+ * KirHut Simple Data Verifier. There are other sub namespaces where functionality is provided, and they are documented
+ * individually within this namespace.
+ *
+ * The KirHut namespace also import a selection of C++ standard library names. These names are usually aliased, but are
+ * also frequently not, so it will depend on the situation and they are also individually documented. The ideal way to
+ * use the KirHut namespace in code is to directly use the entire namespace, a 'la `using namespace KirHut`. The KirHut
+ * libraries avoid the hazards of `using namespace std` because this does not include the entire standard library, and
+ * name conflicts are far less likely when the standard names are aliased and is a curated set of the functionality.
+ *
+ * All KirHut software written in C++ requires C++20 as a base.
+ */
 namespace KirHut
 {
 
@@ -74,6 +92,8 @@ using std::make_unique;
  */
 using std::make_shared;
 /*!
+ * Import of std::bad_alloc
+ *
  * Shit happens.
  */
 using std::bad_alloc;
@@ -103,12 +123,12 @@ using Maybe = std::optional<T>;
  */
 using std::array;
 
-using namespace std::literals;
+using namespace std::literals::string_view_literals;
 
 /*!
  * Return a `char const *` from a StringView.
  *
- * This accesses the underlying data of the StringView using a `char const \*` instead of a `char8_t const \*`. It is
+ * This accesses the underlying data of the StringView using a `char const *` instead of a `char8_t const *`. It is
  * frequently useful to do this, and because C++ `char` type is one of the "blessed types" that can pierce through the
  * strict aliasing rules of C++. This makes the operation as simple as a `reinterpret_cast`.
  *

@@ -32,5 +32,4 @@ add_library(libKirHut SHARED
 
 target_link_libraries(libKirHut PRIVATE Qt${QT_VERSION_MAJOR}::Core)
 target_include_directories(libKirHut PRIVATE "include")
-
 target_compile_definitions(libKirHut PRIVATE KH_LIBRARY_BUILD KH_MUST_HAVE_8_32_64 KH_USES_QT)

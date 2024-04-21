@@ -1,7 +1,7 @@
 /***********************************************************************************************************************
-** {{ project }}
-** %{Cpp:License:FileName}
-** Copyright (C) 2023 KirHut Security Company
+** The KirHut Library for the Public Benefit
+** exception.hpp
+** Copyright (C) 2024 KirHut Security Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
 ** Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
@@ -25,7 +25,7 @@ namespace KirHut
 
 /*!
  * The Exception class is a subclass of std::exception that prefers the use of C++20 std::u8string_view instead of
- * <tt>const char *</tt>.
+ * `const char *`.
  *
  * This class has two primary purposes: first make an exception class that allows the use of constant strings and
  * std::u8string_view for exception free Exception constructors, and second to have a class that allows construction of
@@ -33,13 +33,25 @@ namespace KirHut
  * std::string or ever throwing an exception.
  *
  * Simply put, this class should never throw exceptions under any circumstances unless a subclass does so in its
- * constructor, with the exception of the copying StringView constructor. This includes std::bad_alloc, as this class
- * does not require memory allocations for any operation outside of the copying StringView constructor at all.
+ * constructor, with the exception of the copying StringView constructor. This includes bad_alloc, as this class does
+ * not require memory allocations for any operation outside of the copying StringView constructor at all.
+ *
+ * The preferred way to use this class is to document that your function or method throws a subclass of this class, and
+ * to create your subclass like so:
+ * ~~~
+ * class MyException : public Exception
+ * {
+ * public:
+ *     using Exception::Exception;
+ * }
+ * ~~~
+ * This ensures that you have all of the constructors that Exception has, don't have to provide any additional
+ * implementation whatsoever, and can take advantage of C++'s type system for catch statements.
  *
  * This class prefers using info() to get the user returned exception info, and this method will always return the
  * complete string used to construct this class from it. The what() method is considered a legacy method that should
  * only be used by catch() blocks that catch std::exception instead of Exception. The what() method will return the
- * same UTF-8 string as info(), just as a \c char instead of a \c char8_t.
+ * same UTF-8 string as info(), just as a `char` instead of a `char8_t`.
  */
 class KH_EXPORT Exception : public std::exception
 {
@@ -53,11 +65,10 @@ public:
      * is null-terminated.
      *
      * This is mostly useful for passing in a constant string, like the examples below:
-     *
-     * \code
+     * ~~~
      * Exception ex(u8"The argument passed was invalid.");
      * Exception ex2(u8"The function return value was invalid."sv);
-     * \endcode
+     * ~~~
      *
      * \warning The \p sv data block MUST not be deallocated or modified for the entire lifetime of the Exception
      * object, and any copies of the Exception object! If you cannot provide this, use the copying StringView
@@ -79,11 +90,11 @@ public:
      * \p copy boolean to indicate if this Exception object should copy the passed StringView, which is a requirement if
      * you cannot determine if \p sv is null-terminated.
      *
-     * This constructor is guaranteed not to throw an exception if \p copy is false.
+     * \note This constructor is guaranteed not to throw an exception if \p copy is false.
      *
-     * \warning The \p sv data block MUST not be deallocated or modified for the entire lifetime of the Exception object
-     * if \p copy is false, and any copies of the Exception object! If you cannot provide this, set \p copy to true! If
-     * this is not done, the behavior is undefined!
+     * \warning The \p sv data block MUST not be deallocated or modified for the entire lifetime of the Exception
+     * object,and any copies of the Exception object, if \p copy is false! If you cannot provide this, set \p copy to
+     * true! If this is not done, the behavior is undefined!
      *
      * \param sv A StringView to the data returned by info() and what().
      * \param copy A boolean indicating if this Exception object should make an underlying deep copy. Default is false.
@@ -145,7 +156,7 @@ public:
      * This class also provides a non-throwing move assignment operator.
      *
      * \param other The Exception object this one is copying.
-     * \return A reference to \c *this Exception object.
+     * \return A reference to `*this` Exception object.
      */
     Exception &operator=(Exception const &other) noexcept;
 
@@ -159,7 +170,7 @@ public:
      * StringView constructor, in which case they will both be valid and this is the equivalent of a copy.
      *
      * \param other The Exception object being moved from, which may be invalid afterward.
-     * \return A reference to \c *this Exception object.
+     * \return A reference to `*this` Exception object.
      */
     Exception &operator=(Exception &&other) noexcept;
 
@@ -184,7 +195,7 @@ public:
      * character or prefer the copying StringView or String constructors.
      *
      * The returned string is a direct cast of the underlying std::u8string data, as that is permitted in C++. This
-     * ensures \b O(1) time efficiency.
+     * ensures **O(1)** time efficiency.
      *
      * \return The same string as info().
      */

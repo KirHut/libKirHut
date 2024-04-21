@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Library for the Public Benefit
-** khglobal.hpp
+** global.hpp
 ** Copyright (C) 2024 KirHut Security Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
@@ -17,7 +17,7 @@
 #pragma once
 
 /*!
- * \file khglobal.hpp
+ * \file global.hpp
  *
  * The KirHut Global include file.
  *
@@ -36,10 +36,9 @@
  * wouldn't make sense, but use e16 if you want to prefer 16 bit values if it is equivalently efficient to a 32 bit one.
  *
  * \see Platform
- * \see iOS_Device
  * \see Instruction_Set_Architecture
- * \see Qt_Version
- * \see BuildType
+ * \see BuildInfo
+ * \see TypeRequirements
  */
 
 #include <cstdint>
@@ -47,544 +46,751 @@
 #include <limits>
 
 /*!
- * \defgroup Platform
+ * \defgroup Platform Operating System Platform
  *
- * This is the mutually-exclusive group of Platform providers.
+ * The two sets of platform defines below are mutually exclusive, meaning if one of them is defined, it guarantees the
+ * rest are not defined.
+ * - KH_WINDOWS
+ * - KH_LINUX
+ * - KH_APPLE
+ * - KH_ANDROID
+ * - KH_WASM
+ * - KH_BSD
+ *
+ * And the Apple Platform information subset of defines will only be defined if KH_APPLE is also defined:
+ * - KH_MACOS
+ * - KH_IPHONE
+ *
+ * There is also some other basic platform information.
  *
  * \{
  */
 
 /*!
+ * \def KH_WINDOWS
  * Preprocessor define indicating if the system is compiled on Windows.
  *
- * This is dependent on the _WIN32 preprocessor definition. This should be defined by the compiler on any Windows
+ * This is dependent on the `_WIN32` preprocessor definition. This should be defined by the compiler on any Windows
  * platform, both 32 and 64 bit.
+ *
+ * \hideinitializer
  */
-#define KH_WINDOWS 1
 
 /*!
+ * \def KH_LINUX
  * Preprocessor define indicating if the system is compiled on Linux.
  *
- * This is dependent on the __linux preprocessor definition. This should be defined by the compiler on any Linux kernel
- * platform, both 32 and 64 bit.
+ * This is dependent on the `__linux` preprocessor definition. This should be defined by the compiler on any Linux
+ * kernel platform, both 32 and 64 bit.
+ *
+ * \hideinitializer
  */
-#define KH_LINUX 1
 
 /*!
+ * \def KH_APPLE
  * Preprocessor define indicating if the system is compiled for an Apple device.
  *
- * This is dependent on the __APPLE__ and __MACH__ preprocessor definitions. These should be defined by the compiler on
- * any Apple device, either Mac OS, iPhone, or iPad.
+ * This is dependent on the `__APPLE__` and `__MACH__` preprocessor definitions. These should be defined by the compiler
+ * on any Apple device, either Mac OS, iPhone, or iPad.
+ *
+ * \hideinitializer
  */
-#define KH_APPLE 1
 
 /*!
+ * \def KH_ANDROID
  * Preprocessor define indicating if the system is compiled for an Android device.
  *
- * This is dependent on the __ANDROID__ or ANDROID preprocessor definitions. One of these should be defined by the
+ * This is dependent on the `__ANDROID__` or `ANDROID` preprocessor definitions. One of these should be defined by the
  * compiler on any Android device, either 32 or 64 bit.
+ *
+ * \hideinitializer
  */
-#define KH_ANDROID 1
 
 /*!
+ * \def KH_WASM
  * Preprocessor define indicating if the system is compiled using Emscripten for WebAssembly.
  *
- * This is dependent on the __EMSCRIPTEN__ preprocessor definition, which is defined on the Emscripten compiler used to
- * build Web Assembly binaries.
+ * This is dependent on the `__EMSCRIPTEN__` preprocessor definition, which is defined on the Emscripten compiler used
+ * to build Web Assembly binaries.
+ *
+ * \hideinitializer
  */
-#define KH_WASM 1
 
 /*!
+ * \def KH_BSD
  * Preprocessor define indicating if the system is compiled on a BSD system.
  *
  * This is dependent on any of the following being defined for determining the operating system:
- * - __FreeBSD__
- * - __DragonFly__
- * - __NetBSD__
- * - __OpenBSD__
+ * - `__FreeBSD__`
+ * - `__DragonFly__`
+ * - `__NetBSD__`
+ * - `__OpenBSD__`
  *
  * If any of the above are defined, than this is defined.
- */
-#define KH_BSD 1
-
-//! \}
-
-/*!
- * \defgroup iOS_Device
  *
- * The mutually exclusive group of possible iOS Devices. While it is true that only one of these will be defined, it is
- * not true that one of them must be defined. If #KH_APPLE is not defined, none of these will be defined.
- *
- * \{
+ * \hideinitializer
  */
 
 /*!
+ * \def KH_MACOS
  * Preprocessor define indicating if the system is compiled on Mac OS X.
  *
- * This is dependent on Apple's TargetConditionals.h TARGET_OS_IPHONE macro. If TARGET_OS_IPHONE is not defined or equal
- * to 0, than this is defined.
+ * This is dependent on Apple's TargetConditionals.h `TARGET_OS_IPHONE` macro. If `TARGET_OS_IPHONE` is not defined or
+ * equal to 0, than this is defined.
+ *
+ * \hideinitializer
  */
-#define KH_MACOS 1
 
 /*!
+ * \def KH_IPHONE
  * Preprocessor define indicating if the system is compiled for Apple iPhone or iPad OS.
  *
- * This is dependent on Apple's TargetConditionals.h TARGET_OS_IPHONE macro. If TARGET_OS_IPHONE is defined, than this
- * is defined.
+ * This is dependent on Apple's TargetConditionals.h `TARGET_OS_IPHONE` macro. If `TARGET_OS_IPHONE` is defined, than
+ * this is defined.
+ *
+ * \hideinitializer
  */
-#define KH_IPHONE 1
+
+/*!
+ * \def KH_DESKTOP
+ * Preprocessor define indicating if the system is compiled for a desktop or laptop.
+ *
+ * This will be defined if either KH_WINDOWS, KH_LINUX, or KH_MACOS are defined.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_MOBILE
+ * Preprocessor define indicating if the system is compiled for a mobile device.
+ *
+ * This will be defined if either KH_ANDROID or KH_IPHONE are defined.
+ *
+ * \hideinitializer
+ */
 
 //! \}
 
-#ifndef _WIN32
-#undef KH_WINDOWS
+#if KH_PRIV_DOCS || defined(_WIN32)
+#define KH_WINDOWS 1
 #endif
 
-#ifndef __linux
-#undef KH_LINUX
+#if KH_PRIV_DOCS || defined(__linux)
+#define KH_LINUX 1
 #endif
 
-#if !defined(__APPLE__) && !defined(__MACH__)
-#undef KH_APPLE
-#undef KH_MACOS
-#undef KH_IPHONE
-#else
+#if KH_PRIV_DOCS || defined(__APPLE__) || defined(__MACH__)
 #include <TargetConditionals.h>
-#if TARGET_OS_IPHONE
-#undef KH_MACOS
+#define KH_APPLE 1
+#if defined(KH_PRIV_DOCS) || !TARGET_OS_IPHONE
+#define KH_MACOS 1
+#if defined(KH_PRIV_DOCS)
+#define KH_IPHONE 1
+#endif
 #else
-#undef KH_IPHONE
-#endif // TARGET_OS_IPHONE
-#endif // !defined(__APPLE__) && !defined(__MACH__)
+#define KH_IPHONE 1
+#endif // !TARGET_OS_IPHONE
+#endif // defined(__APPLE__) || defined(__MACH__)
 
-#if !defined(__ANDROID__) && !defined(ANDROID)
-#undef KH_ANDROID
+#if KH_PRIV_DOCS || defined(__ANDROID__) || defined(ANDROID)
+#define KH_ANDROID 1
 #endif
 
-#if !defined(__EMSCRIPTEN__)
-#undef KH_WASM
+#if KH_PRIV_DOCS || defined(__EMSCRIPTEN__)
+#define KH_WASM 1
 #endif
 
-#if !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__NetBSD__) && !defined(__OpenBSD__)
-#undef KH_BSD
+#if KH_PRIV_DOCS || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#define KH_BSD 1
 #endif
 
-/*!
- * Preprocessor define indicating if the system is compiled for a mobile device.
- */
 #define KH_MOBILE KH_IPHONE || KH_ANDROID
-
-#if !KH_MOBILE
+#if !KH_PRIV_DOCS && !KH_MOBILE
 #undef KH_MOBILE
 #endif
 
+#define KH_DESKTOP KH_WINDOWS || KH_LINUX || KH_MACOS
+#if !KH_PRIV_DOCS && !KH_DESKTOP
+#undef KH_DESKTOP
+#endif
+
 /*!
- * \defgroup Instruction_Set_Architecture
+ * \defgroup Instruction_Set_Architecture Hardware ISA Identification
  *
- * The mutually exclusive group of what Instruction Set Architecture (or ISA) this library was built for.
+ * There are several mutually exclusive collections in this group. The primary ISA, some specifiers, etc.:
+ * - KH_X64
+ * - KH_X32
+ * - KH_IA64
+ * - KH_ARMv6
+ * - KH_ARMv7
+ * - KH_ARMv8
+ * - KH_MIPS
+ * - KH_SUPERH
+ * - KH_POWER64
+ * - KH_POWER32
+ * - KH_SPARC64
+ * - KH_SPARC32
+ * - KH_M68K
+ *
+ * If the processor is an ARMv6 processor, one of these should be active:
+ * - KH_ARMv6T2
+ * - KH_ARMv6J
+ * - KH_ARMv6K
+ * - KH_ARMv6Z
+ * - KH_ARMv6ZK
+ *
+ * If the processor is an ARMv7 processor, one of these should be active:
+ * - KH_ARMv7A
+ * - KH_ARMv7S
+ * - KH_ARMv7R
+ * - KH_ARMv7M
+ *
+ * Many other informational preprocessor defines are also documented in this group.
  *
  * \{
  */
 
 /*!
+ * \def KH_X64
+ *
  * Preprocessor define indicating if the system is compiled for 64-bit x86 processors.
  *
- * This is dependent on __x86_64__ or _M_X64 being defined by the compiler for determining the processor architecture.
- * If either of those are defined, than this is defined.
+ * This is dependent on `__x86_64__` or `_M_X64` being defined by the compiler for determining the processor
+ * architecture. If either of those are defined, than this is defined.
+ *
+ * \hideinitializer
  */
-#define KH_X64 1
 
 /*!
+ * \def KH_X32
+ *
  * Preprocessor define indicating if the system is compiled for 32-bit x86 processors.
  *
  * This is dependent on any of the following being defined for determining the operating system:
- * - i386
- * - __i386__
- * - __i386
- * - _M_IX86
+ * - `i386`
+ * - `__i386__`
+ * - `__i386`
+ * - `_M_IX86`
  *
- * If any of the above are defined, than this is defined.
+ * If any of the above are defined, and KH_X64 is **not** defined, than this is defined.
+ *
+ * \hideinitializer
  */
-#define KH_X32 1
 
 /*!
+ * \def KH_IA64
+ *
  * Preprocessor define indicating if the system is compiled for Intel Itanium processors.
  *
  * This is dependent on any of the following being defined for determining the operating system:
- * - __ia64
- * - __ia64__
- * - __IA64__
- * - _M_IA64
- * - __itanium__
+ * - `__ia64`
+ * - `__ia64__`
+ * - `__IA64__`
+ * - `_M_IA64`
+ * - `__itanium__`
  *
  * If any of the above are defined, than this is defined.
+ *
+ * \hideinitializer
  */
-#define KH_IA64 1
 
 /*!
+ * \def KH_ARMv6
+ *
  * Preprocessor define indicating if the system is compiled for ARM v6 processors.
  *
- * This is dependent on the preprocessor define __ARM_ARCH_6__ being defined or _M_ARM being equal to 6.
+ * This is dependent on the preprocessor define `__ARM_ARCH_6__` being defined or `_M_ARM` being equal to 6.
+ *
+ * \hideinitializer
  */
-#define KH_ARMv6 1
 
 /*!
+ * \def KH_ARMv7
+ *
  * Preprocessor define indicating if the system is compiled for ARM v7 processors.
  *
- * This is dependent on the preprocessor define __ARM_ARCH_7__ being defined or _M_ARM being equal to 7.
+ * This is dependent on the preprocessor define `__ARM_ARCH_7__` being defined or `_M_ARM` being equal to 7.
+ *
+ * \hideinitializer
  */
-#define KH_ARMv7 1
 
 /*!
+ * \def KH_ARMv8
+ *
  * Preprocessor define indicating if the system is compiled for ARM v8 processors.
  *
- * This is dependent on the preprocessor defines __aarch64__ or _M_ARM64 being defined.
+ * This is dependent on the preprocessor defines `__aarch64__` or `_M_ARM64` being defined.
+ *
+ * \hideinitializer
  */
-#define KH_ARMv8 1
 
 /*!
+ * \def KH_MIPS
+ *
  * Preprocessor define indicating if the system is compiled for MIPS processors.
  *
- * This is dependent on the preprocessor defines mips, __mips or __mips__ being defined.
+ * This is dependent on the preprocessor defines mips, `__mips` or `__mips__` being defined.
+ *
+ * \hideinitializer
  */
-#define KH_MIPS 1
 
 /*!
+ * \def KH_SUPERH
+ *
  * Preprocessor define indicating if the system is compiled for Hitachi SuperH processors.
  *
- * This is dependent on the preprocessor define __sh__ being defined.
+ * This is dependent on the preprocessor define `__sh__` being defined. I've never used a Hitachi SuperH processor and
+ * cannot imagine this being useful, but it has a preprocessor define so here it is.
+ *
+ * \hideinitializer
  */
-#define KH_SUPERH 1
 
 /*!
+ * \def KH_POWER64
+ *
  * Preprocessor define indicating if the system is compiled for 64 bit POWER processors.
  *
  * This is dependent on any of the following being defined for determining the operating system:
- * - __PPC64__
- * - __ppc64__
- * - __powerpc64__
- * - _ARCH_PPC64
+ * - `__PPC64__`
+ * - `__ppc64__`
+ * - `__powerpc64__`
+ * - `_ARCH_PPC64`
  *
  * If any of the above are defined, than this is defined, otherwise it is not.
+ *
+ * \hideinitializer
  */
-#define KH_POWER64 1
 
 /*!
+ * \def KH_POWER32
+ *
  * Preprocessor define indicating if the system is compiled for 32 bit POWER processors.
  *
  *
  * This is dependent on any of the following being defined for determining the operating system:
- * - __PPC__
- * - __ppc__
- * - __powerpc
- * - __powerpc__
- * - __POWERPC__
- * - _ARCH_PPC
+ * - `__PPC__`
+ * - `__ppc__`
+ * - `__powerpc`
+ * - `__powerpc__`
+ * - `__POWERPC__`
+ * - `_ARCH_PPC`
  *
- * If any of the above are defined, \b and #KH_POWER64 is \b not defined, than this is defined.
+ * If any of the above are defined, and #KH_POWER64 is **not** defined, than this is defined.
+ *
+ * \hideinitializer
  */
-#define KH_POWER32 1
 
 /*!
+ * \def KH_SPARC64
+ *
  * Preprocessor define indicating if the system is compiled for 64 bit SPARC processors.
  *
- * This is dependent on the preprocessor defines __sparcv9 or __sparc_v9__ being defined.
+ * This is dependent on the preprocessor defines `__sparcv9` or `__sparc_v9__` being defined.
+ *
+ * \hideinitializer
  */
-#define KH_SPARC64 1
 
 /*!
+ * \def KH_SPARC32
+ *
  * Preprocessor define indicating if the system is compiled for 32 bit SPARC processors.
  *
- * This is dependent on the preprocessor defines __sparc or __sparc__ being defined \b and #KH_SPARC64 \b not being
+ * This is dependent on the preprocessor defines `__sparc` or `__sparc__` being defined and #KH_SPARC64 **not** being
  * defined.
+ *
+ * \hideinitializer
  */
-#define KH_SPARC32 1
 
 /*!
+ * \def KH_M68K
+ *
  * Preprocessor define indicating if the library is compiled for Motorola 68000 processors.
  *
- * This is dependent on the preprocessor define __m68k__ being defined.
+ * This is dependent on the preprocessor define `__m68k__` being defined.
+ *
+ * \hideinitializer
  */
-#define KH_M68K 1
-
-//! \}
-
-#if !defined(__x86_64__) && !defined(_M_X64)
-#undef KH_X64
-#endif
-
-#if KH_X64 || (!defined(i386) && !defined(__i386__) && !defined(__i386) && !defined(_M_IX86))
-#undef KH_X32
-#endif
-
-#if !defined(__ia64__) && !defined(__ia64) && !defined(_M_IA64) && !defined(__IA64__) && !defined(__itanium__)
-#undef KH_IA64
-#endif
-
-#if !defined(__ARM_ARCH_6__) && (_M_ARM != 6)
-#undef KH_ARMv6
-#endif
-
-#if !defined(__ARM_ARCH_7__) && (_M_ARM != 7)
-#undef KH_ARMv7
-#endif
-
-#if !defined(__aarch64__) && !defined(_M_ARM64)
-#undef KH_ARMv8
-#endif
-
-#if !defined(mips) && !defined(__mips__) && !defined(__mips)
-#undef KH_MIPS
-#endif
-
-#if !defined(__sh__)
-#undef KH_SUPERH
-#endif
-
-#if !defined(__PPC64__) && !defined(__ppc64__) && !defined(_ARCH_PPC64) && !defined(__powerpc64__)
-#undef KH_POWER64
-#endif
-
-#if KH_POWER64 || (!defined(__powerpc) && !defined(__powerpc__) && !defined(__POWERPC__))
-#undef KH_POWER32
-#endif
-
-#if !KH_POWER32 && !KH_POWER64 && (defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC))
-#define KH_POWER32 1
-#endif
-
-#if !defined(__sparc_v9__) && !defined(__sparcv9)
-#undef KH_SPARC64
-#endif
-
-#if KSC_SPARC64 || (!defined(__sparc__) && !defined(__sparc))
-#undef KH_SPARC32
-#endif
-
-#if !defined(__m68k__)
-#undef KH_M68K
-#endif
 
 /*!
+ * \def KH_ARMv6T2
+ *
  * Preprocessor define for builds of this library on ARMv6T2 processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * I have no idea what this shit means. Maybe you do?
+ *
+ * \hideinitializer
  */
-#define KH_ARMv6T2 1
 
 /*!
+ * \def KH_ARMv6J
+ *
  * Preprocessor define for builds of this library on ARMv6J processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv6J 1
 
 /*!
+ * \def KH_ARMv6K
+ *
  * Preprocessor define for builds of this library on ARMv6K processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv6K 1
 
 /*!
+ * \def KH_ARMv6Z
+ *
  * Preprocessor define for builds of this library on ARMv6Z processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv6Z 1
 
 /*!
+ * \def KH_ARMv6ZK
+ *
  * Preprocessor define for builds of this library on ARMv6ZK processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv6ZK 1
 
 /*!
+ * \def KH_ARMv7A
+ *
  * Preprocessor define for builds of this library on ARMv7A processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv7A 1
 
 /*!
+ * \def KH_ARMv7S
+ *
  * Preprocessor define for builds of this library on ARMv7S processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv7S 1
 
 
 /*!
+ * \def KH_ARMv7R
+ *
  * Preprocessor define for builds of this library on ARMv7R processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv7R 1
 
 
 /*!
+ * \def KH_ARMv7M
+ *
  * Preprocessor define for builds of this library on ARMv7M processors.
  *
- * I have no idea what this shit means. Maybe you do.
+ * \copydetails KH_ARMv6T2
+ * \hideinitializer
  */
-#define KH_ARMv7M 1
-
-#if !defined(__ARM_ARCH_6T2_)
-#undef KH_ARMv6T2
-#endif
-
-#if !defined(__ARM_ARCH_6J__)
-#undef KH_ARMv6J
-#endif
-
-#if !defined(__ARM_ARCH_6K__)
-#undef KH_ARMv6K
-#endif
-
-#if !defined(__ARM_ARCH_6Z__)
-#undef KH_ARMv6Z
-#endif
-
-#if !defined(__ARM_ARCH_6ZK__)
-#undef KH_ARMv6ZK
-#endif
-
-#if !defined(__ARM_ARCH_7S__)
-#undef KH_ARMv7S
-#endif
-
-#if !defined(__ARM_ARCH_7M__)
-#undef KH_ARMv7M
-#endif
-
-#if !defined(__ARM_ARCH_7R__)
-#undef KH_ARMv7R
-#endif
-
-#if !defined(__ARM_ARCH_7A__)
-#undef KH_ARMv7A
-#endif
 
 /*!
+ * \def KH_ARM32
+ *
  * Preprocessor define indicating if the system is compiled for 32-bit ARM processors.
  *
  * This is dependent on QtGlobal's Q_PROCESSOR_ARM_V5, Q_PROCESSOR_ARM_V6, or Q_PROCESSOR_ARM_V7 being true for
  * determining the processor architecture. If any of those are defined, then KH_ARM32 is 1, otherwise it is 0.
+ *
+ * \hideinitializer
  */
-#define KH_ARM32 KH_ARMv6 || KH_ARMv7
-
-#if !KH_ARM32
-#undef KH_ARM32
-#endif
 
 /*!
+ * \def KH_ARM64
+ *
  * Preprocessor define indicating if the system is compiled for 64-bit ARM processors.
  *
  * This is dependent on KH_ARMv8 being defined because the ARM v8 architecture is all 64 bit and all previous versions
  * are 32 bit.
+ *
+ * \hideinitializer
  */
-#define KH_ARM64 1
-
-#if !defined(KH_ARMv8)
-#undef KH_ARM64
-#endif
 
 /*!
- * Preprocessor define indicating if the system is compiled for 64-bit systems.
+ * \def KH_X86
+ *
+ * Preprocessor define indicating if the system is compiled for an x86 processor.
+ *
+ * This is dependent on KH_X64 or KH_X32 being defined, as there should be a way to determine if you are on either of
+ * the x86 processor architectures.
+ *
+ * \hideinitializer
  */
-#define KH_64BIT KH_X64 || KH_ARM64 || KH_POWER64 || KH_SPARC64
 
-#if !KH_64BIT
+/*!
+ * \def KH_64BIT
+ *
+ * Preprocessor define indicating if the system is compiled for 64-bit systems.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_32BIT
+ *
+ * Preprocessor define indicating if the system is compiled for 32-bit systems.
+ *
+ * \hideinitializer
+ */
+
+//! \}
+
+#if KH_PRIV_DOCS || defined(__x86_64__) || defined(_M_X64)
+#define KH_X64 1
+#endif
+
+#if KH_PRIV_DOCS || !KH_X64 && (defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86))
+#define KH_X32 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ia64__) || defined(__ia64) || defined(_M_IA64) || defined(__IA64__) ||defined(__itanium__)
+#define KH_IA64 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_6__) || (_M_ARM == 6)
+#define KH_ARMv6 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_7__) || (_M_ARM == 7)
+#define KH_ARMv7 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__aarch64__) || defined(_M_ARM64)
+#define KH_ARMv8 1
+#endif
+
+#if KH_PRIV_DOCS || defined(mips) || defined(__mips__) || defined(__mips)
+#define KH_MIPS 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__sh__)
+#define KH_SUPERH 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__PPC64__) || defined(__ppc64__) || defined(_ARCH_PPC64) || defined(__powerpc64__)
+#define KH_POWER64 1
+#endif
+
+#if KH_PRIV_DOCS || !KH_POWER64 && (defined(__powerpc) || defined(__powerpc__) || defined(__POWERPC__))
+#define KH_POWER32 1
+#endif
+
+#if KH_PRIV_DOCS || !KH_POWER32 && !KH_POWER64 && (defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC))
+#define KH_POWER32 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__sparc_v9__) || defined(__sparcv9)
+#define KH_SPARC64 1
+#endif
+
+#if KH_PRIV_DOCS || !KH_SPARC64 && (defined(__sparc__) || defined(__sparc))
+#define KH_SPARC32 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__m68k__)
+#define KH_M68K 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_6T2_)
+#define KH_ARMv6T2 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_6J__)
+#define KH_ARMv6J 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_6K__)
+#define KH_ARMv6K 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_6Z__)
+#define KH_ARMv6Z 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_6ZK__)
+#define KH_ARMv6ZK 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_7S__)
+#define KH_ARMv7S 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_7M__)
+#define KH_ARMv7M 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_7R__)
+#define KH_ARMv7R 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__ARM_ARCH_7A__)
+#define KH_ARMv7A 1
+#endif
+
+#define KH_ARM32 KH_ARMv6 || KH_ARMv7
+#if !KH_PRIV_DOCS && !KH_ARM32
+#undef KH_ARM32
+#endif
+
+#if KH_PRIV_DOCS || defined(KH_ARMv8)
+#define KH_ARM64 1
+#endif
+
+#define KH_X86 KH_X64 || KH_X32
+#if !KH_PRIV_DOCS && !KH_X86
+#undef KH_X86
+#endif
+
+#define KH_64BIT KH_X64 || KH_ARM64 || KH_POWER64 || KH_SPARC64
+#if !KH_PRIV_DOCS && !KH_64BIT
 #undef KH_64BIT
 #endif
 
-/*!
- * Preprocessor define indicating if the system is compiled for 32-bit systems.
- */
 #define KH_32BIT KH_X32 || KH_ARM32 || KH_POWER32 || KH_SPARC32 || KH_SUPERH || KH_M68K
-
-#if !KH_32BIT
+#if !KH_PRIV_DOCS && !KH_32BIT
 #undef KH_32BIT
 #endif
 
-#if KH_USES_QT || defined(KH_PRIV_DOCS)
-
-#include <QtGlobal>
-#if QT_VERSION > QT_VERSION_CHECK(6,0,0)
-#include <QtProcessorDetection>
-#endif
-
 /*!
- * \defgroup Qt_Version
+ * \defgroup BuildInfo Info On This Library Build
  *
- * This group is of the three major Qt LTS release versions that were supported by the Qt Company when this library was
- * written. This will likely expand and change as time goes on.
+ * This group defines a set of different preprocessor defines with information about how this library was built, such as
+ * the version info, the Qt version (if any), and the build type.
+ *
+ * The Qt versions currently have the major Qt LTS release versions that were supported by the Qt Company when this
+ * library was written. This will likely expand and change as time goes on.
  *
  * \{
  */
 
 /*!
+ * \def KH_QT5_15
  * Preprocessor define indicating if the system is compiled using Qt 5.15.
  *
- * This determines the version with QT_VERSION < QT_VERSION_CHECK(6, 2, 0). This library assumes you are using one of
+ * This determines the version with `QT_VERSION < QT_VERSION_CHECK(6, 2, 0)`. This library assumes you are using one of
  * the major LTS versions of Qt if it is used, so compatibility is based on LTS versions.
+ *
+ * \hideinitializer
  */
-#define KH_QT5_15 1
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
-#undef KH_QT5_15
-#endif
 
 /*!
+ * \def KH_QT6_2
  * Preprocessor define indicating if the system is compiled using Qt 6.2.
  *
- * This determines the version with QT_VERSION >= QT_VERSION_CHECK(6, 2, 0) and QT_VERSION < QT_VERSION_CHECK(6, 5, 0).
- * This library assumes you are using one of the major LTS versions of Qt if it is used, so compatibility is based on
- * LTS versions.
+ * This determines the version with `QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)` and
+ * `QT_VERSION < QT_VERSION_CHECK(6, 5, 0)`. This library assumes you are using one of the major LTS versions of Qt if
+ * it is used, so compatibility is based on LTS versions.
+ *
+ * \hideinitializer
  */
-#define KH_QT6_2 1
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 2, 0) || QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-#undef KH_QT6_2
-#endif
 
 /*!
+ * \def KH_QT6_5
  * Preprocessor define indicating if the system is compiled using Qt 6.5.
  *
- * This determines the version with QT_VERSION >= QT_VERSION_CHECK(6, 5, 0). When using Qt 6.5, this will be 1,
+ * This determines the version with `QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)`. When using Qt 6.5, this will be 1,
  * otherwise it is 0.
+ *
+ * \hideinitializer
  */
-#define KH_QT6_5 1
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
-#undef KH_QT6_5
-#endif
-
-//! \}
-
-#if defined(KH_LIBRARY_BUILD)
-#define KH_EXPORT Q_DECL_EXPORT
-#else
 /*!
+ * \def KH_EXPORT
  * Preprocessor define to place in front of exported functions and classes in headers.
  *
- * On Windows, what this expands to is dependent on two preprocessor defines in the build: KH_LIBRARY_BUILD and
- * KH_USES_QT.
- * | KH_USES_QT  | KH_LIBRARY_BUILD | Expands To            |
- * |-------------|------------------|-----------------------|
- * | Not Defined | Not Defined      | __declspec(dllimport) |
- * | Not Defined | Defined          | __declspec(dllexport) |
- * | Defined     | Not Defined      | Q_DECL_IMPORT         |
- * | Defined     | Defined          | Q_DECL_EXPORT         |
+ * Unlike most of the preprocessor defines, this one is always defined, so it may be safely used in KirHut headers and
+ * libraries even if there is no Qt dependency at all. On Windows, what this expands to is dependent on two preprocessor
+ * defines in the build: KH_LIBRARY_BUILD and KH_USES_QT:
+ * | KH_USES_QT  | KH_LIBRARY_BUILD | Expands To              |
+ * |-------------|------------------|-------------------------|
+ * | Not Defined | Not Defined      | `__declspec(dllimport)` |
+ * | Not Defined | Defined          | `__declspec(dllexport)` |
+ * | Defined     | Not Defined      | #Q_DECL_IMPORT          |
+ * | Defined     | Defined          | #Q_DECL_EXPORT          |
  *
- * This `define` unconditionally expands to __declspec() on Windows without Qt because the MingW and Clang documentation
- * both claim to support this syntax, so there's no reason not to use it (similarly to `pragma once`).
+ * This `define` unconditionally expands to `__declspec(dllxyz)` on Windows without Qt because the MingW and Clang
+ * documentation both claim to support this syntax, so there's no reason not to use it (similarly to `pragma once`).
+ * Further, KirHut always builds on Windows using MSVC, so this should never be an issue in the first place.
  *
  * On all other operating systems, KH_EXPORT simply expands into nothing at all.
  *
  * \hideinitializer
  */
+
+/*!
+ * \def KH_LIBRARY_BUILD
+ *
+ * Preprocessor flag set by the user to notify libKirHut headers that it is undergoing a library build.
+ *
+ * On Windows, shared library symbols need to explicitly export themselves, and those same symbols need to be explicitly
+ * imported from a shared library. This flag tells libKirHut that it is undergoing a build into a shared library.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_USES_QT
+ *
+ * Preprocessor flag to build libKirHut and applications using libKirHut using the Qt extensions.
+ *
+ * This library supports building for both Qt and non-Qt based applications. Almost everything KirHut makes is a Qt
+ * application, however there are exceptions and this library should support builds on non-Qt systems.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_DEBUG
+ * Preprocessor define indicating if the system is compiled in debug mode.
+ *
+ * This is defined if the preprocessor define `NDEBUG` is not defined.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_RELEASE
+ * Preprocessor define indicating if the system is compiled in release mode.
+ *
+ * This is defined if the preprocessor define `NDEBUG` is defined.
+ *
+ * \hideinitializer
+ */
+
+//! \}
+
+#if KH_PRIV_DOCS || KH_USES_QT
+#include <QtGlobal>
+#if QT_VERSION > QT_VERSION_CHECK(6,0,0)
+#include <QtProcessorDetection>
+#endif
+
+#if KH_PRIV_DOCS || QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
+#define KH_QT5_15 1
+#endif
+
+#if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 2, 0) && QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
+#define KH_QT6_2 1
+#endif
+
+#if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+#define KH_QT6_5 1
+#endif
+
+#if defined(KH_LIBRARY_BUILD)
+#define KH_EXPORT Q_DECL_EXPORT
+#else
 #define KH_EXPORT Q_DECL_IMPORT
 #endif // defined(KH_LIBRARY_BUILD)
 
@@ -604,40 +810,413 @@
 #endif // defined(KH_WINDOWS)
 #endif // !defined(KH_EXPORT)
 
+#if KH_PRIV_DOCS || !defined(KH_DEBUG) && !defined(KH_RELEASE) && !defined(NDEBUG)
+#define KH_DEBUG 1
+#endif
+
+#if KH_PRIV_DOCS || !defined(KH_DEBUG) && !defined(KH_RELEASE)
+#define KH_RELEASE 1
+#endif
+
 /*!
- * \defgroup BuildType
+ * \defgroup TypeRequirements Build Requirements for Built-In Types
  *
- * This mutually exclusive group indicates what type of build is being performed. The most important are KH_DEBUG and
- * KH_RELEASE.
+ * This library allows you to set build requirements as a build flag of the global.hpp file, which are documented in
+ * this group. Each of the ones that are "higher" in order than the lower ones will take precedence over the lower
+ * defines, which means they will be overridden. The hierarchy is relatively simple: any group of types associated with
+ * a particular flag that is a complete superset of another flag's group of types is considered a "higher rank" flag and
+ * will override anything you set the lower rank flag to. For example: if you set the KH_MUST_HAVE_8_32_64 flag, then
+ * set the KH_MUST_HAVE_8BIT_TYPES flag to 0, it will still require 8 bit types and the rest of your application will
+ * still see KH_MUST_HAVE_8BIT_TYPES set to 1.
+ *
+ * You may directly set any of the type requirements flags in this group when you build with this library. The
+ * preferred way to use this functionality is to add the necessary KH_MUST_HAVE_* flag(s) in your CMakeLists.txt file
+ * for the application build target, then this will automatically work for all the subsequent flags and you can freely
+ * check in your code `#if KH_MUST_HAVE_U32_TYPE` before using something that absolutely requires integer rollover or
+ * something like that.
+ *
+ * If the target platform does not conform to the requirements, the application using libKirHut will simply fail to
+ * compile.
  *
  * \{
  */
 
 /*!
- * Preprocessor define indicating if the system is compiled in debug mode.
+ * \def KH_MUST_HAVE_8_16_32_64
  *
- * This is defined if the preprocessor define NDEBUG is not defined.
+ * Preprocessor flag set by user to require the underlying implementation to have 8, 16, 32, and 64 bit types of both
+ * signed and unsigned values.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_8_32_64
+ * - KH_MUST_HAVE_16BIT_TYPES
+ *
+ * As well as any flags that are a consequence of defining those two flags.
  */
-#define KH_DEBUG 1
 
 /*!
- * Preprocessor define indicating if the system is compiled in release mode.
+ * \def KH_MUST_HAVE_I8_16_32_64
  *
- * This is defined if the preprocessor define NDEBUG is defined.
+ * Preprocessor flag set by user to require the underlying implementation to have 8, 16, 32, and 64 bit signed types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_I8_32_64
+ * - KH_MUST_HAVE_I16_TYPE
+ *
+ * As well as any flags that are a consequence of defining those two flags.
  */
-#define KH_RELEASE 1
 
-#if !defined(NDEBUG)
-#undef KH_RELEASE
-#else
-#undef KH_DEBUG
-#endif
+/*!
+ * \def KH_MUST_HAVE_U8_16_32_64
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 8, 16, 32, and 64 bit unsigned types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_U8_32_64
+ * - KH_MUST_HAVE_U16_TYPE
+ *
+ * As well as any flags that are a consequence of defining those two flags.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_8_32_64
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 8, 32, and 64 bit types of both signed
+ * and unsigned values.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_8_32
+ * - KH_MUST_HAVE_64BIT_TYPES
+ *
+ * As well as any flags that are a consequence of defining those two flags.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_I8_32_64
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 8, 32, and 64 bit signed types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_I8_32
+ * - KH_MUST_HAVE_I64_TYPE
+ *
+ * As well as any flags that are a consequence of defining those two flags.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_U8_32_64
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 8, 32, and 64 bit unsigned types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_U8_32
+ * - KH_MUST_HAVE_U64_TYPE
+ *
+ * As well as any flags that are a consequence of defining those two flags.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_8_32
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 8 and 32 bit types of both signed and
+ * unsigned values.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_8BIT_TYPES
+ * - KH_MUST_HAVE_32BIT_TYPES
+ *
+ * As well as any flags that are a consequence of defining those two flags.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_I8_32
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 8 and 32 bit signed types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_I8_TYPE
+ * - KH_MUST_HAVE_I32_TYPE
+ */
+
+/*!
+ * \def KH_MUST_HAVE_U8_32
+ * Preprocessor flag set by user to require the underlying implementation to have 8 and 32 bit unsigned types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_U8_TYPE
+ * - KH_MUST_HAVE_U32_TYPE
+ */
+
+/*!
+ * \def KH_MUST_HAVE_64BIT_TYPES
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 64 bit signed and unsigned types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_I64_TYPE
+ * - KH_MUST_HAVE_U64_TYPE
+ */
+
+/*!
+ * \def KH_MUST_HAVE_I64_TYPE
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have a 64 bit signed integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<i64>::digits() value is
+ * exactly 63. If this is not the case, the library or application will fail to compile.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_U64_TYPE
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have a 64 bit unsigned integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<u64>::digits() value is
+ * exactly 64. If this is not the case, the library or application will fail to compile.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_32BIT_TYPES
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 32 bit signed and unsigned types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_I32_TYPE
+ * - KH_MUST_HAVE_U32_TYPE
+ */
+
+/*!
+ * \def KH_MUST_HAVE_I32_TYPE
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have a 32 bit signed integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<i32>::digits() value is
+ * exactly 31. If this is not the case, the library or application will fail to compile.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_U32_TYPE
+ * Preprocessor flag set by user to require the underlying implementation to have a 32 bit unsigned integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<u32>::digits() value is
+ * exactly 32. If this is not the case, the library or application will fail to compile.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_16BIT_TYPES
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 16 bit signed and unsigned types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_I16_TYPE
+ * - KH_MUST_HAVE_U16_TYPE
+ */
+
+/*!
+ * \def KH_MUST_HAVE_I16_TYPE
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have a 16 bit signed integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<i16>::digits() value is
+ * exactly 15. If this is not the case, the library or application will fail to compile.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_U16_TYPE
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have a 16 bit unsigned integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<u16>::digits() value is
+ * exactly 16. If this is not the case, the library or application will fail to compile.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_8BIT_TYPES
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have 8 bit signed and unsigned types.
+ *
+ * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
+ * - KH_MUST_HAVE_I8_TYPE
+ * - KH_MUST_HAVE_U8_TYPE
+ */
+
+/*!
+ * \def KH_MUST_HAVE_I8_TYPE
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have an 8 bit signed integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<i8>::digits() value is
+ * exactly 7. If this is not the case, the library or application will fail to compile.
+ */
+
+/*!
+ * \def KH_MUST_HAVE_U8_TYPE
+ *
+ * Preprocessor flag set by user to require the underlying implementation to have an 8 bit unsigned integer type.
+ *
+ * This flag causes a static_assert to be built in this header that checks that the Limits<u8>::digits() value is
+ * exactly 8. If this is not the case, the library or application will fail to compile.
+ */
 
 //! \}
+
+#if KH_PRIV_DOCS || defined(KH_MUST_HAVE_8_16_32_64)
+#undef KH_MUST_HAVE_8_16_32_64
+#undef KH_MUST_HAVE_8_32_64
+#undef KH_MUST_HAVE_16BIT_TYPES
+#define KH_MUST_HAVE_8_16_32_64 1
+#define KH_MUST_HAVE_8_32_64 1
+#define KH_MUST_HAVE_16BIT_TYPES 1
+#endif
+
+#if KH_PRIV_DOCS || defined(KH_MUST_HAVE_I8_16_32_64)
+#undef KH_MUST_HAVE_I8_16_32_64
+#undef KH_MUST_HAVE_I8_32_64
+#undef KH_MUST_HAVE_I16_TYPE
+#define KH_MUST_HAVE_I8_16_32_64 1
+#define KH_MUST_HAVE_I8_32_64 1
+#define KH_MUST_HAVE_I16_TYPE 1
+#endif
+
+#if KH_PRIV_DOCS || defined(KH_MUST_HAVE_U8_16_32_64)
+#undef KH_MUST_HAVE_U8_16_32_64
+#undef KH_MUST_HAVE_U8_32_64
+#undef KH_MUST_HAVE_U16_TYPE
+#define KH_MUST_HAVE_U8_16_32_64 1
+#define KH_MUST_HAVE_U8_32_64 1
+#define KH_MUST_HAVE_U16_TYPE 1
+#endif
+
+#if defined(KH_MUST_HAVE_8_32_64)
+#undef KH_MUST_HAVE_8_32_64
+#undef KH_MUST_HAVE_8_32
+#undef KH_MUST_HAVE_64BIT_TYPES
+#define KH_MUST_HAVE_8_32_64 1
+#define KH_MUST_HAVE_8_32 1
+#define KH_MUST_HAVE_64BIT_TYPES 1
+#endif
+
+#if defined(KH_MUST_HAVE_I8_32_64)
+#undef KH_MUST_HAVE_I8_32_64
+#undef KH_MUST_HAVE_I8_32
+#undef KH_MUST_HAVE_I64_TYPE
+#define KH_MUST_HAVE_I8_32_64 1
+#define KH_MUST_HAVE_I8_32 1
+#define KH_MUST_HAVE_I64_TYPE 1
+#endif
+
+#if defined(KH_MUST_HAVE_U8_32_64)
+#undef KH_MUST_HAVE_U8_32_64
+#undef KH_MUST_HAVE_U8_32
+#undef KH_MUST_HAVE_U64_TYPE
+#define KH_MUST_HAVE_U8_32_64 1
+#define KH_MUST_HAVE_U8_32 1
+#define KH_MUST_HAVE_U64_TYPE 1
+#endif
+
+#if KH_PRIV_DOCS || defined(KH_MUST_HAVE_8_32)
+#undef KH_MUST_HAVE_8_32
+#undef KH_MUST_HAVE_8BIT_TYPES
+#undef KH_MUST_HAVE_32BIT_TYPES
+#define KH_MUST_HAVE_8_32 1
+#define KH_MUST_HAVE_8BIT_TYPES 1
+#define KH_MUST_HAVE_32BIT_TYPES 1
+#endif
+
+#if KH_PRIV_DOCS || defined(KH_MUST_HAVE_I8_32)
+#undef KH_MUST_HAVE_I8_32
+#undef KH_MUST_HAVE_I8_TYPE
+#undef KH_MUST_HAVE_I32_TYPE
+#define KH_MUST_HAVE_I8_32 1
+#define KH_MUST_HAVE_I8_TYPE 1
+#define KH_MUST_HAVE_I32_TYPE 1
+#endif
+
+#if KH_PRIV_DOCS || defined(KH_MUST_HAVE_U8_32)
+#undef KH_MUST_HAVE_U8_32
+#undef KH_MUST_HAVE_U8_TYPE
+#undef KH_MUST_HAVE_U32_TYPE
+#define KH_MUST_HAVE_U8_32 1
+#define KH_MUST_HAVE_U8_TYPE 1
+#define KH_MUST_HAVE_U32_TYPE 1
+#endif
+
+#if KH_PRIV_DOCS || defined(KH_MUST_HAVE_64BIT_TYPES)
+#undef KH_MUST_HAVE_64BIT_TYPES
+#undef KH_MUST_HAVE_I64_TYPE
+#undef KH_MUST_HAVE_U64_TYPE
+#define KH_MUST_HAVE_64BIT_TYPES 1
+#define KH_MUST_HAVE_I64_TYPE 1
+#define KH_MUST_HAVE_U64_TYPE 1
+#endif
+
+#if defined(KH_MUST_HAVE_32BIT_TYPES)
+#undef KH_MUST_HAVE_32BIT_TYPES
+#undef KH_MUST_HAVE_I32_TYPE
+#undef KH_MUST_HAVE_U32_TYPE
+#define KH_MUST_HAVE_32BIT_TYPES 1
+#define KH_MUST_HAVE_I32_TYPE 1
+#define KH_MUST_HAVE_U32_TYPE 1
+#endif
+
+#if defined(KH_MUST_HAVE_16BIT_TYPES)
+#undef KH_MUST_HAVE_16BIT_TYPES
+#undef KH_MUST_HAVE_I16_TYPE
+#undef KH_MUST_HAVE_U16_TYPE
+#define KH_MUST_HAVE_16BIT_TYPES 1
+#define KH_MUST_HAVE_I16_TYPE 1
+#define KH_MUST_HAVE_U16_TYPE 1
+#endif
+
+#if defined(KH_MUST_HAVE_8BIT_TYPES)
+#undef KH_MUST_HAVE_8BIT_TYPES
+#undef KH_MUST_HAVE_I8_TYPE
+#undef KH_MUST_HAVE_U8_TYPE
+#define KH_MUST_HAVE_8BIT_TYPES 1
+#define KH_MUST_HAVE_I8_TYPE 1
+#define KH_MUST_HAVE_U8_TYPE 1
+#endif
+
+#if KH_MUST_HAVE_8_16_32_64
+#if !defined(KH_MUST_HAVE_U8_16_32_64)
+#define KH_MUST_HAVE_U8_16_32_64 1
+#endif
+#if !defined(KH_MUST_HAVE_I8_16_32_64)
+#define KH_MUST_HAVE_I8_16_32_64 1
+#endif
+#endif
+
+#if KH_MUST_HAVE_8_32_64
+#if !defined(KH_MUST_HAVE_U8_32_64)
+#define KH_MUST_HAVE_U8_32_64 1
+#endif
+#if !defined(KH_MUST_HAVE_I8_32_64)
+#define KH_MUST_HAVE_I8_32_64 1
+#endif
+#endif
+
+#if KH_MUST_HAVE_8_32
+#if !defined(KH_MUST_HAVE_U8_32)
+#define KH_MUST_HAVE_U8_32 1
+#endif
+#if !defined(KH_MUST_HAVE_I8_32)
+#define KH_MUST_HAVE_I8_32 1
+#endif
+#endif
+
+#if KH_PRIV_DOCS
+#define KH_LIBRARY_BUILD 1
+#define KH_USES_QT 1
+#endif
 
 namespace KirHut
 {
 
+/*!
+ * Alias for std::numeric_Limits.
+ *
+ * It is very useful to get to std::numeric_limits frequently, but the name is cumbersome, so this makes it less so.
+ */
 template <class T>
 using Limits = std::numeric_limits<T>;
 
@@ -1139,129 +1718,120 @@ namespace Platform
 #if KH_WINDOWS
                                           || true
 #endif
-                                          ;
+    ;
 /*!
  * Non Preprocessor equivalent to #KH_LINUX.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool linux = false
 #if KH_LINUX
                                         || true
 #endif
-                                        ;
+    ;
 /*!
  * Non Preprocessor equivalent to #KH_APPLE.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool apple = false
 #if KH_APPLE
                                         || true
 #endif
-                                        ;
+    ;
 /*!
  * Non Preprocessor equivalent to #KH_MACOS.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool macOS = false
 #if KH_MACOS
                                         || true
 #endif
-                                        ;
+    ;
 /*!
  * Non Preprocessor equivalent to #KH_IPHONE.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool iPhone = false
 #if KH_IPHONE
                                          || true
 #endif
-                                         ;
+    ;
 /*!
  * Non Preprocessor equivalent to #KH_ANDROID.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool android = false
 #if KH_ANDROID
                                           || true
 #endif
-                                          ;
+    ;
 /*!
  * Non Preprocessor equivalent to #KH_MOBILE.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool mobile = false
 #if KH_MOBILE
                                          || true
 #endif
-                                         ;
+    ;
 
 } // namespace Platform
 
+/*!
+ * Namespace for Build information regarding libKirHut.
+ */
 namespace Build
 {
 
 /*!
  * Non Preprocessor equivalent to #KH_DEBUG.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool debug = false
 #if KH_DEBUG
                                         || true
 #endif
-                                        ;
+    ;
 /*!
  * Non Preprocessor equivalent to #KH_RELEASE.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool release = false
 #if KH_RELEASE
                                           || true
 #endif
-                                          ;
-
-/*!
- * Non Preprocessor equivalent to #KH_TEST_BUILD.
- *
- * \copydetails windows
- * \hideinitializer
- */
-[[maybe_unused]] constexpr bool test = false
-#if KH_TEST_BUILD
-                                       || true
-#endif
-                                       ;
+    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_USES_QT.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool usesQt = false
 #if KH_USES_QT
                                          || true
 #endif
-                                         ;
+    ;
 /*!
- * Non Preprocessor equivalent to #KH_QT5_15.
+ * Non Preprocessor equivalent to KH_QT5_15.
  *
- * \copydetails windows
+ * \copydetails KirHut::Platform::windows
  *
  * These are defined regardless of whether or not Qt is used because if constexpr must still produce a legal expression
  * even if it is always false. See usesQt to check if Qt is included in the build.
@@ -1272,333 +1842,172 @@ namespace Build
 #if KH_QT5_15
                                         || usesQt
 #endif
-                                        ;
+    ;
 /*!
- * Non Preprocessor equivalent to #KH_QT6_2.
+ * Non Preprocessor equivalent to KH_QT6_2.
  *
- * \copydetails windows
+ * \copydetails KirHut::Build::qt515
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool qt62 = false
 #if KH_QT6_2
                                        || usesQt
 #endif
-                                       ;
+    ;
 /*!
- * Non Preprocessor equivalent to #KH_QT6_5.
+ * Non Preprocessor equivalent to KH_QT6_5.
  *
- * \copydetails windows
+ * \copydetails KirHut::Build::qt515
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool qt65 = false
 #if KH_QT6_5
                                        || usesQt
 #endif
-                                       ;
+    ;
+
+/*!
+ * Check if the current build has signed 8 bit integers.
+ *
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
+ * value informs you if the platform does have 8 bit integers. This value is therefore always there, even on platforms
+ * where there are not 8 bit integers. In that case, its value is false.
+ */
+[[maybe_unused]] constexpr bool hasI8 = Limits<i8>::digits == 7;
+/*!
+ * Check if the current build has signed 16 bit integers.
+ *
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
+ * value informs you if the platform does have 16 bit integers. This value is therefore always there, even on platforms
+ * where there are not 16 bit integers. In that case, its value is false.
+ */
+[[maybe_unused]] constexpr bool hasI16 = Limits<i16>::digits == 15;
+/*!
+ * Check if the current build has signed 32 bit integers.
+ *
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
+ * value informs you if the platform does have 32 bit integers. This value is therefore always there, even on platforms
+ * where there are not 32 bit integers. In that case, its value is false.
+ */
+[[maybe_unused]] constexpr bool hasI32 = Limits<i32>::digits == 31;
+/*!
+ * Check if the current build has signed 64 bit integers.
+ *
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
+ * value informs you if the platform does have 64 bit integers. This value is therefore always there, even on platforms
+ * where there are not 64 bit integers. In that case, its value is false.
+ */
+[[maybe_unused]] constexpr bool hasI64 = Limits<i64>::digits == 63;
+/*!
+ * Check if the current build has unsigned 8 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI8
+ */
+[[maybe_unused]] constexpr bool hasU8 = Limits<u8>::digits == 8;
+/*!
+ * Check if the current build has unsigned 16 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI16
+ */
+[[maybe_unused]] constexpr bool hasU16 = Limits<u16>::digits == 16;
+/*!
+ * Check if the current build has unsigned 32 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI32
+ */
+[[maybe_unused]] constexpr bool hasU32 = Limits<u32>::digits == 32;
+/*!
+ * Check if the current build has unsigned 64 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI64
+ */
+[[maybe_unused]] constexpr bool hasU64 = Limits<u64>::digits == 64;
+/*!
+ * Check if the current build has 8 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI8
+ */
+[[maybe_unused]] constexpr bool has8 = hasI8 && hasU8;
+/*!
+ * Check if the current build has 16 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI16
+ */
+[[maybe_unused]] constexpr bool has16 = hasI16 && hasU16;
+/*!
+ * Check if the current build has 32 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI32
+ */
+[[maybe_unused]] constexpr bool has32 = hasI32 && hasU32;
+/*!
+ * Check if the current build has 64 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI64
+ */
+[[maybe_unused]] constexpr bool has64 = hasI64 && hasU64;
+/*!
+ * Check if the current build has signed 8 and 32 bit integers.
+ *
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
+ * value informs you if the platform does have 8 and 32 bit integers. This value is therefore always there, even on
+ * platforms where there are not 8 and 32 bit integers. In that case, its value is false.
+ */
+[[maybe_unused]] constexpr bool hasI832 = hasI8 && hasI32;
+/*!
+ * Check if the current build has unsigned 8 and 32 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI832
+ */
+[[maybe_unused]] constexpr bool hasU832 = hasU8 && hasU32;
+/*!
+ * Check if the current build has 8 and 32 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI832
+ */
+[[maybe_unused]] constexpr bool has832 = hasI832 && hasU832;
+/*!
+ * Check if the current build has signed 8, 32, and 64 bit integers.
+ *
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
+ * value informs you if the platform does have 8, 32, and 64 bit integers. This value is therefore always there, even on
+ * platforms where there are not 8, 32, and 64 bit integers. In that case, its value is false.
+ */
+[[maybe_unused]] constexpr bool hasI83264 = hasI832 && hasI64;
+/*!
+ * Check if the current build has unsigned 8, 32, and 64 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI83264
+ */
+[[maybe_unused]] constexpr bool hasU83264 = hasU832 && hasU64;
+/*!
+ * Check if the current build has 8, 32, and 64 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI83264
+ */
+[[maybe_unused]] constexpr bool has83264 = hasI83264 && hasU83264;
+/*!
+ * Check if the current build has signed 8, 16, 32, and 64 bit integers.
+ *
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
+ * value informs you if the platform does have 8, 16, 32, and 64 bit integers. This value is therefore always there,
+ * even on platforms where there are not 8, 16, 32, and 64 bit integers. In that case, its value is false.
+ */
+[[maybe_unused]] constexpr bool hasI8163264 = hasI83264 && hasI16;
+/*!
+ * Check if the current build has unsigned 8, 16, 32, and 64 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI8163264
+ */
+[[maybe_unused]] constexpr bool hasU8163264 = hasU83264 && hasU16;
+/*!
+ * Check if the current build has 8, 16, 32, and 64 bit integers.
+ *
+ * \copydetails KirHut::Build::hasI8163264
+ */
+[[maybe_unused]] constexpr bool has8163264 = hasI8163264 && hasU8163264;
 
 } // namespace Build
-
-}
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_8_16_32_64)
-#undef KH_MUST_HAVE_8_16_32_64
-#undef KH_MUST_HAVE_8_32_64
-#undef KH_MUST_HAVE_16BIT_TYPES
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8, 16, 32, and 64 bit types of both
- * signed and unsigned values.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_8_32_64
- * - KH_MUST_HAVE_16BIT_TYPES
- *
- * As well as any flags that are a consequence of defining those two flags.
- */
-#define KH_MUST_HAVE_8_16_32_64 1
-#define KH_MUST_HAVE_8_32_64 1
-#define KH_MUST_HAVE_16BIT_TYPES 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_I8_16_32_64)
-#undef KH_MUST_HAVE_I8_16_32_64
-#undef KH_MUST_HAVE_I8_32_64
-#undef KH_MUST_HAVE_I16_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8, 16, 32, and 64 bit signed types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_I8_32_64
- * - KH_MUST_HAVE_I16_TYPE
- *
- * As well as any flags that are a consequence of defining those two flags.
- */
-#define KH_MUST_HAVE_I8_16_32_64 1
-#define KH_MUST_HAVE_I8_32_64 1
-#define KH_MUST_HAVE_I16_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_U8_16_32_64)
-#undef KH_MUST_HAVE_U8_16_32_64
-#undef KH_MUST_HAVE_U8_32_64
-#undef KH_MUST_HAVE_U16_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8, 16, 32, and 64 bit unsigned types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_U8_32_64
- * - KH_MUST_HAVE_U16_TYPE
- *
- * As well as any flags that are a consequence of defining those two flags.
- */
-#define KH_MUST_HAVE_U8_16_32_64 1
-#define KH_MUST_HAVE_U8_32_64 1
-#define KH_MUST_HAVE_U16_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_8_32_64)
-#undef KH_MUST_HAVE_8_32_64
-#undef KH_MUST_HAVE_8_32
-#undef KH_MUST_HAVE_64BIT_TYPES
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8, 32, and 64 bit types of both signed
- * and unsigned values.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_8_32
- * - KH_MUST_HAVE_64BIT_TYPES
- *
- * As well as any flags that are a consequence of defining those two flags.
- */
-#define KH_MUST_HAVE_8_32_64 1
-#define KH_MUST_HAVE_8_32 1
-#define KH_MUST_HAVE_64BIT_TYPES 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_I8_32_64)
-#undef KH_MUST_HAVE_I8_32_64
-#undef KH_MUST_HAVE_I8_32
-#undef KH_MUST_HAVE_I64_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8, 32, and 64 bit signed types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_I8_32
- * - KH_MUST_HAVE_I64_TYPE
- *
- * As well as any flags that are a consequence of defining those two flags.
- */
-#define KH_MUST_HAVE_I8_32_64 1
-#define KH_MUST_HAVE_I8_32 1
-#define KH_MUST_HAVE_I64_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_U8_32_64)
-#undef KH_MUST_HAVE_U8_32_64
-#undef KH_MUST_HAVE_U8_32
-#undef KH_MUST_HAVE_U64_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8, 32, and 64 bit unsigned types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_U8_32
- * - KH_MUST_HAVE_U64_TYPE
- *
- * As well as any flags that are a consequence of defining those two flags.
- */
-#define KH_MUST_HAVE_U8_32_64 1
-#define KH_MUST_HAVE_U8_32 1
-#define KH_MUST_HAVE_U64_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_8_32)
-#undef KH_MUST_HAVE_8_32
-#undef KH_MUST_HAVE_8BIT_TYPES
-#undef KH_MUST_HAVE_32BIT_TYPES
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8 and 32 bit types of both signed and
- * unsigned values.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_8BIT_TYPES
- * - KH_MUST_HAVE_32BIT_TYPES
- *
- * As well as any flags that are a consequence of defining those two flags.
- */
-#define KH_MUST_HAVE_8_32 1
-#define KH_MUST_HAVE_8BIT_TYPES 1
-#define KH_MUST_HAVE_32BIT_TYPES 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_I8_32)
-#undef KH_MUST_HAVE_I8_32
-#undef KH_MUST_HAVE_I8_TYPE
-#undef KH_MUST_HAVE_I32_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8 and 32 bit signed types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_I8_TYPE
- * - KH_MUST_HAVE_I32_TYPE
- */
-#define KH_MUST_HAVE_I8_32 1
-#define KH_MUST_HAVE_I8_TYPE 1
-#define KH_MUST_HAVE_I32_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_U8_32)
-#undef KH_MUST_HAVE_U8_32
-#undef KH_MUST_HAVE_U8_TYPE
-#undef KH_MUST_HAVE_U32_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8 and 32 bit unsigned types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_U8_TYPE
- * - KH_MUST_HAVE_U32_TYPE
- */
-#define KH_MUST_HAVE_U8_32 1
-#define KH_MUST_HAVE_U8_TYPE 1
-#define KH_MUST_HAVE_U32_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_64BIT_TYPES)
-#undef KH_MUST_HAVE_64BIT_TYPES
-#undef KH_MUST_HAVE_I64_TYPE
-#undef KH_MUST_HAVE_U64_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 64 bit signed and unsigned types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_I64_TYPE
- * - KH_MUST_HAVE_U64_TYPE
- */
-#define KH_MUST_HAVE_64BIT_TYPES 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have a 64 bit signed integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<i64>::digits() value is
- * exactly 63. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_I64_TYPE 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have a 64 bit unsigned integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<u64>::digits() value is
- * exactly 64. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_U64_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_32BIT_TYPES)
-#undef KH_MUST_HAVE_32BIT_TYPES
-#undef KH_MUST_HAVE_I32_TYPE
-#undef KH_MUST_HAVE_U32_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 32 bit signed and unsigned types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_I32_TYPE
- * - KH_MUST_HAVE_U32_TYPE
- */
-#define KH_MUST_HAVE_32BIT_TYPES 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have a 32 bit signed integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<i32>::digits() value is
- * exactly 31. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_I32_TYPE 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have a 32 bit unsigned integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<u32>::digits() value is
- * exactly 32. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_U32_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_16BIT_TYPES)
-#undef KH_MUST_HAVE_16BIT_TYPES
-#undef KH_MUST_HAVE_I16_TYPE
-#undef KH_MUST_HAVE_U16_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 16 bit signed and unsigned types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_I16_TYPE
- * - KH_MUST_HAVE_U16_TYPE
- */
-#define KH_MUST_HAVE_16BIT_TYPES 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have a 16 bit signed integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<i16>::digits() value is
- * exactly 15. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_I16_TYPE 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have a 16 bit unsigned integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<u16>::digits() value is
- * exactly 16. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_U16_TYPE 1
-#endif
-
-#if defined(KH_PRIV_DOCS) || defined(KH_MUST_HAVE_8BIT_TYPES)
-#undef KH_MUST_HAVE_8BIT_TYPES
-#undef KH_MUST_HAVE_I8_TYPE
-#undef KH_MUST_HAVE_U8_TYPE
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have 8 bit signed and unsigned types.
- *
- * As a consequence of building libKirHut with this flag, the following flags are overridden and defined as 1:
- * - KH_MUST_HAVE_I8_TYPE
- * - KH_MUST_HAVE_U8_TYPE
- */
-#define KH_MUST_HAVE_8BIT_TYPES 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have an 8 bit signed integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<i8>::digits() value is
- * exactly 7. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_I8_TYPE 1
-/*!
- * Preprocessor flag set by user to require the underlying implementation to have an 8 bit unsigned integer type.
- *
- * This flag causes a static_assert to be built in this header that checks that the Limits<u8>::digits() value is
- * exactly 8. If this is not the case, the library or application will fail to compile.
- */
-#define KH_MUST_HAVE_U8_TYPE 1
-#endif
-
-#if KH_MUST_HAVE_8_16_32_64
-#if !defined(KH_MUST_HAVE_U8_16_32_64)
-#define KH_MUST_HAVE_U8_16_32_64 1
-#endif
-#if !defined(KH_MUST_HAVE_I8_16_32_64)
-#define KH_MUST_HAVE_I8_16_32_64 1
-#endif
-#endif
-
-#if KH_MUST_HAVE_8_32_64
-#if !defined(KH_MUST_HAVE_U8_32_64)
-#define KH_MUST_HAVE_U8_32_64 1
-#endif
-#if !defined(KH_MUST_HAVE_I8_32_64)
-#define KH_MUST_HAVE_I8_32_64 1
-#endif
-#endif
-
-#if KH_MUST_HAVE_8_32
-#if !defined(KH_MUST_HAVE_U8_32)
-#define KH_MUST_HAVE_U8_32 1
-#endif
-#if !defined(KH_MUST_HAVE_I8_32)
-#define KH_MUST_HAVE_I8_32 1
-#endif
-#endif
 
 //! \cond
 /*
@@ -1607,36 +2016,33 @@ namespace Build
  * and not-yet-working as of C++17 set of constexpr std::string concatenations necessary to make this string. When the
  * constexpr stuff is working better in C++20/23 this may be revised.
  */
-#define KH_PRIV_CHECK_REQUIRES_SIZE(NUM, TYPE, TYPEDESC)                                                   \
-static_assert(Limits<TYPE>::digits == NUM,                                                                 \
-              "Compilation requires " TYPEDESC " type but this compiler or platform does not support it.")
-//! \endcond
-namespace KirHut
-{
+#define KH_PRIV_CHECK_REQUIRES_SIZE(COND, TYPEDESC)                                                              \
+static_assert(COND, "Compilation requires " TYPEDESC " type but this compiler or platform does not support it.")
 
 #if KH_MUST_HAVE_I8_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(7, i8, "signed 8-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasI8, "signed 8-bit");
 #endif
 #if KH_MUST_HAVE_U8_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(8, u8, "unsigned 8-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasU8, "unsigned 8-bit");
 #endif
 #if KH_MUST_HAVE_I16_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(15, i16, "signed 16-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasI16, "signed 16-bit");
 #endif
 #if KH_MUST_HAVE_U16_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(16, u16, "unsigned 16-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasU16, "unsigned 16-bit");
 #endif
 #if KH_MUST_HAVE_I32_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(31, i32, "signed 32-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasI32, "signed 32-bit");
 #endif
 #if KH_MUST_HAVE_U32_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(32, u32, "unsigned 32-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasU32, "unsigned 32-bit");
 #endif
 #if KH_MUST_HAVE_I64_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(63, i64, "signed 64-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasI64, "signed 64-bit");
 #endif
 #if KH_MUST_HAVE_U64_TYPE
-KH_PRIV_CHECK_REQUIRES_SIZE(64, u64, "unsigned 64-bit");
+KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasU64, "unsigned 64-bit");
 #endif
+//! \endcond
 
 } // namespace KirHut
