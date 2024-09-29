@@ -1,23 +1,31 @@
 /***********************************************************************************************************************
-** The KirHut Library for the Public Benefit
+** The KirHut Application Development Library
 ** exception.cpp
-** Copyright (C) 2024 KirHut Security Company
+** Copyright (C) 2024 KirHut Software Company
 **
-** This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
-** Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
-** later version.
+** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+** version.
 **
 ** This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
+** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 ** details.
 **
-** You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
+** You should have received a copy of the GNU General Public License along with this program.  If not, see
 ** <http://www.gnu.org/licenses/>.
 ***********************************************************************************************************************/
 #include "kh/exception.hpp"
 
-namespace KirHut
-{
+using namespace KirHut;
+
+// "Why not just use a simpler shared data implementation like std::shared_ptr to keep the string data?"
+//
+// This is because the Exception object is required to not allocate any memory *unless the user explicitly requests it
+// to do so.* Notice that the string rvalue reference constructor is marked noexcept. You are REQUIRED to allocate
+// memory on the heap when you use std::shared_ptr, so there is no way to not allocate memory when you use that
+// constructor other than having another string to use it as a data source for already allocated memory. While it is
+// possible to move construct the contained string's data, the actual data holding the std::string itself in
+// std::shared_ptr must be allocated.
 
 struct Exception::Impl
 {
@@ -60,35 +68,52 @@ struct Exception::Impl
             }
         }
 
-        me.data = {};
+        me.data     = {};
         me.infoView = {};
-        me.prev = nullptr;
-        me.next = nullptr;
+        me.prev     = nullptr;
+        me.next     = nullptr;
     }
 };
 
-Exception::Exception(StringView sv) noexcept :
-    infoView(sv),
-    prev(nullptr),
-    next(nullptr)
+Exception::Exception(string_view sv) noexcept : infoView(sv), prev(nullptr), next(nullptr)
 {
     // No implementation.
 }
 
-Exception::Exception(StringView sv, bool copy) :
-    Exception(sv)
+Exception::Exception(char const *ptr) noexcept : Exception(string_view(ptr))
+{
+    // No implementation.
+}
+
+Exception::Exception(string_view sv, bool copy) : Exception(sv)
 {
     if (copy)
     {
-        data = sv;
+        data     = sv;
         infoView = {};
     }
 }
 
-Exception::Exception(String &&other) noexcept :
-    data(std::move(other)),
-    prev(nullptr),
-    next(nullptr)
+#if __cpp_char8_t
+using std::u8string_view;
+
+Exception::Exception(u8string_view sv) noexcept : Exception(string_view{ toCharPtr(sv.data()), sv.size() })
+{
+    // No implementation.
+}
+
+Exception::Exception(char8_t const *ptr) noexcept : Exception(u8string_view(ptr))
+{
+    // No implementation.
+}
+
+Exception::Exception(u8string_view sv, bool copy) : Exception(string_view{ toCharPtr(sv.data()), sv.size() }, copy)
+{
+    // No implementation.
+}
+#endif // __cpp_char8_t
+
+Exception::Exception(string &&other) noexcept : data(std::move(other)), prev(nullptr), next(nullptr)
 {
     // No implementation.
 }
@@ -135,7 +160,7 @@ Exception &Exception::operator=(Exception const &other) noexcept
     Impl::clean(*this);
     if (infoView = other.infoView; !infoView.data())
     {
-        prev = other.next ? Impl::getLast(other.next) : &other;
+        prev       = other.next ? Impl::getLast(other.next) : &other;
         prev->next = this;
     }
 
@@ -151,7 +176,7 @@ Exception &Exception::operator=(Exception &&other) noexcept
 
         if (other.prev)
         {
-            prev = other.prev;
+            prev       = other.prev;
             prev->next = this;
 
             // other.next is handled after the top if block.
@@ -164,14 +189,15 @@ Exception &Exception::operator=(Exception &&other) noexcept
 
     if (other.next)
     {
-        next = other.next;
+        next       = other.next;
         next->prev = this;
     }
 
+    Impl::clean(other);
     return *this;
 }
 
-StringView Exception::info() const noexcept
+string_view Exception::info() const noexcept
 {
     if (infoView.data())
     {
@@ -183,7 +209,5 @@ StringView Exception::info() const noexcept
 
 char const *Exception::what() const noexcept
 {
-    return reinterpret_cast<char const *>(info().data());
+    return info().data();
 }
-
-} // namespace KirHut

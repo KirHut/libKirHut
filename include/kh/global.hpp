@@ -1,17 +1,17 @@
 /***********************************************************************************************************************
-** The KirHut Library for the Public Benefit
+** The KirHut Application Development Library
 ** global.hpp
-** Copyright (C) 2024 KirHut Security Company
+** Copyright (C) 2024 KirHut Software Company
 **
-** This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
-** Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any
-** later version.
+** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+** version.
 **
 ** This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more
+** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 ** details.
 **
-** You should have received a copy of the GNU Affero General Public License along with this program.  If not, see
+** You should have received a copy of the GNU General Public License along with this program.  If not, see
 ** <http://www.gnu.org/licenses/>.
 ***********************************************************************************************************************/
 #pragma once
@@ -172,46 +172,46 @@
 //! \}
 
 #if KH_PRIV_DOCS || defined(_WIN32)
-#define KH_WINDOWS 1
+# define KH_WINDOWS 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__linux)
-#define KH_LINUX 1
+# define KH_LINUX 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__APPLE__) || defined(__MACH__)
-#include <TargetConditionals.h>
-#define KH_APPLE 1
-#if defined(KH_PRIV_DOCS) || !TARGET_OS_IPHONE
-#define KH_MACOS 1
-#if defined(KH_PRIV_DOCS)
-#define KH_IPHONE 1
-#endif
-#else
-#define KH_IPHONE 1
-#endif // !TARGET_OS_IPHONE
+# include <TargetConditionals.h>
+# define KH_APPLE 1
+# if defined(KH_PRIV_DOCS) || !TARGET_OS_IPHONE
+#  define KH_MACOS 1
+#  if defined(KH_PRIV_DOCS)
+#   define KH_IPHONE 1
+#  endif
+# else
+#  define KH_IPHONE 1
+# endif // !TARGET_OS_IPHONE
 #endif // defined(__APPLE__) || defined(__MACH__)
 
 #if KH_PRIV_DOCS || defined(__ANDROID__) || defined(ANDROID)
-#define KH_ANDROID 1
+# define KH_ANDROID 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__EMSCRIPTEN__)
-#define KH_WASM 1
+# define KH_WASM 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__NetBSD__) || defined(__OpenBSD__)
-#define KH_BSD 1
+# define KH_BSD 1
 #endif
 
 #define KH_MOBILE KH_IPHONE || KH_ANDROID
 #if !KH_PRIV_DOCS && !KH_MOBILE
-#undef KH_MOBILE
+# undef KH_MOBILE
 #endif
 
 #define KH_DESKTOP KH_WINDOWS || KH_LINUX || KH_MACOS
 #if !KH_PRIV_DOCS && !KH_DESKTOP
-#undef KH_DESKTOP
+# undef KH_DESKTOP
 #endif
 
 /*!
@@ -475,7 +475,6 @@
  * \hideinitializer
  */
 
-
 /*!
  * \def KH_ARMv7R
  *
@@ -484,7 +483,6 @@
  * \copydetails KH_ARMv6T2
  * \hideinitializer
  */
-
 
 /*!
  * \def KH_ARMv7M
@@ -547,119 +545,131 @@
 //! \}
 
 #if KH_PRIV_DOCS || defined(__x86_64__) || defined(_M_X64)
-#define KH_X64 1
+# define KH_X64 1
 #endif
 
 #if KH_PRIV_DOCS || !KH_X64 && (defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86))
-#define KH_X32 1
+# define KH_X32 1
 #endif
 
-#if KH_PRIV_DOCS || defined(__ia64__) || defined(__ia64) || defined(_M_IA64) || defined(__IA64__) ||defined(__itanium__)
-#define KH_IA64 1
+#if KH_PRIV_DOCS || defined(__ia64__) || defined(__ia64) || defined(_M_IA64) || defined(__IA64__) || \
+    defined(__itanium__)
+# define KH_IA64 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_6__) || (_M_ARM == 6)
-#define KH_ARMv6 1
+# define KH_ARMv6 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_7__) || (_M_ARM == 7)
-#define KH_ARMv7 1
+# define KH_ARMv7 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__aarch64__) || defined(_M_ARM64)
-#define KH_ARMv8 1
+# define KH_ARMv8 1
 #endif
 
 #if KH_PRIV_DOCS || defined(mips) || defined(__mips__) || defined(__mips)
-#define KH_MIPS 1
+# define KH_MIPS 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__sh__)
-#define KH_SUPERH 1
+# define KH_SUPERH 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__PPC64__) || defined(__ppc64__) || defined(_ARCH_PPC64) || defined(__powerpc64__)
-#define KH_POWER64 1
+# define KH_POWER64 1
 #endif
 
 #if KH_PRIV_DOCS || !KH_POWER64 && (defined(__powerpc) || defined(__powerpc__) || defined(__POWERPC__))
-#define KH_POWER32 1
+# define KH_POWER32 1
 #endif
 
 #if KH_PRIV_DOCS || !KH_POWER32 && !KH_POWER64 && (defined(__ppc__) || defined(__PPC__) || defined(_ARCH_PPC))
-#define KH_POWER32 1
+# define KH_POWER32 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__sparc_v9__) || defined(__sparcv9)
-#define KH_SPARC64 1
+# define KH_SPARC64 1
 #endif
 
 #if KH_PRIV_DOCS || !KH_SPARC64 && (defined(__sparc__) || defined(__sparc))
-#define KH_SPARC32 1
+# define KH_SPARC32 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__m68k__)
-#define KH_M68K 1
+# define KH_M68K 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_6T2_)
-#define KH_ARMv6T2 1
+# define KH_ARMv6T2 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_6J__)
-#define KH_ARMv6J 1
+# define KH_ARMv6J 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_6K__)
-#define KH_ARMv6K 1
+# define KH_ARMv6K 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_6Z__)
-#define KH_ARMv6Z 1
+# define KH_ARMv6Z 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_6ZK__)
-#define KH_ARMv6ZK 1
+# define KH_ARMv6ZK 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_7S__)
-#define KH_ARMv7S 1
+# define KH_ARMv7S 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_7M__)
-#define KH_ARMv7M 1
+# define KH_ARMv7M 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_7R__)
-#define KH_ARMv7R 1
+# define KH_ARMv7R 1
 #endif
 
 #if KH_PRIV_DOCS || defined(__ARM_ARCH_7A__)
-#define KH_ARMv7A 1
+# define KH_ARMv7A 1
 #endif
 
 #define KH_ARM32 KH_ARMv6 || KH_ARMv7
 #if !KH_PRIV_DOCS && !KH_ARM32
-#undef KH_ARM32
+# undef KH_ARM32
 #endif
 
 #if KH_PRIV_DOCS || defined(KH_ARMv8)
-#define KH_ARM64 1
+# define KH_ARM64 1
+#endif
+
+#if KH_PRIV_DOCS || defined(__riscv)
+# define KH_RISCV 1
+# if __riscv_xlen == 128
+#  define KH_RISCV128 1
+# elif __riscv_xlen == 64
+#  define KH_RISCV64 1
+# else
+#  define KH_RISCV32 1
+# endif
 #endif
 
 #define KH_X86 KH_X64 || KH_X32
 #if !KH_PRIV_DOCS && !KH_X86
-#undef KH_X86
+# undef KH_X86
 #endif
 
 #define KH_64BIT KH_X64 || KH_ARM64 || KH_POWER64 || KH_SPARC64
 #if !KH_PRIV_DOCS && !KH_64BIT
-#undef KH_64BIT
+# undef KH_64BIT
 #endif
 
 #define KH_32BIT KH_X32 || KH_ARM32 || KH_POWER32 || KH_SPARC32 || KH_SUPERH || KH_M68K
 #if !KH_PRIV_DOCS && !KH_32BIT
-#undef KH_32BIT
+# undef KH_32BIT
 #endif
 
 /*!
@@ -710,20 +720,20 @@
  * Preprocessor define to place in front of exported functions and classes in headers.
  *
  * Unlike most of the preprocessor defines, this one is always defined, so it may be safely used in KirHut headers and
- * libraries even if there is no Qt dependency at all. On Windows, what this expands to is dependent on two preprocessor
- * defines in the build: KH_LIBRARY_BUILD and KH_USES_QT:
- * | KH_USES_QT  | KH_LIBRARY_BUILD | Expands To              |
- * |-------------|------------------|-------------------------|
- * | Not Defined | Not Defined      | `__declspec(dllimport)` |
- * | Not Defined | Defined          | `__declspec(dllexport)` |
- * | Defined     | Not Defined      | #Q_DECL_IMPORT          |
- * | Defined     | Defined          | #Q_DECL_EXPORT          |
+ * libraries even if there is no Qt dependency at all. On Windows, what this expands to is dependent on three
+ * preprocessor defines in the build: KH_DYNAMIC_LINK, KH_LIBRARY_BUILD, and KH_USES_QT:
+ * | KH_DYNAMIC_LINK | KH_USES_QT  | KH_LIBRARY_BUILD | Expands To              |
+ * |-----------------|-------------|------------------|-------------------------|
+ * | Not Defined     | Irrelevant  | Irrelevant       | Empty String            |
+ * | Defined         | Not Defined | Not Defined      | `__declspec(dllimport)` |
+ * | Defined         | Not Defined | Defined          | `__declspec(dllexport)` |
+ * | Defined         | Defined     | Not Defined      | #Q_DECL_IMPORT          |
+ * | Defined         | Defined     | Defined          | #Q_DECL_EXPORT          |
  *
  * This `define` unconditionally expands to `__declspec(dllxyz)` on Windows without Qt because the MingW and Clang
  * documentation both claim to support this syntax, so there's no reason not to use it (similarly to `pragma once`).
- * Further, KirHut always builds on Windows using MSVC, so this should never be an issue in the first place.
  *
- * On all other operating systems, KH_EXPORT simply expands into nothing at all.
+ * On all other operating systems, KH_EXPORT simply expands into an empty string.
  *
  * \hideinitializer
  */
@@ -734,7 +744,20 @@
  * Preprocessor flag set by the user to notify libKirHut headers that it is undergoing a library build.
  *
  * On Windows, shared library symbols need to explicitly export themselves, and those same symbols need to be explicitly
- * imported from a shared library. This flag tells libKirHut that it is undergoing a build into a shared library.
+ * imported from the user application. This flag tells libKirHut headers that they are undergoing a build as a library,
+ * so if there is dynamic linking this flag will influence the expansion of #KH_EXPORT.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_DYNAMIC_LINK
+ *
+ * Preprocessor flag set by the build to notify libKirHut headers that it is being built with dynamic linking.
+ *
+ * On Windows, shared library symbols need to explicitly export themselves, and those same symbols need to be explicitly
+ * imported from the user application. This flag tells libKirHut headers that they are undergoing a build with dynamic
+ * linking, so #KH_EXPORT will expand into something other than an empty string on Windows.
  *
  * \hideinitializer
  */
@@ -745,7 +768,8 @@
  * Preprocessor flag to build libKirHut and applications using libKirHut using the Qt extensions.
  *
  * This library supports building for both Qt and non-Qt based applications. Almost everything KirHut makes is a Qt
- * application, however there are exceptions and this library should support builds on non-Qt systems.
+ * application, however there are exceptions and this library should support builds on non-Qt systems. The primary
+ * exception to this is for embedded devices.
  *
  * \hideinitializer
  */
@@ -771,51 +795,102 @@
 //! \}
 
 #if KH_PRIV_DOCS || KH_USES_QT
-#include <QtGlobal>
-#if QT_VERSION > QT_VERSION_CHECK(6,0,0)
-#include <QtProcessorDetection>
-#endif
+# include <QtGlobal>
+# if QT_VERSION > QT_VERSION_CHECK(6, 0, 0)
+#  include <QtProcessorDetection>
+# endif
 
-#if KH_PRIV_DOCS || QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
-#define KH_QT5_15 1
-#endif
+# if KH_PRIV_DOCS || QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
+#  define KH_QT5_15 1
+# endif
 
-#if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 2, 0) && QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
-#define KH_QT6_2 1
-#endif
+# if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 2, 0) && QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
+#  define KH_QT6_2 1
+# endif
 
-#if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-#define KH_QT6_5 1
-#endif
-
-#if defined(KH_LIBRARY_BUILD)
-#define KH_EXPORT Q_DECL_EXPORT
-#else
-#define KH_EXPORT Q_DECL_IMPORT
-#endif // defined(KH_LIBRARY_BUILD)
+# if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+#  define KH_QT6_5 1
+# endif
+# if defined(KH_DYNAMIC_LINK)
+#  if defined(KH_LIBRARY_BUILD)
+#   define KH_EXPORT Q_DECL_EXPORT
+#  else
+#   define KH_EXPORT Q_DECL_IMPORT
+#  endif // defined(KH_LIBRARY_BUILD)
+# endif // defined(KH_DYNAMIC_LINK)
 
 #endif // KH_USES_QT || defined(KH_PRIV_DOCS)
 
 #if !defined(KH_EXPORT)
-#if defined(KH_WINDOWS)
+# if defined(KH_WINDOWS) && defined(KH_DYNAMIC_LINK)
 // The MingW and Clang documentation both claim to outright support building __declspec(dllexport/import), so on
 // Windows builds this library just expects them.
-#if defined(KH_LIBRARY_BUILD)
-#define KH_EXPORT __declspec(dllexport)
-#else
-#define KH_EXPORT __declspec(dllimport)
-#endif // defined(KH_LIBRARY_BUILD)
-#else
-#define KH_EXPORT
-#endif // defined(KH_WINDOWS)
+#  if defined(KH_LIBRARY_BUILD)
+#   define KH_EXPORT __declspec(dllexport)
+#  else
+#   define KH_EXPORT __declspec(dllimport)
+#  endif // defined(KH_LIBRARY_BUILD)
+# else
+#  define KH_EXPORT
+# endif // defined(KH_WINDOWS) && defined(KH_DYNAMIC_LINK)
 #endif // !defined(KH_EXPORT)
 
 #if KH_PRIV_DOCS || !defined(KH_DEBUG) && !defined(KH_RELEASE) && !defined(NDEBUG)
-#define KH_DEBUG 1
+# define KH_DEBUG 1
 #endif
 
 #if KH_PRIV_DOCS || !defined(KH_DEBUG) && !defined(KH_RELEASE)
-#define KH_RELEASE 1
+# define KH_RELEASE 1
+#endif
+
+#if KH_PRIV_DOCS
+# define KH_DYNAMIC_LINK 1
+#endif
+
+/*!
+ * \def KH_INLINE
+ * Preprocessor define to the correct inline function for the current compiler.
+ *
+ * MSVC sucks when it comes to inlining methods. Ordinarily you can just use the `inline` keyword and all of the
+ * compilers will do the right thing, however MSVC likes to not inline functions even when it is useful to do so and
+ * would run faster. If, after experimentation, it is found that `inline` is insufficient to get MSVC to do the right
+ * thing, this define can be used to run `__forceinline` on MSVC which forces it to inline the appropriate function.
+ * Other compilers generally inline everything appropriately when they can.
+ *
+ * This preprocessor define is always defined after including this header.
+ *
+ * \hideinitializer
+ */
+
+// Ordinarily, you'd just detect if we are building with MSVC by checking if _MSC_VER is defined. The problem is that
+// Clang is a massive PITA and defines _MSC_VER itself. To ONLY build this on MSVC, I also have to check if Clang is
+// not defined. That said, because most language servers use Clang as a backend, it will almost always look like on your
+// editor/IDE that this is using the else block, but it does use the top block on MSVC.
+#if !defined(__clang__) && defined(_MSC_VER)
+# define KH_INLINE __forceinline
+#else
+# define KH_INLINE inline
+#endif
+
+/*!
+ * \def KH_NO_UNIQUE_ADDRESS
+ * Preprocessor define to the correct way to use no_unique_address attribute for the current compiler
+ *
+ * MSVC sucks when it comes to following C++ standards. C++20 added the standard attribute **no_unique_address**,
+ * however the MSVC compiler does not have this, and instead requires you to use a namespace enclosed version of this
+ * attribute under **msvc::no_unique_address**. This blatantly violates the C++ standards, but we still have to work
+ * around it since MSVC support is a must-have target. Other compilers generally follow the C++ standards as they are
+ * written.
+ *
+ * This preprocessor define is always defined after including this header.
+ *
+ * \hideinitializer
+ */
+
+#if __has_cpp_attribute(no_unique_address)
+# define KH_NO_UNIQUE_ADDRESS no_unique_address
+#else
+# define KH_NO_UNIQUE_ADDRESS msvc::no_unique_address
 #endif
 
 /*!
@@ -1061,177 +1136,180 @@
 //! \}
 
 #if KH_PRIV_DOCS || defined(KH_MUST_HAVE_8_16_32_64)
-#undef KH_MUST_HAVE_8_16_32_64
-#undef KH_MUST_HAVE_8_32_64
-#undef KH_MUST_HAVE_16BIT_TYPES
-#define KH_MUST_HAVE_8_16_32_64 1
-#define KH_MUST_HAVE_8_32_64 1
-#define KH_MUST_HAVE_16BIT_TYPES 1
+# undef KH_MUST_HAVE_8_16_32_64
+# undef KH_MUST_HAVE_8_32_64
+# undef KH_MUST_HAVE_16BIT_TYPES
+# define KH_MUST_HAVE_8_16_32_64 1
+# define KH_MUST_HAVE_8_32_64 1
+# define KH_MUST_HAVE_16BIT_TYPES 1
 #endif
 
 #if KH_PRIV_DOCS || defined(KH_MUST_HAVE_I8_16_32_64)
-#undef KH_MUST_HAVE_I8_16_32_64
-#undef KH_MUST_HAVE_I8_32_64
-#undef KH_MUST_HAVE_I16_TYPE
-#define KH_MUST_HAVE_I8_16_32_64 1
-#define KH_MUST_HAVE_I8_32_64 1
-#define KH_MUST_HAVE_I16_TYPE 1
+# undef KH_MUST_HAVE_I8_16_32_64
+# undef KH_MUST_HAVE_I8_32_64
+# undef KH_MUST_HAVE_I16_TYPE
+# define KH_MUST_HAVE_I8_16_32_64 1
+# define KH_MUST_HAVE_I8_32_64 1
+# define KH_MUST_HAVE_I16_TYPE 1
 #endif
 
 #if KH_PRIV_DOCS || defined(KH_MUST_HAVE_U8_16_32_64)
-#undef KH_MUST_HAVE_U8_16_32_64
-#undef KH_MUST_HAVE_U8_32_64
-#undef KH_MUST_HAVE_U16_TYPE
-#define KH_MUST_HAVE_U8_16_32_64 1
-#define KH_MUST_HAVE_U8_32_64 1
-#define KH_MUST_HAVE_U16_TYPE 1
+# undef KH_MUST_HAVE_U8_16_32_64
+# undef KH_MUST_HAVE_U8_32_64
+# undef KH_MUST_HAVE_U16_TYPE
+# define KH_MUST_HAVE_U8_16_32_64 1
+# define KH_MUST_HAVE_U8_32_64 1
+# define KH_MUST_HAVE_U16_TYPE 1
 #endif
 
+//! \cond
 #if defined(KH_MUST_HAVE_8_32_64)
-#undef KH_MUST_HAVE_8_32_64
-#undef KH_MUST_HAVE_8_32
-#undef KH_MUST_HAVE_64BIT_TYPES
-#define KH_MUST_HAVE_8_32_64 1
-#define KH_MUST_HAVE_8_32 1
-#define KH_MUST_HAVE_64BIT_TYPES 1
+# undef KH_MUST_HAVE_8_32_64
+# undef KH_MUST_HAVE_8_32
+# undef KH_MUST_HAVE_64BIT_TYPES
+# define KH_MUST_HAVE_8_32_64 1
+# define KH_MUST_HAVE_8_32 1
+# define KH_MUST_HAVE_64BIT_TYPES 1
 #endif
 
 #if defined(KH_MUST_HAVE_I8_32_64)
-#undef KH_MUST_HAVE_I8_32_64
-#undef KH_MUST_HAVE_I8_32
-#undef KH_MUST_HAVE_I64_TYPE
-#define KH_MUST_HAVE_I8_32_64 1
-#define KH_MUST_HAVE_I8_32 1
-#define KH_MUST_HAVE_I64_TYPE 1
+# undef KH_MUST_HAVE_I8_32_64
+# undef KH_MUST_HAVE_I8_32
+# undef KH_MUST_HAVE_I64_TYPE
+# define KH_MUST_HAVE_I8_32_64 1
+# define KH_MUST_HAVE_I8_32 1
+# define KH_MUST_HAVE_I64_TYPE 1
 #endif
 
 #if defined(KH_MUST_HAVE_U8_32_64)
-#undef KH_MUST_HAVE_U8_32_64
-#undef KH_MUST_HAVE_U8_32
-#undef KH_MUST_HAVE_U64_TYPE
-#define KH_MUST_HAVE_U8_32_64 1
-#define KH_MUST_HAVE_U8_32 1
-#define KH_MUST_HAVE_U64_TYPE 1
+# undef KH_MUST_HAVE_U8_32_64
+# undef KH_MUST_HAVE_U8_32
+# undef KH_MUST_HAVE_U64_TYPE
+# define KH_MUST_HAVE_U8_32_64 1
+# define KH_MUST_HAVE_U8_32 1
+# define KH_MUST_HAVE_U64_TYPE 1
 #endif
+//! \endcond
 
 #if KH_PRIV_DOCS || defined(KH_MUST_HAVE_8_32)
-#undef KH_MUST_HAVE_8_32
-#undef KH_MUST_HAVE_8BIT_TYPES
-#undef KH_MUST_HAVE_32BIT_TYPES
-#define KH_MUST_HAVE_8_32 1
-#define KH_MUST_HAVE_8BIT_TYPES 1
-#define KH_MUST_HAVE_32BIT_TYPES 1
+# undef KH_MUST_HAVE_8_32
+# undef KH_MUST_HAVE_8BIT_TYPES
+# undef KH_MUST_HAVE_32BIT_TYPES
+# define KH_MUST_HAVE_8_32 1
+# define KH_MUST_HAVE_8BIT_TYPES 1
+# define KH_MUST_HAVE_32BIT_TYPES 1
 #endif
 
 #if KH_PRIV_DOCS || defined(KH_MUST_HAVE_I8_32)
-#undef KH_MUST_HAVE_I8_32
-#undef KH_MUST_HAVE_I8_TYPE
-#undef KH_MUST_HAVE_I32_TYPE
-#define KH_MUST_HAVE_I8_32 1
-#define KH_MUST_HAVE_I8_TYPE 1
-#define KH_MUST_HAVE_I32_TYPE 1
+# undef KH_MUST_HAVE_I8_32
+# undef KH_MUST_HAVE_I8_TYPE
+# undef KH_MUST_HAVE_I32_TYPE
+# define KH_MUST_HAVE_I8_32 1
+# define KH_MUST_HAVE_I8_TYPE 1
+# define KH_MUST_HAVE_I32_TYPE 1
 #endif
 
 #if KH_PRIV_DOCS || defined(KH_MUST_HAVE_U8_32)
-#undef KH_MUST_HAVE_U8_32
-#undef KH_MUST_HAVE_U8_TYPE
-#undef KH_MUST_HAVE_U32_TYPE
-#define KH_MUST_HAVE_U8_32 1
-#define KH_MUST_HAVE_U8_TYPE 1
-#define KH_MUST_HAVE_U32_TYPE 1
+# undef KH_MUST_HAVE_U8_32
+# undef KH_MUST_HAVE_U8_TYPE
+# undef KH_MUST_HAVE_U32_TYPE
+# define KH_MUST_HAVE_U8_32 1
+# define KH_MUST_HAVE_U8_TYPE 1
+# define KH_MUST_HAVE_U32_TYPE 1
 #endif
 
 #if KH_PRIV_DOCS || defined(KH_MUST_HAVE_64BIT_TYPES)
-#undef KH_MUST_HAVE_64BIT_TYPES
-#undef KH_MUST_HAVE_I64_TYPE
-#undef KH_MUST_HAVE_U64_TYPE
-#define KH_MUST_HAVE_64BIT_TYPES 1
-#define KH_MUST_HAVE_I64_TYPE 1
-#define KH_MUST_HAVE_U64_TYPE 1
+# undef KH_MUST_HAVE_64BIT_TYPES
+# undef KH_MUST_HAVE_I64_TYPE
+# undef KH_MUST_HAVE_U64_TYPE
+# define KH_MUST_HAVE_64BIT_TYPES 1
+# define KH_MUST_HAVE_I64_TYPE 1
+# define KH_MUST_HAVE_U64_TYPE 1
 #endif
 
+//! \cond
 #if defined(KH_MUST_HAVE_32BIT_TYPES)
-#undef KH_MUST_HAVE_32BIT_TYPES
-#undef KH_MUST_HAVE_I32_TYPE
-#undef KH_MUST_HAVE_U32_TYPE
-#define KH_MUST_HAVE_32BIT_TYPES 1
-#define KH_MUST_HAVE_I32_TYPE 1
-#define KH_MUST_HAVE_U32_TYPE 1
+# undef KH_MUST_HAVE_32BIT_TYPES
+# undef KH_MUST_HAVE_I32_TYPE
+# undef KH_MUST_HAVE_U32_TYPE
+# define KH_MUST_HAVE_32BIT_TYPES 1
+# define KH_MUST_HAVE_I32_TYPE 1
+# define KH_MUST_HAVE_U32_TYPE 1
 #endif
 
 #if defined(KH_MUST_HAVE_16BIT_TYPES)
-#undef KH_MUST_HAVE_16BIT_TYPES
-#undef KH_MUST_HAVE_I16_TYPE
-#undef KH_MUST_HAVE_U16_TYPE
-#define KH_MUST_HAVE_16BIT_TYPES 1
-#define KH_MUST_HAVE_I16_TYPE 1
-#define KH_MUST_HAVE_U16_TYPE 1
+# undef KH_MUST_HAVE_16BIT_TYPES
+# undef KH_MUST_HAVE_I16_TYPE
+# undef KH_MUST_HAVE_U16_TYPE
+# define KH_MUST_HAVE_16BIT_TYPES 1
+# define KH_MUST_HAVE_I16_TYPE 1
+# define KH_MUST_HAVE_U16_TYPE 1
 #endif
 
 #if defined(KH_MUST_HAVE_8BIT_TYPES)
-#undef KH_MUST_HAVE_8BIT_TYPES
-#undef KH_MUST_HAVE_I8_TYPE
-#undef KH_MUST_HAVE_U8_TYPE
-#define KH_MUST_HAVE_8BIT_TYPES 1
-#define KH_MUST_HAVE_I8_TYPE 1
-#define KH_MUST_HAVE_U8_TYPE 1
+# undef KH_MUST_HAVE_8BIT_TYPES
+# undef KH_MUST_HAVE_I8_TYPE
+# undef KH_MUST_HAVE_U8_TYPE
+# define KH_MUST_HAVE_8BIT_TYPES 1
+# define KH_MUST_HAVE_I8_TYPE 1
+# define KH_MUST_HAVE_U8_TYPE 1
 #endif
 
 #if KH_MUST_HAVE_8_16_32_64
-#if !defined(KH_MUST_HAVE_U8_16_32_64)
-#define KH_MUST_HAVE_U8_16_32_64 1
-#endif
-#if !defined(KH_MUST_HAVE_I8_16_32_64)
-#define KH_MUST_HAVE_I8_16_32_64 1
-#endif
+# if !defined(KH_MUST_HAVE_U8_16_32_64)
+#  define KH_MUST_HAVE_U8_16_32_64 1
+# endif
+# if !defined(KH_MUST_HAVE_I8_16_32_64)
+#  define KH_MUST_HAVE_I8_16_32_64 1
+# endif
 #endif
 
 #if KH_MUST_HAVE_8_32_64
-#if !defined(KH_MUST_HAVE_U8_32_64)
-#define KH_MUST_HAVE_U8_32_64 1
-#endif
-#if !defined(KH_MUST_HAVE_I8_32_64)
-#define KH_MUST_HAVE_I8_32_64 1
-#endif
+# if !defined(KH_MUST_HAVE_U8_32_64)
+#  define KH_MUST_HAVE_U8_32_64 1
+# endif
+# if !defined(KH_MUST_HAVE_I8_32_64)
+#  define KH_MUST_HAVE_I8_32_64 1
+# endif
 #endif
 
 #if KH_MUST_HAVE_8_32
-#if !defined(KH_MUST_HAVE_U8_32)
-#define KH_MUST_HAVE_U8_32 1
+# if !defined(KH_MUST_HAVE_U8_32)
+#  define KH_MUST_HAVE_U8_32 1
+# endif
+# if !defined(KH_MUST_HAVE_I8_32)
+#  define KH_MUST_HAVE_I8_32 1
+# endif
 #endif
-#if !defined(KH_MUST_HAVE_I8_32)
-#define KH_MUST_HAVE_I8_32 1
-#endif
-#endif
+//! \endcond
 
 #if KH_PRIV_DOCS
-#define KH_LIBRARY_BUILD 1
-#define KH_USES_QT 1
+# define KH_LIBRARY_BUILD 1
+# define KH_USES_QT 1
 #endif
 
 namespace KirHut
 {
 
 /*!
- * Alias for std::numeric_Limits.
+ * Alias for std::numeric_limits.
  *
  * It is very useful to get to std::numeric_limits frequently, but the name is cumbersome, so this makes it less so.
  */
 template <class T>
 using Limits = std::numeric_limits<T>;
 
-/*!
- * The std::byte type is also defined in the KirHut namespace.
- */
 using std::byte;
+using std::size_t;
 
 /*!
- * The std::size_t type is also defined in the KirHut namespace.
+ * An Unknown or Invalid number of bytes to use.
  *
- * Honestly don't know if I will retain this, it is kind of pointless, but there are some compilers that don't have
- * size_t in the global namespace, so it is helpful to avoid std:: all the time.
+ * There is no actual buffer of bytes or set of data of Limits<size_t>::max(), so this value is used instead to identify
+ * an amount that is invalid or otherwise unknown or unknowable. This is the case when a connection has not finished
+ * sending data or the data comes from a user source or separate application.
  */
-using std::size_t;
+[[maybe_unused]] constexpr size_t UNKNOWN_BYTES = Limits<size_t>::max();
 
 /*!
  * The standard 8 bit signed integer type.
@@ -1243,7 +1321,7 @@ using i8 = std::int_least8_t;
 /*!
  * The standard 16 bit signed integer type.
  *
- * This type is guaranteed to be at least 16 bits, and for all current supported platforms, is precisely 16 bits.
+ * This type is guaranteed to be at least 16 bits.
  */
 using i16 = std::int_least16_t;
 
@@ -1278,7 +1356,7 @@ using u8 = std::uint_least8_t;
 /*!
  * The standard 16 bit unsigned integer type.
  *
- * This type is guaranteed to be at least 16 bits, and for all current supported platforms, is precisely 16 bits.
+ * This type is guaranteed to be at least 16 bits.
  */
 using u16 = std::uint_least16_t;
 
@@ -1306,64 +1384,64 @@ using uWidest = std::uintmax_t;
 /*!
  * The efficient 8 bit signed integer type.
  *
- * This type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Always assume these types can be
- * larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * This type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Always assume these types
+ * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 using e8 = std::int_fast8_t;
 /*!
  * The efficient 16 bit signed integer type.
  *
- * This type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. Always assume these types can be
- * larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * This type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. Always assume these types
+ * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 using e16 = std::int_fast16_t;
 /*!
  * The efficient 32 bit signed integer type.
  *
- * This type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Always assume these types can be
- * larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * This type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Always assume these types
+ * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 using e32 = std::int_fast32_t;
 /*!
  * The efficient 64 bit signed integer type.
  *
- * This type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. All supported platforms have a
- * 64 bit integer type, so this is likely to be 64 bits long.
+ * This type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. All supported platforms
+ * have a 64 bit integer type, so this is likely to be 64 bits long.
  */
 using e64 = std::int_fast64_t;
 
 /*!
  * The efficient 8 bit unsigned integer type.
  *
- * This type is guaranteed to be <b>at least</b> 8 bits long, not precisely 8 bits long. Always assume these types can
- * be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * This type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Always assume these types
+ * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 using ue8 = std::uint_fast8_t;
 /*!
  * The efficient 16 bit unsigned integer type.
  *
- * This type is guaranteed to be <b>at least</b> 16 bits long, not precisely 16 bits long. Always assume these types can
- * be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * This type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. Always assume these types
+ * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 using ue16 = std::uint_fast16_t;
 /*!
  * The efficient 32 bit unsigned integer type.
  *
- * This type is guaranteed to be <b>at least</b> 32 bits long, not precisely 32 bits long. Always assume these types can
- * be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * This type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Always assume these types
+ * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 using ue32 = std::uint_fast32_t;
 /*!
  * The efficient 64 bit signed integer type.
  *
- * This type is guaranteed to be <b>at least</b> 64 bits long, not precisely 64 bits long. All supported platforms have
- * a 64 bit integer type, so this is likely to be 64 bits long.
+ * This type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. All supported platforms
+ * have a 64 bit integer type, so this is likely to be 64 bits long.
  */
 using ue64 = std::uint_fast64_t;
 
@@ -1382,77 +1460,77 @@ using ue64 = std::uint_fast64_t;
  * std::numeric_limits<T> cannot be std::byte because of a C++ limitation where std::numeric_limits<std::byte> is not
  * defined statically so cannot be used in constexpr expressions.
  */
-[[maybe_unused]] constexpr byte BYTE_MAX = byte{Limits<unsigned char>::max()};
+[[maybe_unused]] constexpr byte BYTE_MAX = byte{ Limits<unsigned char>::max() };
 
 /*!
  * The lowest (minimum) value of an i8 integer.
  *
- * The i8 type is guaranteed to be <b>at least</b> 8 bits long, not precisely 8 bits long. Since all currently supported
- * platforms require an 8 bit byte, it is unlikely this will not be 8 bits, but the header supports it.
+ * The i8 type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Since all currently
+ * supported platforms require an 8 bit byte, it is unlikely this will not be 8 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr i8 I8_MIN = Limits<i8>::min();
 /*!
  * The lowest (minimum) value of an i16 integer.
  *
- * The i16 type is guaranteed to be <b>at least</b> 16 bits long, not precisely 16 bits long. It is unlikely the
+ * The i16 type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. It is unlikely the
  * platform does not support the short int type, however, so this is probably 16 bits on all supported platforms.
  */
 [[maybe_unused]] constexpr i16 I16_MIN = Limits<i16>::min();
 /*!
  * The lowest (minimum) value of an i32 integer.
  *
- * The i32 type is guaranteed to be <b>at least</b> 32 bits long, not precisely 32 bits long. Since all currently
+ * The i32 type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Since all currently
  * supported platforms require a 32 bit type, it is unlikely this will not be 32 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr i32 I32_MIN = Limits<i32>::min();
 /*!
  * The lowest (minimum) value of an i64 integer.
  *
- * The i64 type is guaranteed to be <b>at least</b> 64 bits long, not precisely 64 bits long. Since all currently
+ * The i64 type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. Since all currently
  * supported platforms require a 64 bit type, it is unlikely this will not be 64 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr i64 I64_MIN = Limits<i64>::min();
 /*!
  * The lowest (minimum) value of the widest signed integer.
  *
- * The iWidest type is guaranteed to be the largest integer type supported on the platform, and should be at least 64
- * bits on all supported platforms.
+ * The iWidest type is guaranteed to be the largest integer type supported on the platform, and should be at
+ * least 64 bits on all supported platforms.
  */
 [[maybe_unused]] constexpr iWidest IWIDEST_MIN = Limits<iWidest>::min();
 
 /*!
  * The highest (maximum) value of an i8 integer.
  *
- * The i8 type is guaranteed to be <b>at least</b> 8 bits long, not precisely 8 bits long. Since all currently supported
- * platforms require an 8 bit byte, it is unlikely this will not be 8 bits, but the header supports it.
+ * The i8 type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Since all currently
+ * supported platforms require an 8 bit byte, it is unlikely this will not be 8 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr i8 I8_MAX = Limits<i8>::max();
 /*!
  * The highest (maximum) value of an i16 integer.
  *
- * The i16 type is guaranteed to be <b>at least</b> 16 bits long, not precisely 16 bits long. It is unlikely the
+ * The i16 type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. It is unlikely the
  * platform does not support the short int type, however, so this is probably 16 bits on all supported platforms.
  */
 [[maybe_unused]] constexpr i16 I16_MAX = Limits<i16>::max();
 /*!
  * The highest (maximum) value of an i32 integer.
  *
- * The i32 type is guaranteed to be <b>at least</b> 32 bits long, not precisely 32 bits long. Since all currently
+ * The i32 type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Since all currently
  * supported platforms require a 32 bit type, it is unlikely this will not be 32 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr i32 I32_MAX = Limits<i32>::max();
 /*!
  * The highest (maximum) value of an i64 integer.
  *
- * The i64 type is guaranteed to be <b>at least</b> 64 bits long, not precisely 64 bits long. Since all currently
+ * The i64 type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. Since all currently
  * supported platforms require a 64 bit type, it is unlikely this will not be 64 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr i64 I64_MAX = Limits<i64>::max();
 /*!
  * The highest (maximum) value of the widest signed integer.
  *
- * The iWidest type is guaranteed to be the largest integer type supported on the platform, and should be at least 64
- * bits on all supported platforms.
+ * The iWidest type is guaranteed to be the largest integer type supported on the platform, and should be at
+ * least 64 bits on all supported platforms.
  */
 [[maybe_unused]] constexpr iWidest IWIDEST_MAX = Limits<iWidest>::max();
 
@@ -1490,36 +1568,37 @@ using ue64 = std::uint_fast64_t;
 /*!
  * The highest (maximum) value of an 8 bit unsigned integer.
  *
- * The u8 type is guaranteed to be <b>at least</b> 8 bits long, not precisely 8 bits long. Since all platforms supported
- * by Qt are dependent on having 8 bit byte types, it is unlikely this will not be 8 bits, but the header supports it.
+ * The u8 type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Since all platforms
+ * supported by Qt are dependent on having 8 bit byte types, it is unlikely this will not be 8 bits, but the header
+ * supports it.
  */
 [[maybe_unused]] constexpr u8 U8_MAX = Limits<u8>::max();
 /*!
  * The highest (maximum) value of a 16 bit unsigned integer.
  *
- * The u16 type is guaranteed to be <b>at least</b> 16 bits long, not precisely 16 bits long. It is unlikely the
+ * The u16 type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. It is unlikely the
  * platform does not support the short int type, however, so this is probably 16 bits on all supported platforms.
  */
 [[maybe_unused]] constexpr u16 U16_MAX = Limits<u16>::max();
 /*!
  * The highest (maximum) value of a 32 bit unsigned integer.
  *
- * The u32 type is guaranteed to be <b>at least</b> 32 bits long, not precisely 32 bits long. Since all platforms
+ * The u32 type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Since all platforms
  * supported by Qt require 32 bit types, it is unlikely this will not be 32 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr u32 U32_MAX = Limits<u32>::max();
 /*!
  * The highest (maximum) value of a 64 bit unsigned integer.
  *
- * The u64 type is guaranteed to be <b>at least</b> 64 bits long, not precisely 64 bits long. Since all platforms
+ * The u64 type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. Since all platforms
  * supported by Qt require 64 bit types, it is unlikely this will not be 64 bits, but the header supports it.
  */
 [[maybe_unused]] constexpr u64 U64_MAX = Limits<u64>::max();
 /*!
  * The highest (maximum) value of the widest unsigned integer.
  *
- * The uWidest type is guaranteed to be the largest integer type supported on the platform, and should be at least 64
- * bits on all supported platforms.
+ * The uWidest type is guaranteed to be the largest integer type supported on the platform, and should be at
+ * least 64 bits on all supported platforms.
  */
 [[maybe_unused]] constexpr uWidest UWIDEST_MAX = Limits<uWidest>::max();
 
@@ -1557,7 +1636,7 @@ using ue64 = std::uint_fast64_t;
 /*!
  * The lowest (minimum) value of an efficient 8 bit signed integer.
  *
- * The e8 type is guaranteed to be <b>at least</b> 8 bits long, not precisely 8 bits long. Always assume these types
+ * The e8 type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Always assume these types
  * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
@@ -1565,31 +1644,31 @@ using ue64 = std::uint_fast64_t;
 /*!
  * The lowest (minimum) value of an efficient 16 bit signed integer.
  *
- * The e16 type is guaranteed to be <b>at least</b> 16 bits long, not precisely 16 bits long. Always assume these types
- * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * The e16 type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. Always assume these
+ * types can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 [[maybe_unused]] constexpr e16 E16_MIN = Limits<e16>::min();
 /*!
  * The lowest (minimum) value of an efficient 32 bit signed integer.
  *
- * The e32 type is guaranteed to be <b>at least</b> 32 bits long, not precisely 32 bits long. Always assume these types
- * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * The e32 type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Always assume these
+ * types can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 [[maybe_unused]] constexpr e32 E32_MIN = Limits<e32>::min();
 /*!
  * The lowest (minimum) value of an efficient 64 bit signed integer.
  *
- * The e64 type is guaranteed to be <b>at least</b> 64 bits long, not precisely 64 bits long. All supported platforms
- * have a 64 bit integer type, so this is likely to be 64 bits long.
+ * The e64 type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. All supported
+ * platforms have a 64 bit integer type, so this is likely to be 64 bits long.
  */
 [[maybe_unused]] constexpr e64 E64_MIN = Limits<e64>::min();
 
 /*!
  * The number of numeric bits found in the e8 integer.
  *
- * This does not include the sign bit on most platforms, so if the type is 8 bits long, this should be 7.
+ * This does not include the sign bit, but you should never assume that it will be 7
  */
 [[maybe_unused]] constexpr int E8_BITS = Limits<e8>::digits;
 /*!
@@ -1614,7 +1693,7 @@ using ue64 = std::uint_fast64_t;
 /*!
  * The highest (maximum) value of an efficient 8 bit signed integer.
  *
- * The e8 type is guaranteed to be <b>at least</b> 8 bits long, not precisely 8 bits long. Always assume these types
+ * The e8 type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Always assume these types
  * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
@@ -1622,56 +1701,56 @@ using ue64 = std::uint_fast64_t;
 /*!
  * The highest (maximum) value of an efficient 16 bit signed integer.
  *
- * The e16 type is guaranteed to be <b>at least</b> 16 bits long, not precisely 16 bits long. Always assume these types
- * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * The e16 type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. Always assume these
+ * types can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 [[maybe_unused]] constexpr e16 E16_MAX = Limits<e16>::max();
 /*!
  * The highest (maximum) value of an efficient 32 bit signed integer.
  *
- * The e32 type is guaranteed to be <b>at least</b> 32 bits long, not precisely 32 bits long. Always assume these types
- * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * The e32 type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Always assume these
+ * types can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 [[maybe_unused]] constexpr e32 E32_MAX = Limits<e32>::max();
 /*!
  * The highest (maximum) value of an efficient 64 bit signed integer.
  *
- * The e64 type is guaranteed to be <b>at least</b> 64 bits long, not precisely 64 bits long. All supported platforms
- * have a 64 bit integer type, so this is likely to be 64 bits long.
+ * The e64 type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. All supported
+ * platforms have a 64 bit integer type, so this is likely to be 64 bits long.
  */
 [[maybe_unused]] constexpr e64 E64_MAX = Limits<e64>::max();
 
 /*!
  * The highest (maximum) value of an efficient 8 bit unsigned integer.
  *
- * The ue8 type is guaranteed to be <b>at least</b> 8 bits long, not precisely 8 bits long. Always assume these types
- * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * The ue8 type is guaranteed to be **at least** 8 bits long, not precisely 8 bits long. Always assume these
+ * types can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 [[maybe_unused]] constexpr ue8 UE8_MAX = Limits<ue8>::max();
 /*!
  * The highest (maximum) value of an efficient 16 bit unsigned integer.
  *
- * The ue16 type is guaranteed to be <b>at least</b> 16 bits long, not precisely 16 bits long. Always assume these types
- * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * The ue16 type is guaranteed to be **at least** 16 bits long, not precisely 16 bits long. Always assume these
+ * types can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 [[maybe_unused]] constexpr ue16 UE16_MAX = Limits<ue16>::max();
 /*!
  * The highest (maximum) value of an efficient 32 bit unsigned integer.
  *
- * The ue32 type is guaranteed to be <b>at least</b> 32 bits long, not precisely 32 bits long. Always assume these types
- * can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
+ * The ue32 type is guaranteed to be **at least** 32 bits long, not precisely 32 bits long. Always assume these
+ * types can be larger than the intended size, however so long as you do not rely on integer rollover and want efficient
  * computations, this is the preferred type to use.
  */
 [[maybe_unused]] constexpr ue32 UE32_MAX = Limits<ue32>::max();
 /*!
  * The highest (maximum) value of an efficient 64 bit unsigned integer.
  *
- * The ue64 type is guaranteed to be <b>at least</b> 64 bits long, not precisely 64 bits long. All supported platforms
- * have a 64 bit integer type, so this is likely to be 64 bits long.
+ * The ue64 type is guaranteed to be **at least** 64 bits long, not precisely 64 bits long. All supported
+ * platforms have a 64 bit integer type, so this is likely to be 64 bits long.
  */
 [[maybe_unused]] constexpr ue64 UE64_MAX = Limits<ue64>::max();
 
@@ -1715,6 +1794,8 @@ namespace Platform
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool windows = false
+// God I wish there was something better than this unholy construction. Unfortunately this really is the shortest way I
+// can come to in order to express something that is true or false based on a preprocessor define.
 #if KH_WINDOWS
                                           || true
 #endif
@@ -1756,6 +1837,8 @@ namespace Platform
  * Non Preprocessor equivalent to #KH_IPHONE.
  *
  * \copydetails KirHut::Platform::windows
+ *
+ * \note This includes iPadOS! As of right now there is no need to distinguish them, but this may change in the future.
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool iPhone = false
@@ -1787,6 +1870,47 @@ namespace Platform
     ;
 
 } // namespace Platform
+
+/*!
+ * Enumeration for exit codes used by all KirHut applications.
+ *
+ * libKirHut uses a standard set of exit codes primarily based on sysexits.h and other aspirational exit code
+ * standards that are available on the platform. All exit codes are universal across all KirHut applications, so that a
+ * single set of exit code documentation will be correct for all operating systems and all KirHut applications. As such,
+ * the exit codes of KirHut applications do not fully follow the conventions of any single operating system, but are
+ * designed in such a way as to be as close as is feasible for most supported operating systems.
+ */
+enum Exits
+{
+    Success              = 0, //!< 0 - The application closed after successful completion or upon request.
+    Unknown              = 1, //!< 1 - The application closed for unknown reasons.
+    BadCommandInput      = 2, //!< 2 - The user incorrectly formatted the command line arguments.
+    FileNotFound         = 3, //!< 3 - A file or folder specified in the command was not found.
+    TooManyOpenFiles     = 4, //!< 4 - The application has already opened too many files.
+    InvalidHandle        = 6, //!< 6 - The application was provided or has an invalid handle.
+    ArenaTrashed         = 7, //!< 7 - An arena buffer used by this application has become invalid.
+    BadEnvironment       = 10, //!< 10 - An environment variable or requirement was invalid or missing.
+    OutOfMemory          = 15, //!< 15 - This application ran out of memory.
+    CurrentDirectory     = 16, //!< 16 - The directory cannot be removed because it is the current directory.
+    BadCRCResult         = 23, //!< 23 - A cyclic redundancy check in the application failed.
+    HandleEndOfFile      = 38, //!< 38 - The end of a file provided to the application was unexpectedly reached.
+    DiskFullError        = 39, //!< 39 - The disk of a write destination is full.
+    ConfigCmdInvalid     = 64, //!< 64 - A command provided in application configuration is incorrectly formatted.
+    IncorrectDataFormat  = 65, //!< 65 - Input provided to application is in incorrect format.
+    CannotOpenInput      = 66, //!< 66 - Input provided to application cannot be opened.
+    UsernameUnknown      = 67, //!< 67 - Username provided as argument or configuration is unknown.
+    HostnameUnknown      = 68, //!< 68 - Hostname provided as argument or configuration is unknown.
+    ServiceUnavailable   = 69, //!< 69 - An expected system service was not available at time of request.
+    SoftwareError        = 70, //!< 70 - A software programming error was encountered in runtime.
+    OperatingSystemError = 71, //!< 71 - The operating system failed to provide an essential functionality.
+    OSFileMissingError   = 72, //!< 72 - A critical operating system file was missing.
+    CannotCreateFile     = 73, //!< 73 - A file this application required could not be created.
+    InputOutputError     = 74, //!< 74 - An error was encountered during IO processing.
+    TemporaryError       = 75, //!< 75 - A temporary error was encountered.
+    ProtocolError        = 76, //!< 76 - An error was encountered with the protocol used in communication.
+    PermissionDenied     = 77, //!< 77 - Permission to access a file, folder, or resource was denied.
+    ConfigurationError   = 78, //!< 78 - An error was encountered with the configuration of the application.
+};
 
 /*!
  * Namespace for Build information regarding libKirHut.
@@ -1833,8 +1957,8 @@ namespace Build
  *
  * \copydetails KirHut::Platform::windows
  *
- * These are defined regardless of whether or not Qt is used because if constexpr must still produce a legal expression
- * even if it is always false. See usesQt to check if Qt is included in the build.
+ * These are defined regardless of whether or not Qt is used because if constexpr must still produce a legal
+ * expression even if it is always false. See usesQt to check if Qt is included in the build.
  *
  * \hideinitializer
  */
@@ -1869,33 +1993,33 @@ namespace Build
 /*!
  * Check if the current build has signed 8 bit integers.
  *
- * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
- * value informs you if the platform does have 8 bit integers. This value is therefore always there, even on platforms
- * where there are not 8 bit integers. In that case, its value is false.
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
+ * instead this value informs you if the platform does have 8 bit integers. This value is therefore always there, even
+ * on platforms where there are not 8 bit integers. In that case, its value is false.
  */
 [[maybe_unused]] constexpr bool hasI8 = Limits<i8>::digits == 7;
 /*!
  * Check if the current build has signed 16 bit integers.
  *
- * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
- * value informs you if the platform does have 16 bit integers. This value is therefore always there, even on platforms
- * where there are not 16 bit integers. In that case, its value is false.
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
+ * instead this value informs you if the platform does have 16 bit integers. This value is therefore always there, even
+ * on platforms where there are not 16 bit integers. In that case, its value is false.
  */
 [[maybe_unused]] constexpr bool hasI16 = Limits<i16>::digits == 15;
 /*!
  * Check if the current build has signed 32 bit integers.
  *
- * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
- * value informs you if the platform does have 32 bit integers. This value is therefore always there, even on platforms
- * where there are not 32 bit integers. In that case, its value is false.
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
+ * instead this value informs you if the platform does have 32 bit integers. This value is therefore always there, even
+ * on platforms where there are not 32 bit integers. In that case, its value is false.
  */
 [[maybe_unused]] constexpr bool hasI32 = Limits<i32>::digits == 31;
 /*!
  * Check if the current build has signed 64 bit integers.
  *
- * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
- * value informs you if the platform does have 64 bit integers. This value is therefore always there, even on platforms
- * where there are not 64 bit integers. In that case, its value is false.
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
+ * instead this value informs you if the platform does have 64 bit integers. This value is therefore always there, even
+ * on platforms where there are not 64 bit integers. In that case, its value is false.
  */
 [[maybe_unused]] constexpr bool hasI64 = Limits<i64>::digits == 63;
 /*!
@@ -1949,9 +2073,9 @@ namespace Build
 /*!
  * Check if the current build has signed 8 and 32 bit integers.
  *
- * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
- * value informs you if the platform does have 8 and 32 bit integers. This value is therefore always there, even on
- * platforms where there are not 8 and 32 bit integers. In that case, its value is false.
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
+ * instead this value informs you if the platform does have 8 and 32 bit integers. This value is therefore always there,
+ * even on platforms where there are not 8 and 32 bit integers. In that case, its value is false.
  */
 [[maybe_unused]] constexpr bool hasI832 = hasI8 && hasI32;
 /*!
@@ -1965,13 +2089,13 @@ namespace Build
  *
  * \copydetails KirHut::Build::hasI832
  */
-[[maybe_unused]] constexpr bool has832 = hasI832 && hasU832;
+[[maybe_unused]] constexpr bool has832 = has8 && has32;
 /*!
  * Check if the current build has signed 8, 32, and 64 bit integers.
  *
- * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
- * value informs you if the platform does have 8, 32, and 64 bit integers. This value is therefore always there, even on
- * platforms where there are not 8, 32, and 64 bit integers. In that case, its value is false.
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
+ * instead this value informs you if the platform does have 8, 32, and 64 bit integers. This value is therefore always
+ * there, even on platforms where there are not 8, 32, and 64 bit integers. In that case, its value is false.
  */
 [[maybe_unused]] constexpr bool hasI83264 = hasI832 && hasI64;
 /*!
@@ -1985,13 +2109,13 @@ namespace Build
  *
  * \copydetails KirHut::Build::hasI83264
  */
-[[maybe_unused]] constexpr bool has83264 = hasI83264 && hasU83264;
+[[maybe_unused]] constexpr bool has83264 = has832 && has64;
 /*!
  * Check if the current build has signed 8, 16, 32, and 64 bit integers.
  *
- * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality, instead this
- * value informs you if the platform does have 8, 16, 32, and 64 bit integers. This value is therefore always there,
- * even on platforms where there are not 8, 16, 32, and 64 bit integers. In that case, its value is false.
+ * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
+ * instead this value informs you if the platform does have 8, 16, 32, and 64 bit integers. This value is therefore
+ * always there, even on platforms where there are not 8, 16, 32, and 64 bit integers. In that case, its value is false.
  */
 [[maybe_unused]] constexpr bool hasI8163264 = hasI83264 && hasI16;
 /*!
@@ -2005,19 +2129,60 @@ namespace Build
  *
  * \copydetails KirHut::Build::hasI8163264
  */
-[[maybe_unused]] constexpr bool has8163264 = hasI8163264 && hasU8163264;
+[[maybe_unused]] constexpr bool has8163264 = has83264 && has16;
 
 } // namespace Build
 
 //! \cond
 /*
- * I use a macro here instead of a constexpr template method because I need the compilation time string literal
- * concatenation abilities of a preprocessor simply putting multiple constant strings together instead of a typechecked
- * and not-yet-working as of C++17 set of constexpr std::string concatenations necessary to make this string. When the
- * constexpr stuff is working better in C++20/23 this may be revised.
+ * There's a need to check the preprocessor defines in the compiler, as it is possible both for a compiler to
+ * inadvertently define multiple cores and for a user to define cores themselves (though this shouldn't be supported at
+ * all). This header should simply fail to compile when one of these situations occurs.
+ *
+ * The first set of failure checks are for the hardware ISA, then for the OS platform.
  */
-#define KH_PRIV_CHECK_REQUIRES_SIZE(COND, TYPEDESC)                                                              \
-static_assert(COND, "Compilation requires " TYPEDESC " type but this compiler or platform does not support it.")
+
+// TODO: Include Hardware ISA constexpr bools and checks.
+
+namespace Priv
+{
+
+constexpr bool onlyOneOf(auto &coll)
+{
+    bool found = false;
+    for (auto val : coll)
+    {
+        if (val)
+        {
+            if (found)
+            {
+                return false;
+            }
+            else
+            {
+                found = true;
+            }
+        }
+    }
+
+    return found;
+}
+
+constexpr bool platformArr[]{ Platform::windows, Platform::macOS, Platform::linux };
+
+static_assert(onlyOneOf(platformArr), "libKirHut cannot be built for more than one target platform.");
+
+} // namespace Priv
+
+/*
+ * I use a macro here instead of a constexpr template method because I need the compilation time string literal
+ * concatenation abilities of a preprocessor simply putting multiple constant strings together. This requires something
+ * like std::string and some constexpr wizardry to make sure it works correctly, but this header deliberately does not
+ * include the <string> header. As such, this simply goes with a macro, and all KH_PRIV_* macros are assumed to be
+ * unusable anyway for all library users.
+ */
+#define KH_PRIV_CHECK_REQUIRES_SIZE(COND, TYPEDESC) \
+    static_assert(COND, "Compilation requires " TYPEDESC " type but this compiler or platform does not support it.")
 
 #if KH_MUST_HAVE_I8_TYPE
 KH_PRIV_CHECK_REQUIRES_SIZE(Build::hasI8, "signed 8-bit");
