@@ -1,7 +1,7 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** exceptions.hpp
-** Copyright (C) 2024 KirHut Software Company
+** kh/exceptions.hpp
+** Copyright © KirHut Software Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -16,7 +16,18 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#include "exception.hpp"
+/*!
+ * \file kh/exceptions.hpp
+ *
+ * File providing default Exceptions found within libKirHut.
+ *
+ * The kh/exception.hpp header does not include default Exception objects like AlreadyInitialized or
+ * KirHutSucksAtProgramming, because the Exception object does not require these to work correctly. However, there are
+ * methods and objects that will throw these Exception objects specifically, and those headers will include this header
+ * in that case.
+ */
+
+#include "kh/exception.hpp"
 
 namespace KirHut
 {
@@ -33,6 +44,17 @@ namespace KirHut
  * report it to the KirHut Bug Reporting system! This will help make the software better in the future.
  */
 struct KH_EXPORT KirHutSucksAtProgramming : public Exception
+{
+    using Exception::Exception;
+};
+
+/*!
+ * Exception thrown when an underlying expected value has already been initialized when it shouldn't be.
+ *
+ * This can happen when an initializer object has already been created but you attempt to create another one. This is
+ * almost always a programming error so this throws an Exception.
+ */
+struct KH_EXPORT AlreadyInitialized : public Exception
 {
     using Exception::Exception;
 };
@@ -69,6 +91,30 @@ struct KH_EXPORT IllegalArgument : public Exception
  * requesting that uninitialized object.
  */
 struct KH_EXPORT NotInitializedYet : public Exception
+{
+    using Exception::Exception;
+};
+
+/*!
+ * Exception thrown when there never was or is no longer valid data available in an object or container.
+ *
+ * This can happen, notably, when calling MaybeInv<T>::take() and isValid() is false at that time. This could happen
+ * quite spuriously in multithreaded environments that use the same MaybeInv, so the best option in that case is to
+ * remove the T from the MaybeInv container, then provide multithreaded API to T.
+ */
+struct KH_EXPORT NoValidData : public Exception
+{
+    using Exception::Exception;
+};
+
+/*!
+ * Exception thrown when the internal state of an object is invalid or otherwise unusable for a given command.
+ *
+ * Usually, it is acceptable to just return a default value when the internal state isn't in a usable state, however
+ * there are times when you want the application to respond more forcefully to bad input, and this Exception can be used
+ * for just such a circumstance.
+ */
+struct KH_EXPORT BadState : public Exception
 {
     using Exception::Exception;
 };

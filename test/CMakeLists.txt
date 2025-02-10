@@ -15,9 +15,13 @@ set(TESTS_TO_EXECUTE
     Exceptions
 )
 
+if (KH_MD5_SUPPORT)
+    list(APPEND TESTS_TO_EXECUTE Md5Hash)
+endif()
+
 foreach(TESTNAME ${TESTS_TO_EXECUTE})
     add_executable(KHTest${TESTNAME} Test${TESTNAME}.cpp)
     add_test(NAME ${TESTNAME} COMMAND KHTest${TESTNAME})
-    target_include_directories(KHTest${TESTNAME} PRIVATE ${REQUIRED_INCLUDES} ${PROJECT_SOURCE_DIR}/src)
+    target_include_directories(KHTest${TESTNAME} PRIVATE ${PROJECT_SOURCE_DIR}/extern/include)
     target_link_libraries(KHTest${TESTNAME} PRIVATE libKirHut Catch2::Catch2WithMain)
 endforeach()

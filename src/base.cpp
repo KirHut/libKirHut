@@ -1,7 +1,7 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
 ** base.cpp
-** Copyright (C) 2024 KirHut Software Company
+** Copyright © KirHut Software Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -17,68 +17,21 @@
 #include "kh/base.hpp"
 
 #include "kh/ranges.hpp"
+#include "kh/exceptions.hpp"
 
-using namespace KirHut;
+#include <chrono>
+#include <cassert>
 
-Invalid::Invalid(WhyInvalid why) noexcept : why_d(why)
+#if KH_USES_QT
+# include <QString>
+#endif
+
+namespace KirHut
 {
-    // No implementation.
-}
 
-Invalid::Invalid(WhyInvalid why, string &&message) noexcept : message_d(forward<string>(message)), why_d(why)
+void Priv::throwNoValidData(Invalid const &inv)
 {
-    // No implementation.
-}
-
-Invalid::Invalid(WhyInvalid why, char const *message) : Invalid(why, string_view(message))
-{
-    // No implementation.
-}
-
-Invalid::Invalid(WhyInvalid why, string_view message) : message_d(message), why_d(why)
-{
-    // No implementation.
-}
-
-Invalid::Invalid(Invalid &&other) noexcept : Invalid(other.why(), forward<string>(other.message_d))
-{
-    other.message_d.clear();
-}
-
-WhyInvalid Invalid::why() const noexcept
-{
-    return why_d;
-}
-
-string_view Invalid::message() const noexcept
-{
-    return message_d;
-}
-
-void Invalid::setMessage(string &&msg) noexcept
-{
-    if (message_d.empty())
-    {
-        overwriteMessage(forward<string>(msg));
-    }
-}
-
-void Invalid::setMessage(string_view msg)
-{
-    if (message_d.empty())
-    {
-        overwriteMessage(msg);
-    }
-}
-
-void Invalid::overwriteMessage(string &&msg) noexcept
-{
-    message_d = std::move(msg);
-}
-
-void Invalid::overwriteMessage(string_view msg)
-{
-    message_d = msg;
+    throw NoValidData(inv);
 }
 
 // Using a std::span here is more annoying than just using a contiguous_range because the QByteArray in one of the
@@ -95,41 +48,85 @@ inline StrType toStrImpl(RangeType rng)
     return ret;
 }
 
+string toStr(const char *from)
+{
+    return string{ from };
+}
+
 #ifdef __cpp_char8_t
-string KirHut::toStr(std::u8string_view in)
+string toStr(std::u8string_view in)
 {
     return toStrImpl<string>(in);
 }
 
-std::u8string KirHut::toU8Str(string_view in)
+std::u8string toU8Str(string_view in)
 {
     return toStrImpl<std::u8string>(in);
 }
 #endif // __cpp_char8_t
 
 #if KH_USES_QT
-# include <QString>
-
-QString KirHut::toQStr(string_view in) noexcept
+QString toQStr(string_view in) noexcept
 {
     return { QByteArray::fromRawData(in.data(), in.size()) };
 }
 
-string KirHut::toStr(QString const &in) noexcept
+string toStr(QString const &in) noexcept
 {
     // This used to do something else, but now it just calls a QString method. It is retained for source compatibility.
     return in.toStdString();
 }
 
 # ifdef __cpp_char8_t
-QString KirHut::toQStr(std::u8string_view in) noexcept
+QString toQStr(std::u8string_view in) noexcept
 {
     return { QByteArray::fromRawData(bit_cast<char const *>(in.data()), in.size()) };
 }
 
-std::u8string KirHut::toU8Str(QString const &in) noexcept
+std::u8string toU8Str(QString const &in) noexcept
 {
     return toStrImpl<std::u8string>(in.toUtf8());
 }
 # endif // __cpp_char8_t
 #endif // KH_USES_QT
+
+u64 currentTicks() noexcept
+{
+    return static_cast<u64>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+}
+
+template <typename T>
+inline void khAssertImpl(bool condition, T &&message)
+{
+    if constexpr (Build::release)
+    {
+        if (!condition)
+        {
+            throw KirHutSucksAtProgramming(std::forward<T>(message));
+        }
+    }
+
+    assert(condition);
+}
+
+void khAssert(bool condition, string &&message)
+{
+    khAssertImpl(condition, std::move(message));
+}
+
+void khAssert(bool condition, string_view message)
+{
+    khAssertImpl(condition, message);
+}
+
+void khAssert(bool condition, char const *message)
+{
+    khAssertImpl(condition, message);
+}
+
+void khAssert([[maybe_unused]] bool condition)
+{
+    throw KirHutSucksAtProgramming("Invalid khAssert function called.");
+}
+
+} // namespace KirHut

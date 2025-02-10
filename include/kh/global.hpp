@@ -1,7 +1,7 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** global.hpp
-** Copyright (C) 2024 KirHut Software Company
+** kh/global.hpp
+** Copyright © KirHut Software Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -17,7 +17,7 @@
 #pragma once
 
 /*!
- * \file global.hpp
+ * \file kh/global.hpp
  *
  * The KirHut Global include file.
  *
@@ -527,6 +527,47 @@
  */
 
 /*!
+ * \def KH_RISCV
+ *
+ * Preprocessor define indicating if the system is compiled for a RISC V processor ("RISC Five").
+ *
+ * This is dependent on the preprocessor define `__riscv` being defined.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_RISCV32
+ *
+ * Preprocessor define indicating if the system is compiled for a RISC V 32-bit processor.
+ *
+ * This is dependent on the preprocessor define `__riscv` being defined and the define `__riscv_xlen` being equal to 32.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_RISCV64
+ *
+ * Preprocessor define indicating if the system is compiled for a RISC V 32-bit processor.
+ *
+ * This is dependent on the preprocessor define `__riscv` being defined and the define `__riscv_xlen` being equal to 64.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_RISCV128
+ *
+ * Preprocessor define indicating if the system is compiled for a RISC V 32-bit processor.
+ *
+ * This is dependent on the preprocessor define `__riscv` being defined and the define `__riscv_xlen` being equal to
+ * 128.
+ *
+ * \hideinitializer
+ */
+
+/*!
  * \def KH_64BIT
  *
  * Preprocessor define indicating if the system is compiled for 64-bit systems.
@@ -648,12 +689,14 @@
 
 #if KH_PRIV_DOCS || defined(__riscv)
 # define KH_RISCV 1
-# if __riscv_xlen == 128
-#  define KH_RISCV128 1
-# elif __riscv_xlen == 64
-#  define KH_RISCV64 1
-# else
+# if KH_PRIV_DOCS || __riscv_xlen == 32
 #  define KH_RISCV32 1
+# endif
+# if KH_PRIV_DOCS || __riscv_xlen == 64
+#  define KH_RISCV64 1
+# endif
+# if KH_PRIV_DOCS || __riscv_xlen == 128
+#  define KH_RISCV128 1
 # endif
 #endif
 
@@ -685,11 +728,24 @@
  */
 
 /*!
+ * \def KH_QT_UNSUPPORTED
+ * Preprocessor define indicating if the system is compiled using a version of Qt that is unsupported.
+ *
+ * Qt versions prior to 5.15 are not supported by KirHut, because these older versions of Qt lack features that are
+ * frequently used by KirHut software. Generally speaking, this will result in a compile error in nearly all KirHut
+ * software.
+ *
+ * \hideinitializer
+ */
+
+/*!
  * \def KH_QT5_15
  * Preprocessor define indicating if the system is compiled using Qt 5.15.
  *
- * This determines the version with `QT_VERSION < QT_VERSION_CHECK(6, 2, 0)`. This library assumes you are using one of
- * the major LTS versions of Qt if it is used, so compatibility is based on LTS versions.
+ * This determines the version with `QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)` and
+ * `QT_VERSION < QT_VERSION_CHECK(6, 2, 0)`. This library assumes you are using one of the major LTS versions of Qt if
+ * it is used, so compatibility is based on LTS versions. When using Qt 5.15, this will be 1, otherwise it is not
+ * defined.
  *
  * \hideinitializer
  */
@@ -700,7 +756,8 @@
  *
  * This determines the version with `QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)` and
  * `QT_VERSION < QT_VERSION_CHECK(6, 5, 0)`. This library assumes you are using one of the major LTS versions of Qt if
- * it is used, so compatibility is based on LTS versions.
+ * it is used, so compatibility is based on LTS versions. When using Qt 6.2, this will be 1, otherwise it is not
+ * defined.
  *
  * \hideinitializer
  */
@@ -709,8 +766,21 @@
  * \def KH_QT6_5
  * Preprocessor define indicating if the system is compiled using Qt 6.5.
  *
- * This determines the version with `QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)`. When using Qt 6.5, this will be 1,
- * otherwise it is 0.
+ * This determines the version with `QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)` and
+ * `QT_VERSION < QT_VERSION_CHECK(6, 8, 0)`. This library assumes you are using one of the major LTS versions of Qt if
+ * it is used, so compatibility is based on LTS versions. When using Qt 6.5, this will be 1, otherwise it is not
+ * defined.
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_QT6_8
+ * Preprocessor define indicating if the system is compiled using Qt 6.8.
+ *
+ * This determines the version with `QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)`. This library assumes you are using one of
+ * the major LTS versions of Qt if it is used, so compatibility is based on LTS versions.When using Qt 6.8, this will be
+ * 1, otherwise it is not defined.
  *
  * \hideinitializer
  */
@@ -727,8 +797,8 @@
  * | Not Defined     | Irrelevant  | Irrelevant       | Empty String            |
  * | Defined         | Not Defined | Not Defined      | `__declspec(dllimport)` |
  * | Defined         | Not Defined | Defined          | `__declspec(dllexport)` |
- * | Defined         | Defined     | Not Defined      | #Q_DECL_IMPORT          |
- * | Defined         | Defined     | Defined          | #Q_DECL_EXPORT          |
+ * | Defined         | Defined     | Not Defined      | Q_DECL_IMPORT           |
+ * | Defined         | Defined     | Defined          | Q_DECL_EXPORT           |
  *
  * This `define` unconditionally expands to `__declspec(dllxyz)` on Windows without Qt because the MingW and Clang
  * documentation both claim to support this syntax, so there's no reason not to use it (similarly to `pragma once`).
@@ -800,7 +870,11 @@
 #  include <QtProcessorDetection>
 # endif
 
-# if KH_PRIV_DOCS || QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
+# if KH_PRIV_DOCS || QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+#  define KH_QT_UNSUPPORTED 1
+# endif
+
+# if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(5, 15, 0) && QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
 #  define KH_QT5_15 1
 # endif
 
@@ -808,8 +882,12 @@
 #  define KH_QT6_2 1
 # endif
 
-# if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+# if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 5, 0) && QT_VERSION < QT_VERSION_CHECK(6, 8, 0)
 #  define KH_QT6_5 1
+# endif
+
+# if KH_PRIV_DOCS || QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+#  define KH_QT6_8 1
 # endif
 # if defined(KH_DYNAMIC_LINK)
 #  if defined(KH_LIBRARY_BUILD)
@@ -857,13 +935,13 @@
  * thing, this define can be used to run `__forceinline` on MSVC which forces it to inline the appropriate function.
  * Other compilers generally inline everything appropriately when they can.
  *
- * This preprocessor define is always defined after including this header.
+ * This is always defined after including this header.
  *
  * \hideinitializer
  */
 
 // Ordinarily, you'd just detect if we are building with MSVC by checking if _MSC_VER is defined. The problem is that
-// Clang is a massive PITA and defines _MSC_VER itself. To ONLY build this on MSVC, I also have to check if Clang is
+// Clang is a massive PITA and defines _MSC_VER itself. To ONLY build this on MSVC, this also has to check if Clang is
 // not defined. That said, because most language servers use Clang as a backend, it will almost always look like on your
 // editor/IDE that this is using the else block, but it does use the top block on MSVC.
 #if !defined(__clang__) && defined(_MSC_VER)
@@ -882,7 +960,7 @@
  * around it since MSVC support is a must-have target. Other compilers generally follow the C++ standards as they are
  * written.
  *
- * This preprocessor define is always defined after including this header.
+ * This is always defined after including this header.
  *
  * \hideinitializer
  */
@@ -1879,6 +1957,9 @@ namespace Platform
  * single set of exit code documentation will be correct for all operating systems and all KirHut applications. As such,
  * the exit codes of KirHut applications do not fully follow the conventions of any single operating system, but are
  * designed in such a way as to be as close as is feasible for most supported operating systems.
+ *
+ * This enumeration is deliberately not a class enum, because conversion to the integer value is an important
+ * functionality of this enumeration.
  */
 enum Exits
 {
@@ -1991,13 +2072,25 @@ namespace Build
     ;
 
 /*!
+ * Non Preprocessor equivalent to KH_QT6_8.
+ *
+ * \copydetails KirHut::Build::qt515
+ * \hideinitializer
+ */
+[[maybe_unused]] constexpr bool qt68 = false
+#if KH_QT6_8
+                                       || usesQt
+#endif
+    ;
+
+/*!
  * Check if the current build has signed 8 bit integers.
  *
  * Unlike the KH_MUST_HAVE_* directives, these don't assert that the platform must have this functionality,
  * instead this value informs you if the platform does have 8 bit integers. This value is therefore always there, even
  * on platforms where there are not 8 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool hasI8 = Limits<i8>::digits == 7;
+[[maybe_unused]] constexpr bool hasI8 = I8_BITS == 7;
 /*!
  * Check if the current build has signed 16 bit integers.
  *
@@ -2005,7 +2098,7 @@ namespace Build
  * instead this value informs you if the platform does have 16 bit integers. This value is therefore always there, even
  * on platforms where there are not 16 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool hasI16 = Limits<i16>::digits == 15;
+[[maybe_unused]] constexpr bool hasI16 = I16_BITS == 15;
 /*!
  * Check if the current build has signed 32 bit integers.
  *
@@ -2013,7 +2106,7 @@ namespace Build
  * instead this value informs you if the platform does have 32 bit integers. This value is therefore always there, even
  * on platforms where there are not 32 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool hasI32 = Limits<i32>::digits == 31;
+[[maybe_unused]] constexpr bool hasI32 = I32_BITS == 31;
 /*!
  * Check if the current build has signed 64 bit integers.
  *
@@ -2021,31 +2114,31 @@ namespace Build
  * instead this value informs you if the platform does have 64 bit integers. This value is therefore always there, even
  * on platforms where there are not 64 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool hasI64 = Limits<i64>::digits == 63;
+[[maybe_unused]] constexpr bool hasI64 = I64_BITS == 63;
 /*!
  * Check if the current build has unsigned 8 bit integers.
  *
  * \copydetails KirHut::Build::hasI8
  */
-[[maybe_unused]] constexpr bool hasU8 = Limits<u8>::digits == 8;
+[[maybe_unused]] constexpr bool hasU8 = U8_BITS == 8;
 /*!
  * Check if the current build has unsigned 16 bit integers.
  *
  * \copydetails KirHut::Build::hasI16
  */
-[[maybe_unused]] constexpr bool hasU16 = Limits<u16>::digits == 16;
+[[maybe_unused]] constexpr bool hasU16 = U16_BITS == 16;
 /*!
  * Check if the current build has unsigned 32 bit integers.
  *
  * \copydetails KirHut::Build::hasI32
  */
-[[maybe_unused]] constexpr bool hasU32 = Limits<u32>::digits == 32;
+[[maybe_unused]] constexpr bool hasU32 = U32_BITS == 32;
 /*!
  * Check if the current build has unsigned 64 bit integers.
  *
  * \copydetails KirHut::Build::hasI64
  */
-[[maybe_unused]] constexpr bool hasU64 = Limits<u64>::digits == 64;
+[[maybe_unused]] constexpr bool hasU64 = U64_BITS == 64;
 /*!
  * Check if the current build has 8 bit integers.
  *

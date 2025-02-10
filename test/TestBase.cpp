@@ -1,7 +1,7 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
 ** TestBase.cpp
-** Copyright (C) 2024 KirHut Software Company
+** Copyright © KirHut Software Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -16,6 +16,7 @@
 ***********************************************************************************************************************/
 
 #include "kh/base.hpp"
+#include "kh/ranges.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -23,9 +24,9 @@ using namespace KirHut;
 
 TEST_CASE("No Message Invalid Construction State", "[invalid][constructor]")
 {
-	Invalid in = WhyInvalid::NotFound;
+    Invalid in(WhyInvalid::NotFound);
     REQUIRE(in.why() == WhyInvalid::NotFound);
-    REQUIRE(in.message().empty());
+    REQUIRE(in.info().empty());
 }
 
 TEST_CASE("With Message Invalid Construction State", "[invalid][constructor]")
@@ -41,9 +42,9 @@ TEST_CASE("With Message Invalid Construction State", "[invalid][constructor]")
     REQUIRE(cnstCharInvalid.why() == WhyInvalid::NotFound);
     REQUIRE(strInvalid.why() == WhyInvalid::CantMatch);
     REQUIRE(strViewInvalid.why() == WhyInvalid::CouldntOpen);
-    REQUIRE(cnstCharInvalid.message() == "Message of const char."sv);
-    REQUIRE(strInvalid.message() == "Message of string."sv);
-	REQUIRE(strViewInvalid.message() == "Message of string_view."sv);
+    REQUIRE(cnstCharInvalid.info() == "Message of const char."sv);
+    REQUIRE(strInvalid.info() == "Message of string."sv);
+    REQUIRE(strViewInvalid.info() == "Message of string_view."sv);
 }
 
 TEST_CASE("Invalid Copy Constuction State", "[invalid][constructor]")
@@ -51,14 +52,14 @@ TEST_CASE("Invalid Copy Constuction State", "[invalid][constructor]")
 	Invalid first{ WhyInvalid::NotFound, "First Invalid." };
 
     REQUIRE(first.why() == WhyInvalid::NotFound);
-    REQUIRE(first.message() == "First Invalid."sv);
+    REQUIRE(first.info() == "First Invalid."sv);
 
     Invalid second(first);
 
     REQUIRE(first.why() == WhyInvalid::NotFound);
-    REQUIRE(first.message() == "First Invalid."sv);
+    REQUIRE(first.info() == "First Invalid."sv);
     REQUIRE(second.why() == WhyInvalid::NotFound);
-    REQUIRE(second.message() == "First Invalid."sv);
+    REQUIRE(second.info() == "First Invalid."sv);
 }
 
 TEST_CASE("Invalid Move Construction State", "[invalid][constructor]")
@@ -66,50 +67,50 @@ TEST_CASE("Invalid Move Construction State", "[invalid][constructor]")
 	Invalid first{ WhyInvalid::NotFound, "First Invalid." };
 
     REQUIRE(first.why() == WhyInvalid::NotFound);
-    REQUIRE(first.message() == "First Invalid."sv);
+    REQUIRE(first.info() == "First Invalid."sv);
 
     Invalid second(std::move(first));
 
     REQUIRE(first.why() == WhyInvalid::NotFound);
-    REQUIRE(first.message().empty());
+    REQUIRE(first.info().empty());
     REQUIRE(second.why() == WhyInvalid::NotFound);
-    REQUIRE(second.message() == "First Invalid."sv);
+    REQUIRE(second.info() == "First Invalid."sv);
 }
 
 TEST_CASE("Set Message in Empty Invalid", "[invalid]")
 {
-	Invalid in = WhyInvalid::NotFound;
-	REQUIRE(in.message().empty());
-	in.setMessage("Some Message."sv);
-	REQUIRE(in.message() == "Some Message."sv);
-	in.setMessage("Ignored Message."sv);
-	REQUIRE(in.message() == "Some Message."sv);
+    Invalid in(WhyInvalid::NotFound);
+    REQUIRE(in.info().empty());
+    in.setInfo("Some Message."sv);
+    REQUIRE(in.info() == "Some Message."sv);
+    in.setInfo("Ignored Message."sv);
+    REQUIRE(in.info() == "Some Message."sv);
 }
 
 TEST_CASE("Overwrite Message in Empty Invalid", "[invalid]")
 {
-	Invalid in = WhyInvalid::NotFound;
-	REQUIRE(in.message().empty());
-	in.overwriteMessage("First Message."sv);
-	REQUIRE(in.message() == "First Message."sv);
-	in.overwriteMessage("Next Message."sv);
-	REQUIRE(in.message() == "Next Message."sv);
+    Invalid in(WhyInvalid::NotFound);
+    REQUIRE(in.info().empty());
+    in.overwriteInfo("First Message."sv);
+    REQUIRE(in.info() == "First Message."sv);
+    in.overwriteInfo("Next Message."sv);
+    REQUIRE(in.info() == "Next Message."sv);
 }
 
 TEST_CASE("Set Message in Occupied Invalid", "[invalid]")
 {
 	Invalid in{ WhyInvalid::NotFound, "Some Message." };
-	REQUIRE(in.message() == "Some Message."sv);
-	in.setMessage("Ignored Message."sv);
-	REQUIRE(in.message() == "Some Message."sv);
+    REQUIRE(in.info() == "Some Message."sv);
+    in.setInfo("Ignored Message."sv);
+    REQUIRE(in.info() == "Some Message."sv);
 }
 
 TEST_CASE("Overwrite Message in Occupied Invalid", "[invalid]")
 {
 	Invalid in{ WhyInvalid::NotFound, "First Message." };
-	REQUIRE(in.message() == "First Message."sv);
-	in.overwriteMessage("Next Message."sv);
-	REQUIRE(in.message() == "Next Message."sv);
+    REQUIRE(in.info() == "First Message."sv);
+    in.overwriteInfo("Next Message."sv);
+    REQUIRE(in.info() == "Next Message."sv);
 }
 
 struct NothrowTest
@@ -161,9 +162,8 @@ TEST_CASE("MaybeInv take from valid", "[maybeinv]")
 	REQUIRE(good.isValid());
 	REQUIRE_FALSE(good.get() == nullptr);
 
-	NothrowTest alt{10};
-	STATIC_REQUIRE(noexcept(good.take()));
-	STATIC_REQUIRE(noexcept(good.take(std::declval<NothrowTest>())));
+    NothrowTest alt{ 10 };
+    STATIC_REQUIRE(noexcept(good.take(std::declval<NothrowTest>())));
     STATIC_REQUIRE_FALSE(noexcept(MaybeInv{ ThrowTest{} }.take()));
     STATIC_REQUIRE_FALSE(noexcept(MaybeInv{ ThrowTest{} }.take(std::declval<ThrowTest>())));
 
@@ -182,6 +182,24 @@ TEST_CASE("MaybeInv take from valid", "[maybeinv]")
     REQUIRE(good.failure()->why() == WhyInvalid::DataRemoved);
 }
 
+TEST_CASE("MaybeInv monadic transforms good data", "[maybeinv]")
+{
+    MaybeInv<NothrowTest> good = NothrowTest{ 5 };
+    auto tform = [](NothrowTest &nt, int another) -> MaybeInv<NothrowTest> { return NothrowTest{ another }; };
+    MaybeInv<NothrowTest> next = good.then(tform, 10);
+    REQUIRE(good);
+    REQUIRE(next);
+    REQUIRE_FALSE(good.get() == nullptr);
+    REQUIRE_FALSE(next.get() == nullptr);
+    REQUIRE(good.get()->id == 5);
+    REQUIRE(next.get()->id == 10);
+    auto diffType      = [](NothrowTest &nt) -> MaybeInv<int> { return nt.id; };
+    MaybeInv<int> diff = next.then(diffType);
+    REQUIRE(diff);
+    REQUIRE_FALSE(diff.get() == nullptr);
+    REQUIRE(*diff.get() == 10);
+}
+
 TEST_CASE("Bytes needed for bits", "[utility]")
 {
 	// KirHut stuff does not support non-8-bit bytes as of right now.
@@ -191,17 +209,25 @@ TEST_CASE("Bytes needed for bits", "[utility]")
 	STATIC_REQUIRE(bytesNeededForBits(60) == 8);
 }
 
+TEST_CASE("The getIters() method in ranges.hpp", "[ranges]")
+{
+    std::vector<int> nums{ 1, 2, 3, 4, 5 };
+    auto [f, b] = getIters(nums);
+    REQUIRE(f == nums.begin());
+    REQUIRE(b == nums.end());
+}
+
 TEST_CASE("Character and Byte conversions", "[charconv]")
 {
 	NothrowTest first{20};
 	alignas(NothrowTest) char second[sizeof(NothrowTest)];
 	alignas(NothrowTest) byte third[sizeof(NothrowTest)];
-	char const *firstPtr = toCharPtr(first);
-	memcpy(second, firstPtr, sizeof(NothrowTest));
-	NothrowTest *secondPtr = std::launder(reinterpret_cast<NothrowTest *>(second));
+    char const *firstPtr = std::bit_cast<char const *>(&first);
+    memcpy(second, firstPtr, sizeof(NothrowTest));
+    NothrowTest *secondPtr = std::launder(reinterpret_cast<NothrowTest *>(second));
 	REQUIRE(secondPtr->id == 20);
-	byte const *firstBytes = toBytes(first);
-	memcpy(third, firstBytes, sizeof(NothrowTest));
-	NothrowTest *thirdPtr = std::launder(reinterpret_cast<NothrowTest *>(third));
+    byte const *firstBytes = std::bit_cast<byte const *>(&first);
+    memcpy(third, firstBytes, sizeof(NothrowTest));
+    NothrowTest *thirdPtr = std::launder(reinterpret_cast<NothrowTest *>(third));
 	REQUIRE(thirdPtr->id == 20);
 }

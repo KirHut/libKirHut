@@ -1,7 +1,7 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
 ** md5hash.cpp
-** Copyright (C) 2024 KirHut Software Company
+** Copyright © KirHut Software Company
 **
 ** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
 ** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
@@ -21,8 +21,6 @@
 
 using namespace KirHut;
 
-using std::fill;
-
 constexpr byte PADDING_FRONT = static_cast<byte>(0b1 << (BYTE_BITS - 1));
 
 // clang-format off
@@ -31,42 +29,45 @@ constexpr static u32 ACCUM_A_INIT = 0x67452301,
                      ACCUM_C_INIT = 0x98badcfe,
                      ACCUM_D_INIT = 0x10325476;
 
-constexpr array<array<u32, 16>, 4> V{{
-    {{ 0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
-        0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821 }},
-    {{ 0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
-        0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a }},
-    {{ 0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
-        0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665 }},
-    {{ 0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
-        0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391 }}
-}};
+constexpr array<u32, 64> V =
+{
+    0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee, 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+    0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be, 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+    0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa, 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+    0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed, 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+    0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c, 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+    0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05, 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+    0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039, 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+    0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
+};
 
-constexpr array<array<u32, 16>, 4> S{{
-    {{ 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22 }},
-    {{ 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20 }},
-    {{ 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23 }},
-    {{ 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21 }}
-}};
+constexpr array<u32, 64> S =
+{
+    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
+};
 
-constexpr array<array<u32, 16>, 4> X{{
-    {{ 0, 1, 2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15 }},
-    {{ 1, 6, 11, 0,  5,  10, 15, 4,  9,  14, 3,  8,  13, 2,  7,  12 }},
-    {{ 5, 8, 11, 14, 1,  4,  7,  10, 13, 0,  3,  6,  9,  12, 15, 2 }},
-    {{ 0, 7, 14, 5,  12, 3,  10, 1,  8,  15, 6,  13, 4,  11, 2,  9 }}
-}};
+constexpr array<u32, 64> X =
+{
+    0, 1, 2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+    1, 6, 11, 0,  5,  10, 15, 4,  9,  14, 3,  8,  13, 2,  7,  12,
+    5, 8, 11, 14, 1,  4,  7,  10, 13, 0,  3,  6,  9,  12, 15, 2,
+    0, 7, 14, 5,  12, 3,  10, 1,  8,  15, 6,  13, 4,  11, 2,  9
+};
 // clang-format on
 
-class Md5Hash::Impl
+struct Md5Hash::Impl
 {
-public:
     template <ue32 uPos>
     constexpr static inline u32 cycleBits(u32 a, u32 b, u32 mod, u32 const *data, ue32 counter) noexcept
     {
+        const ue32 pos = uPos * 16 + counter;
         u32 value = a + mod;
-        value += data[X[uPos][counter]];
-        value += V[uPos][counter];
-        value = (value << S[uPos][counter]) | (value >> (U32_BITS - S[uPos][counter]));
+        value += data[X[pos]];
+        value += V[pos];
+        value = (value << S[pos]) | (value >> (U32_BITS - S[pos]));
         return value + b;
     }
 
@@ -160,19 +161,21 @@ public:
 
         // Given the length, it is possible to precalculate the number of blocks needed to process, and to know when to
         // copy data into the buffer as opposed to simply passing a location from the user input.
-        size_t numFullBlocks = length / BLOCK_SIZE + 1;
+        size_t numFullBlocks = length / BLOCK_SIZE;
         self.bufferPos       = length % BLOCK_SIZE;
 
-        for (size_t fullBlockNum = 1; fullBlockNum < numFullBlocks; ++fullBlockNum)
+        for (size_t fullBlockNum = 0; fullBlockNum < numFullBlocks; ++fullBlockNum)
         {
-            processBlock(self, &input[fullBlockNum * BLOCK_SIZE]);
+            processBlock(self, &input[frontChop + fullBlockNum * BLOCK_SIZE]);
         }
 
-        memcpy(self.buffer, &input[numFullBlocks * BLOCK_SIZE], self.bufferPos);
+        memcpy(self.buffer, &input[frontChop + numFullBlocks * BLOCK_SIZE], self.bufferPos);
     }
 
     static inline void finish(Md5Hash &self) noexcept
     {
+        using std::fill;
+
         self.buffer[self.bufferPos++] = PADDING_FRONT;
 
         // This does include 56 because you are required to add at least one bit, so if the bytes remaining has exactly
@@ -204,11 +207,15 @@ public:
 
 Md5Hash::Md5Hash() noexcept : A(ACCUM_A_INIT), B(ACCUM_B_INIT), C(ACCUM_C_INIT), D(ACCUM_D_INIT)
 {
+    // No implementation.
 }
 
 Md5Hash::Md5Hash(size_t length, byte const *data) noexcept : Md5Hash()
 {
-    Impl::processInput(*this, length, data);
+    if (length && data)
+    {
+        Impl::processInput(*this, length, data);
+    }
 }
 
 Md5Sum Md5Hash::getMd5() noexcept
@@ -225,6 +232,11 @@ void Md5Hash::getMd5(byte *output) noexcept
         Impl::finish(*this);
     }
 
+    if (!output)
+    {
+        return;
+    }
+
     // This doesn't work on anything other than processors that have 8 bit bytes. I'd like to support arbitrary bit
     // width bytes, but I'm not even close to ready to do that.
     array sigNums{ A, B, C, D };
@@ -233,7 +245,7 @@ void Md5Hash::getMd5(byte *output) noexcept
 
 size_t Md5Hash::provideInput(size_t length, byte const *data) noexcept
 {
-    if (!finished)
+    if (!finished && length && data)
     {
         Impl::processInput(*this, length, data);
 
