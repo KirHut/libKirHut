@@ -59,7 +59,6 @@ set(libKirHut_EXTERN_HEADERS
 )
 
 set(libKirHut_EXTERN_SOURCES
-    args.cpp
 )
 
 list(TRANSFORM libKirHut_EXTERN_HEADERS PREPEND "include/")
