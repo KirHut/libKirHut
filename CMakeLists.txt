@@ -55,7 +55,6 @@ CPMAddPackage(
 )
 
 set(libKirHut_EXTERN_HEADERS
-    args.h
     mio.hpp
 )
 
