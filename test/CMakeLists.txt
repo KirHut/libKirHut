@@ -1,7 +1,7 @@
-## The KirHut Simple Data Verification Application
+## The KirHut Software Development Library
 ## CMake Test Folder File
 ##
-## Copyright (C) 2024 KirHut Software Company
+## Copyright © KirHut Software Company
 
 cmake_minimum_required(VERSION 3.21)
 

@@ -83,6 +83,7 @@ namespace KirHut
  */
 class KH_EXPORT Exception : public std::exception
 {
+    //! \cond
     struct StringState
     {
         string_view str;
@@ -102,6 +103,7 @@ class KH_EXPORT Exception : public std::exception
 
     typedef Var<StringState, RootState, CopyState> Data;
     mutable Data data;
+    //! \endcond
 
 public:
     /*!
@@ -626,6 +628,9 @@ void khAssert(bool condition, std::convertible_to<ExceptType> auto &&ex)
  * This basically allows calling the explicit Exception::Exception(Invalid&&) constructor without wrapping and using a
  * throw expression. It is basically a simple way to save some boilerplate as it is common to convert an Invalid into an
  * Exception.
+ *
+ * The input is a templated argument so that this function can use perfect forwarding for cases when \p invalid is an
+ * lvalue reference.
  *
  * \param invalid A reference to the Invalid type to throw from. Guaranteed to move construct if an rvalue.
  */

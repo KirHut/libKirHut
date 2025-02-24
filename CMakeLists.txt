@@ -1,8 +1,25 @@
+## The KirHut Software Development Library
+## CMake Main File
+##
+## Copyright © KirHut Software Company
+
 cmake_minimum_required(VERSION 3.21)
+
+# Enable Hot Reload for MSVC compilers if supported.
+if (POLICY CMP0141)
+    cmake_policy(SET CMP0141 NEW)
+    string(CONCAT KIRHUT_MSVC_DEBUG_HOTRELOAD
+        "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,"
+        "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
+    )
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
+        ${KIRHUT_MSVC_DEBUG_HOTRELOAD})
+endif()
 
 project(libKirHut
     VERSION 0.1
     LANGUAGES CXX
+    DESCRIPTION "The KirHut Software Company General Development Library"
 )
 
 include(cmake/get_cpm.cmake)
@@ -13,6 +30,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(KH_USES_QT "Indicate if this library should be built with Qt support." ON)
 option(KH_BUILD_SHARED "Build this library as a shared library." ${BUILD_SHARED_LIBS})
 option(KH_LIB_BUILD_TESTS "Build the tests for this library." OFF)
+option(KH_REQUIRE_BITLENGTHS "Require that the platform has 8, 32, and 64 bit integers." ON)
 option(KH_MD5_SUPPORT "Build this library with MD5 Hash support." ON)
 
 if (MSVC)
@@ -123,7 +141,7 @@ set(libKirHut_LINK_LIBRARIES
 
 set(libKirHut_COMPILE_DEFS
 	$<$<BOOL:${PROJECT_IS_TOP_LEVEL}>:KH_LIBRARY_BUILD>
-	KH_MUST_HAVE_8_32_64
+    $<$<BOOL:${KH_REQUIRE_BITLENGTHS}>:KH_MUST_HAVE_8_32_64>
 	$<$<BOOL:${KH_USES_QT}>:KH_USES_QT>
 	$<$<BOOL:${KH_BUILD_SHARED}>:KH_DYNAMIC_LINK>
 )
