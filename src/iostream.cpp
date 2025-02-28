@@ -16,8 +16,6 @@
 ***********************************************************************************************************************/
 #include "kh/iostream.hpp"
 
-#include "priv/ioinit.hpp"
-
 #include "nowide/args.hpp"
 #include "nowide/iostream.hpp"
 
