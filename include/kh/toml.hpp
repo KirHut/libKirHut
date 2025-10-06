@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** kh/filesystem.hpp
+** kh/toml.hpp
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -19,33 +19,14 @@
 ***********************************************************************************************************************/
 #pragma once
 
-/*!
- * \file kh/filesystem.hpp
- *
- * File System Header that includes the standard filesystem namespace under KirHut::FS.
- */
-
-#if KH_INCLUDE_FILESYSTEM
-# include <filesystem> // IWYU pragma: export
-#endif
+#include "kh/base.hpp"
 
 /*!
- * Namespace used for filesystem operations used in libKirHut.
+ * Namespace for reading and writing TOML files, usually for configuration.
  *
- * This namespace is really just the std::filesystem namespace with an easier to refer to name. Currently there are no
- * aliases used under this namespace so for all intents and purposes you can just use it like std::filesystem. If you
- * are using the KirHut namespace as recommended (using namespace KirHut), then this should be as easy as just using
- * "FS::" in code to get everything in the std::filesystem namespace.
- *
- * This namespace will be empty unless the KH_INCLUDE_FILESYSTEM option is ON. This is by default, so you would need to
- * manually turn this option off to remove KirHut::FS support. This could be useful when attempting to compile libKirHut
- * for platforms that do not properly support std::filesystem.
+ * Under construction
  */
-namespace KirHut::FS
+namespace KirHut::TOML
 {
 
-#if KH_INCLUDE_FILESYSTEM
-using namespace std::filesystem;
-#endif
-
-} // namespace KirHut::FS
+} // namespace KirHut::TOML

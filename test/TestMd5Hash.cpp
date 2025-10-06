@@ -3,43 +3,46 @@
 ** TestMd5Hash.cpp
 ** Copyright © KirHut Software Company
 **
-** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
-** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
-** version.
+** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+** conditions found in the BSD 3-Clause License are met.
 **
-** This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-** details.
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
+** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
-** You should have received a copy of the GNU General Public License along with this program.  If not, see
-** <http://www.gnu.org/licenses/>.
+** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
+** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
 
 #include "kh/md5hash.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+// clazy:excludeall=non-pod-global-static
 
 #include <algorithm>
 #include <random>
 
 #include "Md51.hpp"
-#include "Md51.cpp"
+// #include "Md51.cpp"
 
 using namespace KirHut;
 
 template <size_t SIZE = std::dynamic_extent>
 string getHex(span<byte, SIZE> biteSize)
 {
+    constexpr auto tform = [](char hexDigit) { return hexDigit < 10 ? hexDigit += '0' : hexDigit += 'a' - 10; };
     size_t bufSize = biteSize.size_bytes() * 2;
     string ret(bufSize, '\0');
     char *dsti = ret.data();
     for (byte b : biteSize)
     {
-        *dsti++ = static_cast<char>(b >> 4);
-        *dsti++ = static_cast<char>(b) & 0x0F;
+        *dsti++ = tform(static_cast<char>(b >> 4));
+        *dsti++ = tform(static_cast<char>(b) & 0x0F);
     }
-
-    std::for_each(ret.data(), dsti, [](char &hexDigit) { hexDigit < 10 ? hexDigit += '0' : hexDigit += 'a' - 10; });
 
     return ret;
 }
@@ -119,8 +122,7 @@ TEST_CASE("Providing Input of Different Types of Data", "[md5hash]")
     array<i64, 256> signedList;
     array<u32, 512> unsignedList;
     std::generate(signedList.begin(), signedList.end(), rng);
-    // This produces a conversion warning on most compilers, but should be fine anyway.
-    std::generate(unsignedList.begin(), unsignedList.end(), rng);
+    std::generate(unsignedList.begin(), unsignedList.end(), [&rng] { return static_cast<u32>(rng()); });
     Md5Hash hasher, hasher2;
     array<byte, MD5SUM_RETURN_SIZE> md5OtherBuf;
     md5::md5_t(signedList.data(), signedList.size() * sizeof(i64), md5OtherBuf.data());

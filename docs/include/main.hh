@@ -1,13 +1,13 @@
 /*!
- * \mainpage The KirHut Application Development Library
+ * \mainpage The KirHut Standard Software Development Library
  *
  * This library is designed to provide a variety of useful tools for the purpose of developing KirHut applications,
  * including those found on embedded platforms, on Desktop PCs, and on mobile devices like iPhone and Android. This
  * library was written primarily for KirHut's internal use, however it is written with the hope that it will be
  * useful to others, and is designed to be as flexible as possible for as many different situations as are practical
- * to support. The library is designed to work best with C++20, so there are many sections of the library that simply
- * do not work with only C++17 builds or trying to use C++23. This library can be forced to work with C++17, and we may
- * at some point get it to support that (to build on ESP8266, primarily), but for now it requires C++20.
+ * to support. The library is designed to work with at least C++20, and simply does not support compiling with versions
+ * of C++ older than that. There is support for additional features or easier implementations when compiled with newer
+ * version of C++ like C++23 or the upcoming C++26, but C++20 is the minimal and required standard.
  *
  * This library should be used by all KirHut applications, because it provides the base data types, IO systems, and
  * other functionality that every KirHut application will find useful. This library is not intended to be a replacement

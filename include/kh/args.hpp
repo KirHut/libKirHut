@@ -1,18 +1,21 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** args.hpp
+** kh/args.hpp
 ** Copyright © KirHut Software Company
 **
-** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
-** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
-** version.
+** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+** conditions found in the BSD 3-Clause License are met.
 **
-** This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-** details.
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
+** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
-** You should have received a copy of the GNU General Public License along with this program.  If not, see
-** <http://www.gnu.org/licenses/>.
+** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
+** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
 #pragma once
 
@@ -22,8 +25,11 @@
  * File System Header that includes the KirHut Command Line Parser and associated classes.
  */
 
-#include "base.hpp"
 #include <vector>
+#include <algorithm>
+
+#include "kh/base.hpp"
+#include "kh/ranges.hpp"
 
 /*!
  * Namespace used for command line operations used in libKirHut.
@@ -37,150 +43,304 @@ namespace KirHut::CLI
 {
 
 /*!
+ * \internal
+ *
+ * Detail namespace for KirHut::CLI.
+ *
+ * Just another Detail namespace, see KirHut::Detail for information.
+ *
+ * \see KirHut::Detail
+ */
+namespace Detail
+{
+
+/*!
+ * \internal
+ *
+ * \brief validateOptionString
+ * \param str
+ */
+constexpr void validateOptionString(string_view str)
+{
+    constexpr auto isDigit           = [](char c) -> bool { return c >= '0' and c <= '9'; };
+    constexpr string_view legalChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_";
+
+    if (str.find_first_not_of(legalChars) != string_view::npos)
+    {
+        throw "An illegal character was passed to the Option constructor. These are the legal "
+              "characters:\nabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_";
+    }
+
+    auto words = V::words(str);
+    if (words.empty())
+    {
+        throw "There must be at least one valid token in an Option string.";
+    }
+
+    for (string_view word : words)
+    {
+        if (word.front() == '-' or word.front() == '+')
+        {
+            throw "An Option token may not begin with the - or + character.";
+        }
+
+        if (isDigit(word.front()))
+        {
+        }
+
+        if (R::all_of(word, isDigit))
+        {
+            throw "An Option token may not be only composed of numeral digits.";
+        }
+    }
+}
+
+/*!
+ * \internal
+ *
+ * \brief The OptionString class
+ */
+struct OptionString
+{
+    /*!
+     * \internal
+     *
+     * \brief data
+     */
+    string_view data;
+
+    /*!
+     * \internal
+     *
+     * \brief OptionString
+     * \param str
+     */
+    template <std::convertible_to<string_view> S>
+    consteval OptionString(S str) : data(str)
+    {
+        validateOptionString(data);
+    }
+};
+
+} // namespace Detail
+
+/*!
  * Object representing an option in a particular Command.
  *
- * Options are similar to flags except that they also accept a user input string. This makes it possible to do something
- * like "--config-file=/path/to/config" and it will work. Options are parsed according to the rules of GNU command line
- * inputs, so let's say you can add a new config file using either "config-file" or 'c', it would allow the following:
+ * Options are the building block of all command line parsing functionality, and can either accept input as a string or
+ * not. If an option can be combined with other options (IE it doesn't take further input), then the isFlag value will
+ * return true. Creating a new option is relatively simple, just pass in the string of all possible option strings
+ * (single character or multiple characters, space separated). When you pass a single character, it is considered a
+ * "short option" string and may be combined with other option strings AKA `myapplication -abc` and the parser will
+ * properly match the Option with 'a', 'b', and 'c' in its option string (so long as 'a' and 'b' both return true for
+ * isFlag). See the Option constructor for more information about setting up an Option.
+ *
+ * An Option may also take an arbitrary argument as a string. This is useful when you are, for example, taking a config
+ * filename or some other arbitrary argument that a user may pass. If this is the case, the Option will take **whatever
+ * the next string is** as the argument, unless that string begins with a '-' character. If it does, the Parser will
+ * fail to parse the string correctly and the Parser::unreadableInput() method will simply return the two arguments
+ * instead.
+ *
+ * The Option object never changes after construction and does not contain anything based on the parsing itself.
+ * Instead, all of the actual real-time parsing information will be in the Parser class. This makes the Option class
+ * very simple and should allow for compile-time checking of Option strings at a later time.
+ *
+ * All of the following inputs are properly parsed by this library as an Option, using "f flag" as the example for an
+ * Option without an argument string and "c config-file" as an Option that does:
  *
  * ~~~
+ * myapplication -f
+ * myapplication --flag
  * myapplication --config-file /path/to/config
  * myapplication --config-file=/path/to/config
  * myapplication -c /path/to/config
+ * myapplication -fc /path/to/config
+ * myapplication -f -c /path/to/config
+ * myapplication --flag --config-file /path/to/config
+ * myapplication --flag --config-file=/path/to/config
+ * myapplication -f --config-file /path/to/config
+ * myapplication -f --config-file=/path/to/config
+ * myapplication --config-file /path/to/config --flag
  * myapplication Command --config-file /path/to/config
  * myapplication Command --config-file=/path/to/config
+ * myapplication Command --flag --config-file /path/to/config
+ * myapplication Command --flag --config-file=/path/to/config
  * myapplication Command -c /path/to/config
+ * myapplication Command -fc /path/to/config
  * ~~~
  *
  * All of those are valid inputs which will provide the same result for the active Command after the Parser object is
- * constructed. This includes if other flags (*not options*) are used prior to the Option character in a single-dash set
- * of flags, a 'la `myapplication -abc /path/to/config`. Just like a Flag, an Option may have an arbitrary number of
- * strings and characters associated with it. The Parser will always choose the first Flag or Option that it finds that
- * has the associated string or character, so if you have two or more Option or Flag objects that use the same string or
- * character, the first one on the list in that Command will be the one that is selected.
+ * constructed. An Option may have an arbitrary number of strings and characters associated with it. The Parser will
+ * store the actual positional arguments and option strings that are parsed from the input Command. See the Command
+ * object for more information about how Command arguments work with this parser.
+ *
+ * The Parser will always choose the first Flag or Option that it finds that has the associated string or character, so
+ * if you have two or more Option or Flag objects that use the same string or character, the first one on the list in
+ * that Command will be the one that is selected.
  */
-class Option final
+struct KH_EXPORT Option final
 {
-    string_view opNames;
-    std::vector<string> opValues; // I fucking hate this.
-
-public:
     /*!
-     * \brief Option
+     * A string variable containing the possible "Option names" that can be used to match with this Option.
+     *
+     * This string is created upon construction of the Option object and cannot be changed. If you wish to add more
+     * strings to the same option, simply create a new Option object that will result in the same functionality changes
+     * in your project. The opNames variable will always be a single-spaced set of character strings, the spaces
+     * separating different possible flag or option names the user would pass into the command line. For example, if the
+     * opNames variable equals "c config-file", then when you pass "-c", "--c", or "--config-file" to the matches()
+     * method, this Option will consider it a match. It will also match with "-config-file", but the Parser object will
+     * look at that as a series of single character options, and splits it into "-c", "-o", "-n", etc. This allows it
+     * to match each character individually with an Option, and if one of them isn't found, it will return a failed
+     * parse.
+     */
+    const string opNames;
+
+    /*!
+     * A constant boolean that indicates whether or not this option is a "flag."
+     *
+     * A "flag", for the purpose of command line parsing, is a type of Option that never requires a user input string.
+     * Most Option objects will require another input string that the user should provide. If the Option does not]
+     * require any additional input from the user other than the Option existing, it is called a "flag." A flag will
+     * never match up with something like "--flag=SOMESTRING".
+     */
+    const bool isFlag;
+
+    /*!
+     * The Option object constructor, with a \p takesArgument argument that assumes the Option is a flag.
+     *
+     * This is the only constructor for the Option object, and generally this should be created in an OptionList with
+     * a list initialization of bracketed constructor calls, like so:
+     *
+     * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     * std::vector<Command> myCommands;
+     * myCommands.emplace_back("Command", OptionList {
+     *     { "c config-file", true },
+     *     { "f flag" }
+     * });
+     * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     *
+     * This allows you to set up your commands very quickly and efficiently in the code.
+     *
      * \param optionNames
+     * \param takesArgument
      * \throws IllegalArgument If any of the single character options is a numeral or any argument contains an illegal
      * character.
      */
-    Option(string_view optionNames);
+    Option(Detail::OptionString optionNames, bool takesArgument = false);
 
     /*!
-     * \brief optionFound
+     * \brief operator ==
+     * \param other
      * \return
      */
-    bool optionFound() const noexcept;
-
-    /*!
-     * \brief optionValues
-     * \return
-     */
-    span<string_view> optionValues() const noexcept;
-
-    /*!
-     * \brief numMatches
-     * \return
-     */
-    u32 numMatches() const noexcept;
+    bool operator==(Option const &other) const noexcept;
 
     /*!
      * Class representing that a match was found using the Option::matches(string_view) method.
      *
      * The Option::matches(string_view) method will return a Maybe<Match> which is either empty (if no match was found)
      * or has one of these objects in it (if a match was found). The Parser is designed in such a way that it does not
-     * need to know if a particular argument is an option or a flag, instead the Option and Flag classes do the actual
-     * reading work and return if an argument matches their requirements. Because of this, some arguments, like
+     * need to know if a particular argument is an option or a flag, instead the Option class does the actual reading
+     *  work and return if an argument matches their requirements. Because of this, some arguments, like
      * `myapplication --config-file=/path/to/config` will return a Match but not require additional arguments, whereas
-     * `myapplication --config-file /path/to/config` will return a Match where requiresValue() will return true and the
-     * setValue() methods will actually modify the backend arguments list of the according Option object.
+     * `myapplication --config-file /path/to/config` will return a Match where requiresString will return true and the
+     * Parser will store the next string as its according argument. If, like in the former example, the single string
+     * argument contains the Option's necessary argument, the argumentString value will be set and not empty.
      *
-     * Once a Match that requires a value has been provided one, requiresValue() will return false and the setValue()
-     * methods will do nothing, similar to a Match that does not require additional arguments. A new Match object is
-     * created for every returned value, but this is very cheap as a Match class is really just a wrapper around a
-     * pointer. The copy constructor and assignment operators of this class have been deleted, as making copies of this
-     * object does not respect the single Match class requirement, but the move constructor and assignment operators are
-     * still fine.
+     * The Match object is a simple data object, and does not have any internal implementation. The Parser object itself
+     * takes on the burden of actually containing the matched arguments under the Parser::matchedOptions() method, which
+     * returns an object with all of the matched Option object references as well as all the arguments that had matched
+     * that Option string, or the number of matches found when the Option object does not take additional arguments.
+     * Once a Match that requires a value has been provided one, requiresString value will return false and the
+     * setValue() methods will do nothing, similar to a Match that does not require additional arguments. A new Match
+     * object is created for every returned value, but this is very cheap as a Match class is really just a wrapper
+     * around a pointer. The copy constructor and assignment operators of this class have been deleted, as making copies
+     * of this object does not respect the single Match class requirement, but the move constructor and assignment
+     * operators are still fine.
      */
-    class Match final
+    struct Match final
     {
-        std::vector<string> *values;
-
-    public:
-        Match(Match const &other) = delete;
-        Match(Match &&other)      = default;
-
-        Match &operator=(Match const &other) = delete;
-        Match &operator=(Match &&other)      = default;
-
-        // We don't actually need this, but this is here to respect the rule of 5.
-        ~Match() = default;
+        /*!
+         * Reference to the Option that this Match was matched against.
+         *
+         * When matching functions are called on objects that own Options rather than the Option itself, it can become
+         * much less clear which Option was matched when this object is returned. This reference makes it very clear
+         * what Option was matched against in that case.
+         */
+        Option const &op;
 
         /*!
-         * \brief requiresValue
-         * \return
+         * Pointer to the exact location in the passed string_view object where the match was found.
+         *
+         * This is expressed as a pointer specifically because it is referring to a location in memory and not to a
+         * character itself. For multi-character flags and options, this will always point to the first non-dash
+         * character in the flag or option, but for single-character flags in a set of flags, this will point to the
+         * specific character in that set that this option matches with, and may allow for more advanced parsing of the
+         * characters (for example, having multiple of the same flag).
          */
-        bool requiresValue() const noexcept;
+        char const *matched;
 
         /*!
-         * \brief setValue
-         * \param value
+         * \brief parameterString
          */
-        void setValue(string &&value) const;
+        Maybe<string_view> const parameterString = maybeNot;
 
         /*!
-         * \brief setValue
-         * \param value
+         * Tests if the found match in the command line arguments requires an additional argument string.
+         *
+         * Since an Option reads command line arguments one argument at a time, it is impossible for the Option to
+         * always capture the user's passed in parameters. The parameter may be part of the same argument (IE
+         * "--MyOption=Parameter") or the next argument. In the case that the match is expecting another argument, this
+         * method will return true.
+         *
+         * This condition is also met when the parameterString has a value and that value is an empty string. That is
+         * actually what this method checks for directly, as that is the state that means a parameter is required.
+         *
+         * \return Whether or not this Match is expecting an additional parameter from the user.
          */
-        void setValue(string_view value) const;
-
-        /*!
-         * \brief setValue
-         * \param value
-         */
-        void setValue(char const *value) const;
-
-    private:
-        friend class Option;
+        constexpr bool requiresString() const noexcept
+        {
+            return parameterString.has_value() and parameterString->empty();
+        }
     };
+
+    /*!
+     * \brief singleMatches
+     * \param toCheck
+     * \return
+     */
+    Maybe<Match> singleMatches(string_view toCheck) const noexcept;
+
+    /*!
+     * \brief multiMatches
+     * \param toCheck
+     * \return
+     */
+    Maybe<Match> multiMatches(string_view toCheck) const noexcept;
 
     /*!
      * \brief matches
      * \param toCheck
-     * \throws std::bad_alloc If allocating space for the matched string in the values list fails.
      * \return A Maybe with a Match if the match succeeded, or an empty Maybe if it does not.
      */
-    Maybe<Match> matches(string_view toCheck);
+    Maybe<Match> matches(string_view toCheck) const noexcept;
 };
 
 /*!
- * Object representing a flag in a particular Command.
+ * An alias for a std::vector of Option objects.
  *
- * Flags allow passing a switchable on or off option to an application.
+ * This is useful for quickly declaring a list of Options, which should be extremely common while creating Command
+ * objects to put into a Parser.
  */
-class Flag final
-{
-    string_view flagNames;
-    u32 flagMatches = 0;
+using OptionList = std::vector<Option>;
 
-public:
-    /*!
-     * Flag reader object constructor.
-     *
-     * This creates a new Flag object with the text strings passed in as arguments.
-     * \param optionNames
-     * \throws IllegalArgument If any of the single character options is a numeral or any argument contains an illegal
-     * character.
-     */
-    Flag(string_view names);
-};
+/*!
+ * An alias for a std::span of Option objects, with both the span and Option objects as const.
+ *
+ * This is useful as a return value for objects that wish to display the current Options that are in use, while
+ * preventing them from being modified. If they should be modified, return a reference of OptionList.
+ */
+using OptionView = span<Option const> const;
 
 /*!
  * Class representing a subset of functionality found on the command line for an application.
@@ -197,41 +357,233 @@ public:
  * found after the first argument that matches a Command string will always be treated as a positional argument, so the
  * command string must be the first argument given in a particular invocation of the application.
  */
-struct Command
+class KH_EXPORT Command final
 {
-    Command(string_view commandName) noexcept;
+    /*!
+     * \internal
+     *
+     * \brief options
+     */
+    OptionList options;
+
+public:
+    /*!
+     * \brief commandString
+     */
+    string_view const commandString;
+
+    /*!
+     * \brief Command
+     * \param commandName
+     * \throws IllegalArgument If the passed commandName begins with or is only numerals or contains any illegal
+     * characters.
+     * \throws std::bad_alloc If allocating memory for the underlying vector of Option objects fails.
+     */
+    Command(string_view commandName);
+
+    Command(char const *commandName) : Command(string_view{ commandName })
+    {
+        // No implementation
+    }
+
+    /*!
+     * \brief Command
+     * \param commandName
+     * \param ops A std::vector of Option objects that are moved to this Command object.
+     * \throws IllegalArgument If the passed commandName begins with or is only numerals or contains any illegal
+     * characters.
+     * \throws std::bad_alloc If allocating memory for the underlying vector of Option objects fails.
+     */
+    Command(string_view commandName, OptionList &&ops);
+
+    /*!
+     * \brief Command
+     * \param commandName
+     * \param ops
+     * \throws IllegalArgument If the passed commandName begins with or is only numerals or contains any illegal
+     * characters.
+     * \throws std::bad_alloc If allocating memory for the underlying vector of Option objects fails.
+     */
+    Command(string_view commandName, OptionView ops);
+
+    /*!
+     * \brief addOpt
+     * \param option
+     * \throws std::bad_alloc If allocating memory for the new Option object fails.
+     */
+    void addOpt(Option const &option);
+
+    /*!
+     * \brief addOpt
+     * \param option
+     * \throws std::bad_alloc If allocating memory for the new Option object fails.
+     */
+    void addOpt(Option &&option);
+
+    /*!
+     * \brief addOpt
+     * \param optionNames
+     * \param takesArgument
+     * \throws IllegalArgument If any of the single character options is a numeral or any argument contains an illegal
+     * character.
+     * \throws std::bad_alloc If allocating memory for the new Option object fails.
+     */
+    void addOpt(Detail::OptionString optionNames, bool takesArgument);
+
+    /*!
+     * \brief getOpts
+     * \return
+     */
+    OptionView getOpts() const noexcept;
+
+    /*!
+     * \brief matches
+     * \param toCheck
+     * \return
+     */
+    bool matches(string_view toCheck) const noexcept;
+
+    /*!
+     * \brief matchOpt
+     * \param toCheck
+     * \return
+     */
+    Maybe<Option::Match> matchOpt(string_view toCheck) const noexcept;
 };
 
-class CommandFailed : public Command
+/*!
+ * \brief The OptionMatches class
+ */
+class KH_EXPORT OptionMatches final
 {
+    using MatchData = Var<u32, std::vector<string_view>>;
+    MatchData matches;
+
+public:
+    /*!
+     * \brief option
+     */
+    Option const &option;
+
+    /*!
+     * \brief matchesFound
+     * \return
+     */
+    u32 matchesFound() const noexcept;
+
+    /*!
+     * \brief argumentsFound
+     * \return
+     */
+    StringViews argumentsFound() const noexcept;
+
+private:
+    friend class Parser;
+
+    /*!
+     * \internal
+     *
+     * \brief OptionMatches
+     * \param option
+     * \param hasArguments
+     */
+    OptionMatches(Option const &option, bool hasArguments) noexcept;
+
+    /*!
+     * \internal
+     *
+     * Private match incrementing function that is only used by Parser to indicate another match was found.
+     *
+     *
+     */
+    void matchFound() noexcept;
+
+    /*!
+     * \internal
+     *
+     * \brief matchFound
+     * \param argument
+     */
+    void matchFound(string_view argument);
 };
 
-class Parser final
+/*!
+ * Class that performs the parsing of the command line arguments and provides the result of that parsing.
+ *
+ * This is the primary class for reading the input the user has provided through the terminal interface. A terminal
+ * application will be provided a set of space separated strings through the \b argc and \b argv variables. The way they
+ * are provided is acutally OS dependent, with UNIX based systems like Mac, Linux, and others providing data in UTF-8
+ * text format already, and Windows providing the data in a locale dependent character set. This class will
+ * automatically convert the character encoding to UTF-8, regardless of the OS, and read the input to a high-level
+ * dataset of what application-provided Commands and Options have been selected by the user.
+ */
+class KH_EXPORT Parser final
 {
-    class Impl;
+    struct Impl;
     UPtr<Impl> im;
 
 public:
     /*!
-     * Construct a new Parser object using argc and argv.
+     * Construct a new Parser object using argc and argv, and optionally envp.
      *
      * This is the only constructor provided for this object, and this also deliberately makes a copy of the argc and
      * argv pointer values. This is because argc and argv are *not* modified themselves, instead, a copy of the
      * arguments is made internally and then that is modified. You can, therefore, see the raw input provided to the
-     * application at any time without needing to coerce that information from this Arguments object.
+     * application at any time without needing to coerce that information from this Arguments object. This is the same
+     * with the optional envp pointer, it will create a separate set and copy it over.
      *
      * This constructor will perform the parsing of the command line arguments, however this is not guaranteed to work
      * correctly. Instead of throwing an exception (which is the worst-case scenario), instead you should check the
-     * success() method to ensure the parsing succeeded. If it does not, the activeCommand() returned will always be
-     * CommandFailed, the positionalArguments() will always be empty, and argc() and argv() will be unmodified.
+     * success() method to ensure the parsing succeeded. If it does not, the parser will still do the best it can to
+     * parse the user's input, includuing determing the user's preferred language and configuration settings, during
+     * this constructor. This allows the application to control how to handle failed parses rather than simply calling
+     * std::terminate(), throwing an exception, or some other method of hard terminating the application.
      *
-     * \param argc
-     * \param argv
+     * \param argc The count of arguments as passed to the application through main(). Must be >= 1.
+     * \param argv A valid pointer to the array of argument character data as passed to the application through main().
+     * \param envp An optional pointer to an array of environment data as passed to the application through main().
+     * \throws IllegalArgument If the list of \p commands is empty, \p argc is less than 1, or \p argv is nullptr.
+     * \throws std::runtime_error If there is any issue on Windows calling the necessary system calls to generate the
+     * UTF-8 arguments.
+     * \throws std::bad_alloc If there is an error allocating the necessary memory to create the Parser.
      */
-    Parser(span<Command> commands, int argc, char **argv);
+    Parser(span<Command> commands, int argc, char **argv, char **envp = nullptr);
+
+    //! \cond
+    Parser(Parser const &)            = delete;
+    Parser &operator=(Parser const &) = delete;
+    //! \endcond
 
     /*!
-     * \brief success
+     * Default move constructor.
+     *
+     * Moving a Parser object is fine, but it cannot be copied.
+     */
+    Parser(Parser &&) = default;
+
+    /*!
+     * Default move assignment operator.
+     *
+     * Moving a Parser object is fine, but it cannot be copied. The assigned from Parser object will be left in an
+     * unspecified invalid state. It may be move assigned to by another Parser object.
+     *
+     * \return A reference to the current Parser object being assigned to.
+     */
+    Parser &operator=(Parser &&) = default;
+
+    /*!
+     * \pimpldestructor
+     */
+    ~Parser() noexcept;
+
+    /*!
+     * Returns whether or not the command line parse that occurred during construction succeeded.
+     *
+     * This allows for a more graceful handling of improperly input command line arguments. Most parsers will instead
+     * simply output a predesigned help text message and call std::terminate(), which this Argument parsing header
+     * explicitly avoids. Instead, it is possible for a user to have specific language settings or other settings that
+     * may influence the output, so if a parse fails, it should produce a message that is controlled by the application
+     * instead of by the header.
      * \return
      */
     bool success() const noexcept;
@@ -240,13 +592,25 @@ public:
      * \brief positionalArguments
      * \return
      */
-    span<string_view> const &positionalArguments() const noexcept;
+    StringViews positionalArguments() const noexcept;
 
     /*!
      * \brief activeCommand
      * \return
      */
     Command const &activeCommand() const noexcept;
+
+    /*!
+     * \brief unreadableInput
+     * \return
+     */
+    StringViews unreadableInput() const noexcept;
+
+    /*!
+     * \brief matchedOptions
+     * \return
+     */
+    span<OptionMatches const> const &matchedOptions() const noexcept;
 
     /*!
      * \brief argc
@@ -259,6 +623,17 @@ public:
      * \return
      */
     char const **argv() const noexcept;
+
+    /*!
+     * Return a pointer to an array of UTF-8 C strings that
+     *
+     * Unless this object was constructed with the optional envp pointer, this method will always return nullptr. On
+     * Windows, the pointer passed is basically irrelevant since it will be replaced anyway, but on other OS's it must
+     * be the envp pointer passed in to main().
+     *
+     * \return
+     */
+    char const **envp() const noexcept;
 };
 
 } // namespace KirHut::CLI

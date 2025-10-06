@@ -73,7 +73,4 @@ CMakeLists.txt.user*
 *.exe
 
 # libKirHut added patterns
-doc/gen
-!doc/gen/dummy.txt
-out
 old

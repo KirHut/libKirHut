@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** kh/filesystem.hpp
+** print.cpp
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -17,35 +17,61 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-#pragma once
+#include "kh/print.hpp"
 
-/*!
- * \file kh/filesystem.hpp
- *
- * File System Header that includes the standard filesystem namespace under KirHut::FS.
- */
-
-#if KH_INCLUDE_FILESYSTEM
-# include <filesystem> // IWYU pragma: export
+#if defined(_WIN32) and not defined(__cpp_lib_print)
+# include "nowide/iostream.hpp"
+auto &cout = nowide::cout;
+#else
+# include <iostream>
+auto &cout = std::cout;
 #endif
 
-/*!
- * Namespace used for filesystem operations used in libKirHut.
- *
- * This namespace is really just the std::filesystem namespace with an easier to refer to name. Currently there are no
- * aliases used under this namespace so for all intents and purposes you can just use it like std::filesystem. If you
- * are using the KirHut namespace as recommended (using namespace KirHut), then this should be as easy as just using
- * "FS::" in code to get everything in the std::filesystem namespace.
- *
- * This namespace will be empty unless the KH_INCLUDE_FILESYSTEM option is ON. This is by default, so you would need to
- * manually turn this option off to remove KirHut::FS support. This could be useful when attempting to compile libKirHut
- * for platforms that do not properly support std::filesystem.
- */
-namespace KirHut::FS
+#if defined(KH_USES_FMT)
+# include "fmt/format.h"
+#endif
+
+namespace KirHut::IO
 {
 
-#if KH_INCLUDE_FILESYSTEM
-using namespace std::filesystem;
+void vprint(std::FILE *stream, string_view form, FMT::format_args args)
+{
+#if defined(__cpp_lib_print)
+    vprint_unicode(stream, form, args);
+#else
+    std::fputs(FMT::vformat(form, args).c_str(), stream);
 #endif
+}
 
-} // namespace KirHut::FS
+void vprint(std::ostream &stream, string_view form, FMT::format_args args)
+{
+#if defined(__cpp_lib_print)
+    vprint_unicode(stream, form, args);
+#else
+    stream << FMT::vformat(form, args);
+#endif
+}
+
+void vprint(string_view form, FMT::format_args args)
+{
+    vprint(cout, form, args);
+}
+
+void vprintln(std::FILE *stream, string_view form, FMT::format_args args)
+{
+    vprint(stream, form, args);
+    std::fputc('\n', stream);
+}
+
+void vprintln(std::ostream &stream, string_view form, FMT::format_args args)
+{
+    vprint(stream, form, args);
+    stream << '\n';
+}
+
+void vprintln(string_view form, FMT::format_args args)
+{
+    vprintln(cout, form, args);
+}
+
+} // namespace KirHut::IO

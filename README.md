@@ -27,12 +27,16 @@ of the GNU General Public License, version 3. Any software you develop that reli
 work is required to be licensed under a license that is compatible with GPLv3. **No, the KirHut Software Company
 will not relicense this library under any other terms, do not ask**.
 
-Using this library in your own project should be as easy as a single command in your CMake file, assuming you are
-using CPM.
+Using this library in your own project should be as easy as fetching the source and making it available using CMake's
+FetchContent.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-CPMAddPackage("gh:KirHut/libKirHut")
-target_link_libraries(myProject libKirHut)
+FetchContent_Declare(libKirHut
+    GIT_REPOSITORY https://github.com/KirHut/libKirHut.git
+    GIT_TAG #Insert appropriate version tag here.
+)
+FetchContent_MakeAvailable(libKirHut)
+target_link_libraries(MyProject KirHut::libKirHut)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You are solely responsible for anything that happens while operating your modified versions of the software, and the

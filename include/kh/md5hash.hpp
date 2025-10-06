@@ -3,28 +3,27 @@
 ** kh/md5hash.hpp
 ** Copyright © KirHut Software Company
 **
-** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
-** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
-** version.
+** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+** conditions found in the BSD 3-Clause License are met.
 **
-** This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-** details.
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
+** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
-** You should have received a copy of the GNU General Public License along with this program.  If not, see
-** <http://www.gnu.org/licenses/>.
+** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
+** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
 #pragma once
 
-#include "kh/base.hpp"
+#if KH_PRIV_DOCS or KH_MD5_SUPPORT
+# include "kh/base.hpp"
 
 namespace KirHut
 {
-
-static_assert(Build::hasU83264,
-              "The libKirHut MD5 Hash implementation requires unsigned 8, 32, and 64 bit integers.\n"
-              "The target platform does not support the MD5 implementation, if your software does "
-              "not require MD5, simply remove the KH_MD5_SUPPORT definition in your build.");
 
 /*!
  * The total size in bytes of the returned value from getMd5().
@@ -110,7 +109,7 @@ public:
     Md5Hash(size_t length, auto const *data) noexcept :
         Md5Hash(length * sizeof(decltype(*data)), std::bit_cast<byte const *>(data))
     {
-        // No implementation.
+        // No further implementation.
     }
 
     /*!
@@ -121,10 +120,10 @@ public:
      *
      * \param data A std::span<T,E> of the data to be added as input to the this Md5Hash sum.
      */
-    template <typename T, size_t E = std::dynamic_extent>
+    template <typename T, size_t E>
     explicit Md5Hash(span<T, E> data) noexcept : Md5Hash(data.size_bytes(), std::as_bytes(data).data())
     {
-        // No implementation.
+        // No further implementation.
     }
 
     /*!
@@ -139,7 +138,7 @@ public:
     explicit Md5Hash(std::basic_string_view<CharType> data) noexcept :
         Md5Hash(data.size() * sizeof(CharType), std::bit_cast<byte const *>(data.data()))
     {
-        // No implementation.
+        // No further implementation.
     }
 
     /*!
@@ -267,7 +266,7 @@ public:
             }
         }
 
-        getMd5(std::bit_cast<byte *>(output.data()));
+        getMd5(reinterpret_cast<byte *>(output.data()));
     }
 
 private:
@@ -284,7 +283,7 @@ private:
  *
  * While this implementation does its best to fully implement RFC1321, it is constrained in that this algorithm does NOT
  * accept any arbitrary number of bits, but rather the amount of data provided must be in bytes and therefore any MD5
- * hash of a value that takes a number of bits that isn't a multiple of #BYTE_BITS is impossible to generate with this
+ * hash of a value that takes a number of bits that isn't a multiple of BYTE_BITS is impossible to generate with this
  * function.
  *
  * The data passed can be of arbitrary length, passed as the first argument. Since length is passed, data may contain
@@ -314,7 +313,7 @@ void getMd5(size_t length, auto const *data, byte *output) noexcept
  *
  * While this implementation does its best to fully implement RFC1321, it is constrained in that this algorithm does NOT
  * accept any arbitrary number of bits, but rather the amount of data provided must be in bytes and therefore any MD5
- * hash of a value that takes a number of bits that isn't a multiple of #BYTE_BITS is impossible to generate with this
+ * hash of a value that takes a number of bits that isn't a multiple of BYTE_BITS is impossible to generate with this
  * function.
  *
  * The data passed can be of arbitrary length, passed as the first argument. Since length is passed, data may contain
@@ -338,12 +337,12 @@ void getMd5(size_t length, auto const *data, byte *output) noexcept
  *
  * This implementation does not throw exceptions and should always successfully return an array of byte data on all
  * supported platforms. This is intended to be very reliable so that it can work in all circumstances. The function is
- * guaranteed to return an array equal to the data's MD5 hash. On 8-bit byte platforms, the number of chars returned is
+ * guaranteed to return an array equal to the data's MD5 hash. On 8-bit byte platforms, the number of bytes returned is
  * 16.
  *
  * While this implementation does its best to fully implement RFC1321, it is constrained in that this algorithm does NOT
  * accept any arbitrary number of bits, but rather the amount of data provided must be in bytes and therefore any MD5
- * hash of a value that takes a number of bits that isn't a multiple of #BYTE_BITS is impossible to generate with this
+ * hash of a value that takes a number of bits that isn't a multiple of BYTE_BITS is impossible to generate with this
  * function.
  *
  * The data passed can be of arbitrary length, passed as the first argument. Since length is passed, data may contain
@@ -358,7 +357,7 @@ void getMd5(size_t length, auto const *data, byte *output) noexcept
  * length.
  */
 template <typename T, size_t E = std::dynamic_extent>
-void getMd5(span<T, E> const data, byte *output) noexcept
+void getMd5(span<T const, E> const data, byte *output) noexcept
 {
     Md5Hash(data).getMd5(output);
 }
@@ -373,7 +372,7 @@ void getMd5(span<T, E> const data, byte *output) noexcept
  *
  * While this implementation does its best to fully implement RFC1321, it is constrained in that this algorithm does NOT
  * accept any arbitrary number of bits, but rather the amount of data provided must be in bytes and therefore any MD5
- * hash of a value that takes a number of bits that isn't a multiple of #BYTE_BITS is impossible to generate with this
+ * hash of a value that takes a number of bits that isn't a multiple of BYTE_BITS is impossible to generate with this
  * function.
  *
  * The data passed can be of arbitrary length, passed as the first argument. Since length is passed, data may contain
@@ -387,7 +386,7 @@ void getMd5(span<T, E> const data, byte *output) noexcept
  * \return A std::array of #MD5SUM_RETURN_SIZE char values. On 8-bit byte platforms, a total size of 16 bytes.
  */
 template <typename T, size_t E = std::dynamic_extent>
-[[nodiscard]] Md5Sum getMd5(span<T, E> const data) noexcept
+[[nodiscard]] Md5Sum getMd5(span<T const, E> const data) noexcept
 {
     return Md5Hash(data).getMd5();
 }
@@ -402,7 +401,7 @@ template <typename T, size_t E = std::dynamic_extent>
  *
  * While this implementation does its best to fully implement RFC1321, it is constrained in that this algorithm does NOT
  * accept any arbitrary number of bits, but rather the amount of data provided must be in bytes and therefore any MD5
- * hash of a value that takes a number of bits that isn't a multiple of #BYTE_BITS is impossible to generate with this
+ * hash of a value that takes a number of bits that isn't a multiple of BYTE_BITS is impossible to generate with this
  * function.
  *
  * The data passed can be of arbitrary length, passed as the first argument. Since length is passed, data may contain
@@ -417,9 +416,11 @@ template <typename T, size_t E = std::dynamic_extent>
  * bytes in length.
  */
 template <typename T, ByteType B = byte, size_t E = std::dynamic_extent, size_t S = std::dynamic_extent>
-void getMd5(span<T, E> const data, span<B, S> output) noexcept
+void getMd5(span<T const, E> data, span<B, S> output) noexcept
+    requires((not std::is_const_v<B>) and E >= MD5SUM_RETURN_SIZE)
 {
     Md5Hash(data).getMd5(output);
 }
 
 } // namespace KirHut
+#endif // KH_PRIV_DOCS or KH_MD5_SUPPORT

@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** kh/filesystem.hpp
+** invalid.cpp
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -17,35 +17,29 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-#pragma once
+#include "kh/invalid.hpp"
 
-/*!
- * \file kh/filesystem.hpp
- *
- * File System Header that includes the standard filesystem namespace under KirHut::FS.
- */
+#include "kh/errors.hpp"
 
-#if KH_INCLUDE_FILESYSTEM
-# include <filesystem> // IWYU pragma: export
-#endif
-
-/*!
- * Namespace used for filesystem operations used in libKirHut.
- *
- * This namespace is really just the std::filesystem namespace with an easier to refer to name. Currently there are no
- * aliases used under this namespace so for all intents and purposes you can just use it like std::filesystem. If you
- * are using the KirHut namespace as recommended (using namespace KirHut), then this should be as easy as just using
- * "FS::" in code to get everything in the std::filesystem namespace.
- *
- * This namespace will be empty unless the KH_INCLUDE_FILESYSTEM option is ON. This is by default, so you would need to
- * manually turn this option off to remove KirHut::FS support. This could be useful when attempting to compile libKirHut
- * for platforms that do not properly support std::filesystem.
- */
-namespace KirHut::FS
+namespace KirHut
 {
 
-#if KH_INCLUDE_FILESYSTEM
-using namespace std::filesystem;
-#endif
+void Detail::throwNoValidData(Invalid const &inv)
+{
+    throw NoValidData(inv.info());
+}
 
-} // namespace KirHut::FS
+template struct KH_EXPORT Error<WhyInvalid::SoftwareError>;
+template struct KH_EXPORT Error<WhyInvalid::AlreadyInitialized>;
+template struct KH_EXPORT Error<WhyInvalid::BadEnvironment>;
+template struct KH_EXPORT Error<WhyInvalid::IllegalArgument>;
+template struct KH_EXPORT Error<WhyInvalid::DataUninitialized>;
+template struct KH_EXPORT Error<WhyInvalid::DataRemoved>;
+template struct KH_EXPORT Error<WhyInvalid::InvalidState>;
+
+template class KH_EXPORT BasicInvalid<WhyInvalid>;
+template class KH_EXPORT BasicInvalid<MessageViewWhy<char>>;
+template class KH_EXPORT BasicInvalid<string>;
+template class KH_EXPORT BasicInvalid<string_view>;
+
+} // namespace KirHut

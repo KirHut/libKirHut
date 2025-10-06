@@ -3,16 +3,19 @@
 ** md5hash.cpp
 ** Copyright © KirHut Software Company
 **
-** This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
-** License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
-** version.
+** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+** conditions found in the BSD 3-Clause License are met.
 **
-** This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-** warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-** details.
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
+** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
-** You should have received a copy of the GNU General Public License along with this program.  If not, see
-** <http://www.gnu.org/licenses/>.
+** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
+** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
 #include "kh/md5hash.hpp"
 
@@ -21,7 +24,7 @@
 
 using namespace KirHut;
 
-constexpr byte PADDING_FRONT = static_cast<byte>(0b1 << (BYTE_BITS - 1));
+constexpr byte PADDING_FRONT = static_cast<byte>(0b1 << (Platform::bitsInByte - 1));
 
 // clang-format off
 constexpr static u32 ACCUM_A_INIT = 0x67452301,
@@ -41,7 +44,7 @@ constexpr array<u32, 64> V =
     0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1, 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
 };
 
-constexpr array<u32, 64> S =
+constexpr array<int, 64> S =
 {
     7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
     5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20,
@@ -49,7 +52,7 @@ constexpr array<u32, 64> S =
     6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
 };
 
-constexpr array<u32, 64> X =
+constexpr array<ue32, 64> X =
 {
     0, 1, 2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
     1, 6, 11, 0,  5,  10, 15, 4,  9,  14, 3,  8,  13, 2,  7,  12,
@@ -58,17 +61,22 @@ constexpr array<u32, 64> X =
 };
 // clang-format on
 
+// Just don't build if there aren't the supported data types.
+static_assert(Platform::u3264Are3264Bits,
+              "The libKirHut MD5 Hash implementation requires unsigned 32, and 64 bit integers.\n"
+              "The target platform does not support the MD5 implementation, if your software does "
+              "not require MD5, simply remove the KH_MD5_SUPPORT definition in your build.");
+
 struct Md5Hash::Impl
 {
     template <ue32 uPos>
-    constexpr static inline u32 cycleBits(u32 a, u32 b, u32 mod, u32 const *data, ue32 counter) noexcept
+    constexpr static u32 cycleBits(u32 a, u32 b, u32 mod, u32 const *data, ue32 counter) noexcept
     {
         const ue32 pos = uPos * 16 + counter;
         u32 value = a + mod;
         value += data[X[pos]];
         value += V[pos];
-        value = (value << S[pos]) | (value >> (U32_BITS - S[pos]));
-        return value + b;
+        return std::rotl(value, S[pos]) + b;
     }
 
     constexpr static auto UnitF = [](u32 a, u32 b, u32 c, u32 d, u32 const *data, ue32 counter) noexcept {
@@ -87,9 +95,8 @@ struct Md5Hash::Impl
         return cycleBits<3>(a, b, c ^ (b | ~d), data, counter);
     };
 
-    // Marking this function as KH_INLINE is essential for retaining maximum speed on MSVC.
-    template <ue32 VAL, typename Func>
-    constexpr static KH_INLINE void unitChunk(Func f, Md5Hash &self, u32 const *data) noexcept
+    template <ue32 VAL>
+    constexpr static void unitChunk(auto f, Md5Hash &self, u32 const *data) noexcept
     {
         self.A = f(self.A, self.B, self.C, self.D, data, (VAL * 4) + 0);
         self.D = f(self.D, self.A, self.B, self.C, data, (VAL * 4) + 1);
@@ -97,9 +104,8 @@ struct Md5Hash::Impl
         self.B = f(self.B, self.C, self.D, self.A, data, (VAL * 4) + 3);
     }
 
-    // Marking this function as KH_INLINE is essential for retaining maximum speed on MSVC.
-    template <typename Func>
-    constexpr static KH_INLINE void doUnit(Func f, Md5Hash &self, u32 const *data) noexcept
+    // Marking this function as KH_FORCEINLINE is essential for retaining maximum speed on MSVC.
+    [[KH_ATTR_FLATTEN]] constexpr static KH_FORCEINLINE void unitRound(auto f, Md5Hash &self, u32 const *data) noexcept
     {
         unitChunk<0>(f, self, data);
         unitChunk<1>(f, self, data);
@@ -107,34 +113,20 @@ struct Md5Hash::Impl
         unitChunk<3>(f, self, data);
     }
 
-    static void processBlock(Md5Hash &self, byte const *blockLoc) noexcept
+    inline static void processBlock(Md5Hash &self, byte const *blockLoc) noexcept
     {
         u32 A = self.A, B = self.B, C = self.C, D = self.D;
 
         u32 block[BLOCK_U32];
-        memcpy(block, blockLoc, BLOCK_SIZE);
+        for (u32 i = 0; i < BLOCK_U32; ++i)
+        {
+            block[i] = fromLittleEndian<u32>(&blockLoc[i * sizeof(u32)]);
+        }
 
-        // Here it is, this is where the hashing magic happens.
-        // Each call to "doUnit" should be inlined and generates four "chunks" of MD5 hash cycling code. Each chunk is
-        // a single iteration of the assignment loop:
-        //  A = f(A, B, C, D, data, counter);
-        //  D = f(D, A, B, C, data, counter);
-        //  C = f(C, D, A, B, data, counter);
-        //  B = f(B, C, D, A, data, counter);
-        // The above pseudocode is described in RFC1321, which is recommended that you are familiar with:
-        //  https://www.rfc-editor.org/rfc/rfc1321
-        //
-        // Each chunk has a different value VAL passed in that expands to the appropriate counter value 0 through 15.
-        // This, along with another uPos value of each Unit type, determines the correct values in the constexpr arrays
-        // holding the data for cycleBits(). This allows the compiler to optimize all of this down to directly using
-        // the data value in the generated code, the same as hand writing it all in C. The "UnitF", G, H, and I lambdas
-        // represent the different bit manipulation operations referred to in RFC1321 and found commonly as a
-        // preprocessor define in C implementations of MD5. As constexpr lambdas, the compiler can omit the object
-        // creation entirely and just inline these functions directly in the generated doUnit code.
-        doUnit(UnitF, self, block);
-        doUnit(UnitG, self, block);
-        doUnit(UnitH, self, block);
-        doUnit(UnitI, self, block);
+        unitRound(UnitF, self, block);
+        unitRound(UnitG, self, block);
+        unitRound(UnitH, self, block);
+        unitRound(UnitI, self, block);
 
         self.A += A;
         self.B += B;
@@ -142,7 +134,7 @@ struct Md5Hash::Impl
         self.D += D;
     }
 
-    static inline void processInput(Md5Hash &self, size_t length, byte const *input) noexcept
+    inline static void processInput(Md5Hash &self, size_t length, byte const *input) noexcept
     {
         self.totalInput += length;
 
@@ -172,7 +164,7 @@ struct Md5Hash::Impl
         memcpy(self.buffer, &input[frontChop + numFullBlocks * BLOCK_SIZE], self.bufferPos);
     }
 
-    static inline void finish(Md5Hash &self) noexcept
+    inline static void finish(Md5Hash &self) noexcept
     {
         using std::fill;
 
@@ -193,9 +185,9 @@ struct Md5Hash::Impl
             fill(&self.buffer[self.bufferPos], &self.buffer[SIZE_LOCATION], byte(0));
         }
 
-        u64 bitLength = self.totalInput * BYTE_BITS;
+        u64 bitLength = self.totalInput * Platform::bitsInByte;
 
-        memcpy(&self.buffer[SIZE_LOCATION], &bitLength, bytesNeededForBits(64));
+        toLittleEndian(bitLength, &self.buffer[SIZE_LOCATION]);
         processBlock(self, self.buffer);
 
         self.finished = true;
@@ -205,14 +197,16 @@ struct Md5Hash::Impl
     constexpr static size_t SIZE_LOCATION = BLOCK_SIZE - sizeof(u64);
 };
 
+// The accumulators are initialized here instead of the class object definition to keep this information out of the
+// header. This ensures that the implementation remains in the source rather than bleeding into the header document.
 Md5Hash::Md5Hash() noexcept : A(ACCUM_A_INIT), B(ACCUM_B_INIT), C(ACCUM_C_INIT), D(ACCUM_D_INIT)
 {
-    // No implementation.
+    // No further implementation.
 }
 
 Md5Hash::Md5Hash(size_t length, byte const *data) noexcept : Md5Hash()
 {
-    if (length && data)
+    if (length != 0 and data != nullptr)
     {
         Impl::processInput(*this, length, data);
     }
@@ -227,25 +221,29 @@ Md5Sum Md5Hash::getMd5() noexcept
 
 void Md5Hash::getMd5(byte *output) noexcept
 {
-    if (!finished)
-    {
-        Impl::finish(*this);
-    }
-
-    if (!output)
+    if (output == nullptr)
     {
         return;
     }
 
-    // This doesn't work on anything other than processors that have 8 bit bytes. I'd like to support arbitrary bit
-    // width bytes, but I'm not even close to ready to do that.
-    array sigNums{ A, B, C, D };
-    memcpy(output, sigNums.data(), MD5SUM_RETURN_SIZE);
+    if (not finished)
+    {
+        Impl::finish(*this);
+    }
+
+    size_t outLoc = 0;
+    for (u32 out : array{ A, B, C, D })
+    {
+        toLittleEndian(out, &output[outLoc++ * sizeof(u32)]);
+    }
 }
 
 size_t Md5Hash::provideInput(size_t length, byte const *data) noexcept
 {
-    if (!finished && length && data)
+    // Every part of the Md5Hash object is designed to use this method to provide data to the class. This method,
+    // however, just delegates the job to the implementation object after some basic sanity checks.
+
+    if (not finished and length != 0 and data != nullptr)
     {
         Impl::processInput(*this, length, data);
 

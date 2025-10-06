@@ -480,6 +480,62 @@
     <filename>cpp/header/version</filename>
     <namespace>std</namespace>
   </compound>
+    <member kind="function">
+      <type>T</type>
+      <name>ATOMIC_VAR_INIT</name>
+      <anchorfile>cpp/atomic/ATOMIC_VAR_INIT</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>assert</name>
+      <anchorfile>cpp/error/assert</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>offsetof</name>
+      <anchorfile>cpp/types/offsetof</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>operator delete</name>
+      <anchorfile>cpp/memory/new/operator_delete</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>operator delete[]</name>
+      <anchorfile>cpp/memory/new/operator_delete</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>operator new</name>
+      <anchorfile>cpp/memory/new/operator_new</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>operator new[]</name>
+      <anchorfile>cpp/memory/new/operator_new</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>setjmp</name>
+      <anchorfile>cpp/utility/program/setjmp</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
   <compound kind="namespace">
     <name>std</name>
     <filename></filename>
@@ -29456,8 +29512,132 @@
     <class kind="class">std::experimental::detected_or</class>
     <class kind="class">std::experimental::detected_or_t</class>
     <class kind="class">std::experimental::disjunction</class>
-    <namespace>std::experimental::erase(std</namespace>
-    <namespace>std::experimental::erase_if(std</namespace>
+    <member kind="function">
+      <type>T</type>
+      <name>erase(std::basic_string)</name>
+      <anchorfile>cpp/experimental/basic_string/erase</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase(std::deque)</name>
+      <anchorfile>cpp/experimental/deque/erase</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase(std::forward_list)</name>
+      <anchorfile>cpp/experimental/forward_list/erase</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase(std::list)</name>
+      <anchorfile>cpp/experimental/list/erase</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase(std::vector)</name>
+      <anchorfile>cpp/experimental/vector/erase</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::basic_string)</name>
+      <anchorfile>cpp/experimental/basic_string/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::deque)</name>
+      <anchorfile>cpp/experimental/deque/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::forward_list)</name>
+      <anchorfile>cpp/experimental/forward_list/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::list)</name>
+      <anchorfile>cpp/experimental/list/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::map)</name>
+      <anchorfile>cpp/experimental/map/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::multimap)</name>
+      <anchorfile>cpp/experimental/multimap/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::multiset)</name>
+      <anchorfile>cpp/experimental/multiset/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::set)</name>
+      <anchorfile>cpp/experimental/set/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::unordered_map)</name>
+      <anchorfile>cpp/experimental/unordered_map/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::unordered_multimap)</name>
+      <anchorfile>cpp/experimental/unordered_multimap/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::unordered_multiset)</name>
+      <anchorfile>cpp/experimental/unordered_multiset/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::unordered_set)</name>
+      <anchorfile>cpp/experimental/unordered_set/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>erase_if(std::vector)</name>
+      <anchorfile>cpp/experimental/vector/erase_if</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
     <class kind="class">std::experimental::erased_type</class>
     <member kind="variable">
       <type>T</type>
@@ -30701,140 +30881,6 @@
   <compound kind="class">
     <name>std::experimental::disjunction</name>
     <filename>cpp/experimental/disjunction</filename>
-  </compound>
-  <compound kind="namespace">
-    <name>std::experimental::erase(std</name>
-    <filename></filename>
-    <member kind="function">
-      <type>T</type>
-      <name>basic_string)</name>
-      <anchorfile>cpp/experimental/basic_string/erase</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>deque)</name>
-      <anchorfile>cpp/experimental/deque/erase</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>forward_list)</name>
-      <anchorfile>cpp/experimental/forward_list/erase</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>list)</name>
-      <anchorfile>cpp/experimental/list/erase</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>vector)</name>
-      <anchorfile>cpp/experimental/vector/erase</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-  </compound>
-  <compound kind="namespace">
-    <name>std::experimental::erase_if(std</name>
-    <filename></filename>
-    <member kind="function">
-      <type>T</type>
-      <name>basic_string)</name>
-      <anchorfile>cpp/experimental/basic_string/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>deque)</name>
-      <anchorfile>cpp/experimental/deque/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>forward_list)</name>
-      <anchorfile>cpp/experimental/forward_list/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>list)</name>
-      <anchorfile>cpp/experimental/list/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>map)</name>
-      <anchorfile>cpp/experimental/map/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>multimap)</name>
-      <anchorfile>cpp/experimental/multimap/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>multiset)</name>
-      <anchorfile>cpp/experimental/multiset/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>set)</name>
-      <anchorfile>cpp/experimental/set/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>unordered_map)</name>
-      <anchorfile>cpp/experimental/unordered_map/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>unordered_multimap)</name>
-      <anchorfile>cpp/experimental/unordered_multimap/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>unordered_multiset)</name>
-      <anchorfile>cpp/experimental/unordered_multiset/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>unordered_set)</name>
-      <anchorfile>cpp/experimental/unordered_set/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
-    <member kind="function">
-      <type>T</type>
-      <name>vector)</name>
-      <anchorfile>cpp/experimental/vector/erase_if</anchorfile>
-      <anchor></anchor>
-      <arglist>(T... args)</arglist>
-    </member>
   </compound>
   <compound kind="class">
     <name>std::experimental::erased_type</name>
@@ -68907,8 +68953,36 @@
     <name>std::zetta</name>
     <filename>cpp/numeric/ratio/ratio</filename>
   </compound>
+    <member kind="function">
+      <type>T</type>
+      <name>va_arg</name>
+      <anchorfile>cpp/utility/variadic/va_arg</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>va_copy</name>
+      <anchorfile>cpp/utility/variadic/va_copy</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
+    <member kind="function">
+      <type>T</type>
+      <name>va_end</name>
+      <anchorfile>cpp/utility/variadic/va_end</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
   <compound kind="class">
     <name>va_list</name>
     <filename>cpp/utility/variadic/va_list</filename>
   </compound>
+    <member kind="function">
+      <type>T</type>
+      <name>va_start</name>
+      <anchorfile>cpp/utility/variadic/va_start</anchorfile>
+      <anchor></anchor>
+      <arglist>(T... args)</arglist>
+    </member>
 </tagfile>

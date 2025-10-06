@@ -21,6 +21,7 @@
 #include "kh/base.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+// clazy:excludeall=non-pod-global-static
 
 using namespace KirHut;
 
@@ -44,7 +45,7 @@ TEST_CASE("Exception String View Constructor", "[exception][constructor]")
 TEST_CASE("Exception Copying String View Constructor", "[exception][constructor]")
 {
 	string startStr = "Test Exception.";
-    TestException ex(make, startStr);
+    TestException ex(Flags::make, startStr);
     startStr.clear();
 	REQUIRE(ex.info() == "Test Exception."sv);
 	REQUIRE("Test Exception."sv == ex.what());
