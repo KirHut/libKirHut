@@ -45,6 +45,32 @@ TEST_CASE("Bytes needed for bits", "[utility]")
 	STATIC_REQUIRE(bytesNeededForBits(15) == 2);
 	STATIC_REQUIRE(bytesNeededForBits(30) == 4);
 	STATIC_REQUIRE(bytesNeededForBits(60) == 8);
+
+    // Always check both static and dynamic behavior.
+    REQUIRE(bytesNeededForBits(8) == 1);
+    REQUIRE(bytesNeededForBits(15) == 2);
+    REQUIRE(bytesNeededForBits(30) == 4);
+    REQUIRE(bytesNeededForBits(60) == 8);
+}
+
+TEST_CASE("The asBytes() and asWritableBytes() functions", "[utility]")
+{
+    u32 testVal    = 0x12'34'56'78;
+    auto compareTo = std::bit_cast<array<byte, sizeof(u32)>>(testVal);
+
+    REQUIRE(R::equal(compareTo, asBytes(testVal)));
+    auto writableTestVal2 = asWritableBytes(testVal);
+    writableTestVal2[2]   = byte{ 0x9A };
+    compareTo[2]          = byte{ 0x9A };
+    REQUIRE(R::equal(compareTo, writableTestVal2));
+}
+
+TEST_CASE("Numeric concept constraints", "[base]")
+{
+    STATIC_REQUIRE_FALSE(Numeric<bool>);
+    STATIC_REQUIRE(Numeric<double>);
+    STATIC_REQUIRE(Numeric<unsigned int>);
+    STATIC_REQUIRE_FALSE(Numeric<double *>);
 }
 
 TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges]")

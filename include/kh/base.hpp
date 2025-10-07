@@ -258,22 +258,25 @@ template <typename T>
  * This allow for viewing the underlying data of any \p object passed to this function. This can be useful for
  * serialization, generic identification, or other purposes needing the data of an \p object itself.
  *
+ * This is just a simple wrapper around the std::as_bytes or as_writable_bytes functions. As such, it is impossible to
+ * implement these functions as constexpr.
+ *
  * \param object Any value or object type whatsoever.
  * \return A std::span viewing the underlying byte data of the \p object.
  */
 template <typename T>
-constexpr span<byte const, sizeof(T)> asBytes(T const &object) noexcept
+inline span<byte const, sizeof(T)> asBytes(T const &object) noexcept
 {
-    return std::as_bytes(span<T, 1>{ &object });
+    return std::as_bytes(span<T const, 1>{ &object, &object + 1 });
 }
 
 /*!
  * \copydoc asBytes(T const&)
  */
 template <typename T>
-constexpr span<byte, sizeof(T)> asWritableBytes(T &object) noexcept
+inline span<byte, sizeof(T)> asWritableBytes(T &object) noexcept
 {
-    return std::as_writable_bytes(span<T, 1>{ &object });
+    return std::as_writable_bytes(span<T, 1>{ &object, &object + 1 });
 }
 
 /*!
@@ -480,12 +483,16 @@ template <typename Test_T, template <typename...> typename Template>
 concept InstanceOf = InstanceOfValue<Test_T, Template>;
 
 /*!
+ * \internal
+ *
  * \brief SpanOfValue
  */
 template <typename Wrong_T, typename Element_T>
 constexpr bool SpanOfValue = false;
 
 /*!
+ * \internal
+ *
  * \brief SpanOfValue
  */
 template <typename Element_T, size_t Extent>
@@ -640,6 +647,13 @@ constexpr Tested_T convertTest(Arg_Ts &&...args)
 template <typename Tested_T, typename First_T, typename... Rest_Ts>
 concept OneOf = std::same_as<Tested_T, First_T> or (std::same_as<Tested_T, Rest_Ts> or ...);
 
+/*!
+ * Concept to identify if a type can be converted to one of a set of distinct types.
+ *
+ * This is just the std::convertible_to concept applied to multiple types instead of one, so you are not forced to make
+ * a long chain of std::convertible_to concepts or std::is_convertible_to_v templates, and can instead just use this
+ * concept to get the same power.
+ */
 template <typename Tested_T, typename First_T, typename... Rest_Ts>
 concept ConvertsTo = std::convertible_to<Tested_T, First_T> or (std::convertible_to<Tested_T, Rest_Ts> or ...);
 
@@ -672,7 +686,7 @@ concept SpanOf = requires {
 };
 
 /*!
- * Concept representing the different types that may bypass strict aliasing rules in C++.
+ * Concept to identify the different types that may bypass strict aliasing rules in C++.
  *
  * Some types are not undefined behavior to dereference from a different type. Those three types are considered "byte
  * types" in KirHut software. Obviously, those three types are `char`, `unsigned char`, and std::byte.
@@ -681,7 +695,7 @@ template <typename Tested>
 concept ByteType = OneOf<Tested, char, byte, unsigned char, std::byte>;
 
 /*!
- * Concept representing a span of some kind of ByteType.
+ * Concept to identify a span of some kind of ByteType.
  *
  * The ByteType concept is useful for detecting particular types, but when you are specifically trying to get a span to
  * one of those types, this concept is a better fit for that purpose. Like SpanOf, this works despite the fact that
@@ -691,7 +705,7 @@ template <typename Tested>
 concept ByteSpan = SpanOf<Tested, char, byte, unsigned char, std::byte>;
 
 /*!
- * Concept representing a span of some kind of constant ByteType.
+ * Concept to idenfiy a span of some kind of constant ByteType.
  *
  * The ByteType concept is useful for detecting particular types, but when you are specifically trying to get a span to
  * one of those types, this concept is a better fit for that purpose. Like SpanOf, this works despite the fact that
@@ -701,7 +715,7 @@ template <typename Tested>
 concept ConstByteSpan = SpanOf<Tested, char const, byte const, unsigned char const, std::byte const>;
 
 /*!
- * Concept representing some Var or std::variant object that contains one of the given HasTypes.
+ * Concept that identifies some Var or std::variant object that contains one of the given HasTypes.
  *
  * This matches with types of std::variant (or the Var alias) that contain a given HasType as one of its type options.
  * This has a separated HasType and HasTypes types in the template because in abbreviated template method signatures or
@@ -871,6 +885,17 @@ constexpr void toBigEndian(Numeric auto value, byte *dest) noexcept
 
 /*!
  * \brief toBigEndian
+ * \return
+ */
+constexpr auto toBigEndian(Numeric auto value) noexcept -> array<byte, sizeof(value)>
+{
+    array<byte, sizeof(value)> ret;
+    Detail::toEndian<std::endian::big>(value, ret.data());
+    return ret;
+}
+
+/*!
+ * \brief toBigEndian
  * \param dest
  * \throws IllegalArgument If the span passed to this method has std::dynamic_extent but size() < sizeof(value).
  */
@@ -897,6 +922,17 @@ constexpr void toBigEndian(Numeric auto value, span<byte, SZ> dest) noexcept(SZ 
 constexpr void toLittleEndian(Numeric auto value, byte *dest) noexcept
 {
     Detail::toEndian<std::endian::little>(value, dest);
+}
+
+/*!
+ * \brief toLittleEndian
+ * \return
+ */
+constexpr auto toLittleEndian(Numeric auto value) noexcept -> array<byte, sizeof(value)>
+{
+    array<byte, sizeof(value)> ret;
+    Detail::toEndian<std::endian::little>(value, ret.data());
+    return ret;
 }
 
 /*!
