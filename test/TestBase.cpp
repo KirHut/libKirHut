@@ -46,11 +46,13 @@ TEST_CASE("Bytes needed for bits", "[utility]")
 	STATIC_REQUIRE(bytesNeededForBits(30) == 4);
 	STATIC_REQUIRE(bytesNeededForBits(60) == 8);
 
+    int volatile test1 = 8, test2 = 15, test3 = 30, test4 = 60;
+
     // Always check both static and dynamic behavior.
-    REQUIRE(bytesNeededForBits(8) == 1);
-    REQUIRE(bytesNeededForBits(15) == 2);
-    REQUIRE(bytesNeededForBits(30) == 4);
-    REQUIRE(bytesNeededForBits(60) == 8);
+    REQUIRE(bytesNeededForBits(test1) == 1);
+    REQUIRE(bytesNeededForBits(test2) == 2);
+    REQUIRE(bytesNeededForBits(test3) == 4);
+    REQUIRE(bytesNeededForBits(test4) == 8);
 }
 
 TEST_CASE("The asBytes() and asWritableBytes() functions", "[utility]")
@@ -71,6 +73,39 @@ TEST_CASE("Numeric concept constraints", "[base]")
     STATIC_REQUIRE(Numeric<double>);
     STATIC_REQUIRE(Numeric<unsigned int>);
     STATIC_REQUIRE_FALSE(Numeric<double *>);
+}
+
+TEST_CASE("Raw byteSwap() functions", "[utility]")
+{
+    // We obviously cannot use the byteSwap functions to initialize expectFlip, otherwise we aren't actually testing it.
+    constexpr u16 testFlip16 = 0x1234, expectFlip16 = 0x3412;
+    constexpr u32 testFlip32 = 0x12'34'56'78, expectFlip32 = 0x78'56'34'12;
+    constexpr u64 testFlip64 = 0x01'23'45'67'89'AB'CD'EF, expectFlip64 = 0xEF'CD'AB'89'67'45'23'01;
+
+    STATIC_REQUIRE(byteSwap(testFlip16) == expectFlip16);
+    STATIC_REQUIRE(byteSwap(testFlip32) == expectFlip32);
+    STATIC_REQUIRE(byteSwap(testFlip64) == expectFlip64);
+
+    u16 volatile vTestFlip16 = testFlip16;
+    u32 volatile vTestFlip32 = testFlip32;
+    u64 volatile vTestFlip64 = testFlip64;
+
+    REQUIRE(byteSwap(vTestFlip16) == expectFlip16);
+    REQUIRE(byteSwap(vTestFlip32) == expectFlip32);
+    REQUIRE(byteSwap(vTestFlip64) == expectFlip64);
+
+    if constexpr (Platform::hasU128)
+    {
+        constexpr u128 testFlip128   = (static_cast<u128>(testFlip32) << Platform::bitsInU64) | testFlip64;
+        constexpr u128 expectFlip128 = (static_cast<u128>(expectFlip64) << Platform::bitsInU64) |
+                                       (static_cast<u128>(expectFlip32) << Platform::bitsInU32);
+
+        STATIC_REQUIRE(byteSwap(testFlip128) == expectFlip128);
+
+        u128 volatile vTestFlip128 = testFlip128;
+
+        REQUIRE(byteSwap(vTestFlip128) == expectFlip128);
+    }
 }
 
 TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges]")

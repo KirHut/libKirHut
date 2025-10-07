@@ -297,8 +297,8 @@ concept Numeric = std::is_arithmetic_v<T> and not std::is_same_v<T, bool>;
  * The byteSwap function in libKirHut is meant to work like std::byteswap in C++23 for applications still only using
  * C++20. When this library is compiled by a C++23 or newer compiler, this function is just a wrapper for std::byteswap.
  * Otherwise, it uses one of the builtin byte swap functions in your according compiler, or if it lacks a builtin, it
- * uses a fallback implementation that is constexpr safe. The fallback implementation is deliberately designed to ensure
- * that the compiler generates hardware instructions to perform a byte swap if the hardware has it, even if the compiler
+ * uses a fallback implementation that is constexpr safe. The fallback implementation is deliberately designed to allow
+ * the compiler to generate hardware instructions to perform a byte swap if the hardware has it, even if the compiler
  * lacks a builtin for it.
  *
  * \param bytes An unsigned 16 bit integer you want to have the bytes swapped in.
@@ -440,8 +440,8 @@ constexpr u128 byteSwap(u128 bytes)
 # endif
     }
 
-    auto [firstHalf, lastHalf] = pair{ static_cast<u64>(bytes >> sizeof(u64)), static_cast<u64>(bytes) };
-    return (static_cast<u128>(byteSwap(lastHalf)) << (sizeof(u64) * Platform::bitsInByte)) | byteSwap(firstHalf);
+    auto [firstHalf, lastHalf] = pair{ static_cast<u64>(bytes >> Platform::bitsInU64), static_cast<u64>(bytes) };
+    return (static_cast<u128>(byteSwap(lastHalf)) << Platform::bitsInU64) | byteSwap(firstHalf);
 }
 #endif
 

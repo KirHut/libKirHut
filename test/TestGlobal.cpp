@@ -84,12 +84,12 @@ constexpr bool hasTypesCheck()
     // clang-format on
 }
 
-TEST_CASE("Ensure MIN and MAX sizes are correct", "[global][asserted]")
+TEST_CASE("Ensure MIN and MAX sizes are correct", "[global]")
 {
 	STATIC_REQUIRE(sizesCheck());
 }
 
-TEST_CASE("Ensure type info is correct", "[global][asserted]")
+TEST_CASE("Ensure type info is correct", "[global]")
 {
 	STATIC_REQUIRE(hasTypesCheck());
 }
