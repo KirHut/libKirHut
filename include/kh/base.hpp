@@ -475,17 +475,20 @@ constexpr bool InstanceOfValue<Template_T<Arg_Ts...>, Template_T> = true;
 /*!
  * \internal
  *
- * Concept wrapper for the InstanceOfValue templates.
+ * InstanceOf implementation concept.
  *
- * This makes InstanceOfValue usable as a concept.
+ * This is just a concept wrapper for the InstanceOfValue template trait.
  */
 template <typename Test_T, template <typename...> typename Template>
-concept InstanceOf = InstanceOfValue<Test_T, Template>;
+concept InstanceOf = InstanceOfValue<std::remove_cvref_t<Test_T>, Template>;
 
 /*!
  * \internal
  *
- * \brief SpanOfValue
+ * Default wrong span type (or wrong type in general) base template for SpanTypeValue.
+ *
+ * This models the same methodology used for InstanceOfValue, except the specialization is used specifically to find
+ * span types.
  */
 template <typename Wrong_T>
 constexpr bool SpanTypeValue = false;
@@ -493,7 +496,12 @@ constexpr bool SpanTypeValue = false;
 /*!
  * \internal
  *
- * \brief SpanOfValue
+ * Correct span type template specialization for SpanTypeValue.
+ *
+ * This models the same methodology used for InstanceOfValue, except the specialization is used specifically to find
+ * span types. Note that this does NOT accept cv-qualified spans nor span references. This is deliberate, since it is
+ * always possible to apply these qualifiers to a templated type afterward and there is value in the user being able to
+ * distinguish these when desired.
  */
 template <typename Element_T, size_t extent>
 constexpr bool SpanTypeValue<span<Element_T, extent>> = true;
@@ -501,19 +509,12 @@ constexpr bool SpanTypeValue<span<Element_T, extent>> = true;
 /*!
  * \internal
  *
+ * SpanType implementation concept.
  *
+ * This is just a concept wrapper for the SpanTypeValue template trait.
  */
 template <typename Test_T>
 concept SpanType = SpanTypeValue<Test_T>;
-
-/*!
- * \internal
- *
- *
- */
-template <typename Var_T, typename Contain_T>
-concept HasTypeOption =
-    (InstanceOf<Var_T, Var> or InstanceOf<Var_T, std::variant>) and requires(Var_T v) { std::get<Contain_T>(v); };
 
 /*!
  * \internal
@@ -634,6 +635,48 @@ constexpr Tested_T convertTest(Arg_Ts &&...args)
     return { std::forward<Arg_Ts>(args)... };
 }
 
+template <typename Var_T, typename T, size_t indexPos>
+consteval size_t varIndexLoop()
+{
+    using UnqualVar = std::remove_cvref_t<Var_T>;
+
+    if constexpr (indexPos >= std::variant_size_v<UnqualVar>)
+    {
+        return indexPos;
+    }
+    else
+    {
+        if constexpr (std::is_same_v<T, std::variant_alternative_t<indexPos, UnqualVar>>)
+        {
+            return indexPos;
+        }
+        else
+        {
+            return varIndexLoop<Var_T, T, indexPos + 1>();
+        }
+    }
+}
+
+template <typename Var_T, typename T>
+consteval size_t varIndex()
+{
+    static_assert(InstanceOf<Var_T, Var> or InstanceOf<Var_T, std::variant>);
+    return varIndexLoop<Var_T, T, 0>();
+}
+
+/*!
+ * \internal
+ *
+ * HasTypeOption implementation concept.
+ *
+ * Remember that this implementation is using Detail::InstanceOf, not KirHut::InstanceOf. As such, this cannot use
+ * `InstanceOf<Var_T, Var, std::variant>` because Detail::InstanceOf does not check for multiple separate template
+ * template types.
+ */
+template <typename Var_T, typename Contain_T>
+concept HasTypeOption = (InstanceOf<Var_T, Var> or InstanceOf<Var_T, std::variant>) and
+                        varIndex<Var_T, Contain_T>() < std::variant_size_v<std::remove_reference_t<Var_T>>;
+
 } // namespace Detail
 
 /*!
@@ -670,8 +713,7 @@ concept ConvertsTo = std::convertible_to<Tested_T, First_T> or (std::convertible
  * alternative concepts in this library for that.
  */
 template <typename Tested_T, template <typename...> typename Template_T, template <typename...> typename... Template_Ts>
-concept InstanceOf = Detail::InstanceOf<std::remove_cvref_t<Tested_T>, Template_T> or
-                     (Detail::InstanceOf<std::remove_cvref_t<Tested_T>, Template_Ts> or ...);
+concept InstanceOf = Detail::InstanceOf<Tested_T, Template_T> or (Detail::InstanceOf<Tested_T, Template_Ts> or ...);
 
 /*!
  * Concept to identify types that are std::span of a given set of Element_Ts, or a writable span if no arguments are
@@ -684,7 +726,7 @@ concept InstanceOf = Detail::InstanceOf<std::remove_cvref_t<Tested_T>, Template_
  * explicitly accept an Extent parameter in abbreviated template functions and methods.
  */
 template <typename Tested_T, typename... Element_Ts>
-concept SpanOf = Detail::SpanType<Tested_T> and
+concept SpanOf = Detail::SpanType<Tested_T> and (not std::is_reference_v<Element_Ts> and ...) and
                  ((sizeof...(Element_Ts) == 0 and not std::is_const_v<typename Tested_T::element_type>) or
                   (OneOf<typename Tested_T::element_type, Element_Ts> or ...));
 
@@ -693,7 +735,7 @@ concept SpanOf = Detail::SpanType<Tested_T> and
  */
 template <typename Tested_T, typename... Element_Ts>
 concept ReadableSpanOf =
-    Detail::SpanType<Tested_T> and (std::same_as<Element_Ts, std::remove_cv_t<Element_Ts>> and ...) and
+    Detail::SpanType<Tested_T> and (std::same_as<Element_Ts, std::remove_cvref_t<Element_Ts>> and ...) and
     (sizeof...(Element_Ts) == 0 or (OneOf<std::remove_cv_t<typename Tested_T::element_type>, Element_Ts> or ...));
 
 /*!
@@ -702,8 +744,8 @@ concept ReadableSpanOf =
  * Some types are not undefined behavior to dereference from a different type. Those three types are considered "byte
  * types" in KirHut software. Obviously, those three types are `char`, `unsigned char`, and std::byte.
  */
-template <typename Tested>
-concept ByteType = OneOf<Tested, char, byte, unsigned char, std::byte>;
+template <typename Byte_T>
+concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, std::byte>;
 
 /*!
  * Concept to identify a span of some kind of ByteType.
@@ -712,8 +754,8 @@ concept ByteType = OneOf<Tested, char, byte, unsigned char, std::byte>;
  * one of those types, this concept is a better fit for that purpose. Like SpanOf, this works despite the fact that
  * InstanceOf does not work for types that contain non-type template parameters, namely size_t.
  */
-template <typename Tested>
-concept ByteSpan = SpanOf<Tested, char, byte, unsigned char, std::byte>;
+template <typename Span_T>
+concept ByteSpan = SpanOf<Span_T, char, byte, unsigned char, std::byte>;
 
 /*!
  * Concept to idenfiy a span of some kind of constant ByteType.
@@ -722,8 +764,8 @@ concept ByteSpan = SpanOf<Tested, char, byte, unsigned char, std::byte>;
  * one of those types, this concept is a better fit for that purpose. Like SpanOf, this works despite the fact that
  * InstanceOf does not work for types that contain non-type template parameters, namely size_t.
  */
-template <typename Tested>
-concept ConstByteSpan = SpanOf<Tested, char const, byte const, unsigned char const, std::byte const>;
+template <typename Span_T>
+concept ReadableByteSpan = ReadableSpanOf<Span_T, char, byte, unsigned char, std::byte>;
 
 /*!
  * Concept that identifies some Var or std::variant object that contains one of the given HasTypes.
@@ -733,8 +775,8 @@ concept ConstByteSpan = SpanOf<Tested, char const, byte const, unsigned char con
  * when applying this concept to requires clauses, having an empty set of HasTypes should fail to compile, and the
  * separate HasType ensures that happens.
  */
-template <typename VarType, typename HasType, typename... HasTypes>
-concept HasTypeOption = Detail::HasTypeOption<VarType, HasType> or (Detail::HasTypeOption<VarType, HasTypes> or ...);
+template <typename Var_T, typename Has_T, typename... Has_Ts>
+concept HasTypeOption = Detail::HasTypeOption<Var_T, Has_T> or (Detail::HasTypeOption<Var_T, Has_Ts> or ...);
 
 /*!
  * Concept that identifies an "empty" class, or a type that, when used as a parent class, will not increase the size of
@@ -743,58 +785,29 @@ concept HasTypeOption = Detail::HasTypeOption<VarType, HasType> or (Detail::HasT
  * This basically allows easy identification of types that can have the Empty Base Optimization applied to them or used
  * in a [[KH_NO_UNIQUE_ADDRESS]] context.
  */
-template <typename EBO>
-concept EmptyClass = sizeof(EBO) == 1 and sizeof(Detail::NoChild) == sizeof(Detail::EboChild<EBO>);
+template <typename Class_T>
+concept EmptyClass = not std::is_reference_v<Class_T> and sizeof(Class_T) == 1 and
+                     sizeof(Detail::NoChild) == sizeof(Detail::EboChild<std::remove_cv_t<Class_T>>);
 
 /*!
- * Concept representing a type T that can be contained in a given Var or std::variant.
+ * Concept representing a type Has_T that can be contained in a given Var_T (Var or std::variant).
  *
- * This matches with types that are accepted by the std::variant (or the Var alias) given as type V as one of its type
- * options.
+ * This matches with types that are accepted by the std::variant (or the Var alias) given as type Var_T as one of its
+ * type options. This will be true if Has_T is a type option of Var_T.
  */
-template <typename HasType, typename VarType>
-concept TypeOptionOf = Detail::HasTypeOption<VarType, HasType>;
+template <typename Has_T, typename Var_T>
+concept TypeOptionOf = Detail::HasTypeOption<Var_T, Has_T>;
 
 /*!
- * Concept to identify types that are implicitly constructible from a set of arguments.
- *
- * The C++ standard library has std::constructible_from, which is great for checking if a type can be constructed from
- * a given set of arguments explicitly, but with C++ universal initialization syntax there is now the ability to
- * implicitly call any constructor with braced initialization, but there is no test to determine if a constructor
- * supports that functionality. This test provides that support.
- *
- * | Object Conversion     | std::convertible_to | ExplicitlyConvertible | ImplicitlyConstructible |
- * |-----------------------|---------------------|-----------------------|-------------------------|
- * | To{ From }            | true                | true                  | true                    |
- * | { From } -> To        | true                | false                 | true                    |
- * | static_cast<To>(From) | true                | true                  | false                   |
- *
- * Using the two concepts defined in this library, you can determine the implicit and explicit conversion status of any
- * given type in C++.
+ * \brief varIndex
+ * \param var
+ * \return
  */
-template <typename To, typename... From>
-concept ImplicitlyConstructible =
-    std::constructible_from<To, From...> and requires { convertTest<To>(std::declval<From>()...); };
-
-/*!
- * Concept to identify types that are (only) explicitly convertible to other types.
- *
- * The C++ standard library has std::convertible_to, which is great for checking if a type can be implicitly converted
- * to another type, but if you need to determine if it is convertible using explicit conversion, this concept can be
- * used.
- *
- * This is slightly different from ExplicitlyConstructible<To, From> because that concept allows for *any* arguments
- * that can be used to construct an object, including when using an rvalue reference or forwarding reference (which will
- * modify the converted value). This concept rejects those possible arguments, but if you wish to accept them in your
- * template, you should use ExplicitlyConstructible instead.
- *
- * Using the two concepts defined in this library, you can determine the implicit and explicit conversion status of any
- * given type in C++.
- */
-template <typename From, typename To>
-concept ExplicitlyConvertible = not std::convertible_to<From, To> and requires(From f) {
-    { static_cast<To>(f) } -> std::same_as<To>;
-};
+template <typename T>
+consteval size_t varIndex(InstanceOf<Var, std::variant> auto const &var)
+{
+    return Detail::varIndex<decltype(var), T>();
+}
 
 /*!
  * Read the data pointed at by \p loc and return it as the given \p T integer type for the native platform.

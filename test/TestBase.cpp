@@ -36,6 +36,11 @@ struct SomeObject
     // No members.
 };
 
+struct HasEmptyMember
+{
+    SomeObject e;
+};
+
 struct SomeOtherObject : public SomeObject
 {
     int val = 0; // Should have data.
@@ -44,6 +49,57 @@ struct SomeOtherObject : public SomeObject
 struct ThirdObject : public SomeObject
 {
     float val = 0.; // other data.
+};
+
+struct SomeEmptyObject : public SomeObject
+{
+    // No members.
+};
+
+struct ThirdEmptyObject : public SomeEmptyObject
+{
+    // No members.
+};
+
+struct AnotherEmpty
+{
+    // No members.
+};
+
+struct KH_EBO_EMPTY_BASES DerivedEmpty : AnotherEmpty, SomeObject
+{
+    // No members.
+};
+
+struct WithStatic
+{
+    static int s;
+};
+
+struct WithMemberFunc
+{
+    void foo()
+    {
+        // No further implementation.
+    }
+};
+
+struct WithBool
+{
+    bool b; // Object with sizeof() == 1.
+};
+
+struct NonEmpty
+{
+    int x;
+};
+
+struct WithVirtual
+{
+    virtual void foo()
+    {
+        // No further implementation.
+    }
 };
 
 struct ConvertibleToString
@@ -67,19 +123,22 @@ using Vec = std::vector<T>;
 
 TEST_CASE("Bytes needed for bits", "[base][utility]")
 {
-	// KirHut stuff does not support non-8-bit bytes as of right now.
-	STATIC_REQUIRE(bytesNeededForBits(8) == 1);
-	STATIC_REQUIRE(bytesNeededForBits(15) == 2);
-	STATIC_REQUIRE(bytesNeededForBits(30) == 4);
-	STATIC_REQUIRE(bytesNeededForBits(60) == 8);
+    SECTION("Constexpr bytesNeededForBits functions tests")
+    {
+        STATIC_REQUIRE(bytesNeededForBits(8) == 1);
+        STATIC_REQUIRE(bytesNeededForBits(15) == 2);
+        STATIC_REQUIRE(bytesNeededForBits(30) == 4);
+        STATIC_REQUIRE(bytesNeededForBits(60) == 8);
+    }
 
-    int volatile test1 = 8, test2 = 15, test3 = 30, test4 = 60;
-
-    // Always check both static and dynamic behavior.
-    REQUIRE(bytesNeededForBits(test1) == 1);
-    REQUIRE(bytesNeededForBits(test2) == 2);
-    REQUIRE(bytesNeededForBits(test3) == 4);
-    REQUIRE(bytesNeededForBits(test4) == 8);
+    SECTION("Runtime bytesNeededForBits functions tests")
+    {
+        int volatile test1 = 8, test2 = 15, test3 = 30, test4 = 60;
+        REQUIRE(bytesNeededForBits(test1) == 1);
+        REQUIRE(bytesNeededForBits(test2) == 2);
+        REQUIRE(bytesNeededForBits(test3) == 4);
+        REQUIRE(bytesNeededForBits(test4) == 8);
+    }
 }
 
 TEST_CASE("The asBytes() and asWritableBytes() functions", "[base][utility]")
@@ -96,10 +155,28 @@ TEST_CASE("The asBytes() and asWritableBytes() functions", "[base][utility]")
 
 TEST_CASE("Numeric concept constraints", "[base][concepts]")
 {
-    STATIC_REQUIRE_FALSE(Numeric<bool>);
-    STATIC_REQUIRE(Numeric<double>);
-    STATIC_REQUIRE(Numeric<unsigned int>);
-    STATIC_REQUIRE_FALSE(Numeric<double *>);
+    SECTION("The bool type is not numeric")
+    {
+        STATIC_REQUIRE_FALSE(Numeric<bool>);
+    }
+
+    SECTION("Types that are numeric")
+    {
+        STATIC_REQUIRE(Numeric<double>);
+        STATIC_REQUIRE(Numeric<unsigned int>);
+    }
+
+    SECTION("cv-qualifications should pass")
+    {
+        STATIC_REQUIRE(Numeric<double const>);
+        STATIC_REQUIRE(Numeric<int volatile>);
+    }
+
+    SECTION("Pointer and reference types are not numeric")
+    {
+        STATIC_REQUIRE_FALSE(Numeric<double *>);
+        STATIC_REQUIRE_FALSE(Numeric<int &>);
+    }
 }
 
 TEST_CASE("Raw byteSwap() functions", "[base][utility]")
@@ -109,28 +186,40 @@ TEST_CASE("Raw byteSwap() functions", "[base][utility]")
     constexpr u32 testFlip32 = 0x12'34'56'78, expectFlip32 = 0x78'56'34'12;
     constexpr u64 testFlip64 = 0x01'23'45'67'89'AB'CD'EF, expectFlip64 = 0xEF'CD'AB'89'67'45'23'01;
 
-    STATIC_REQUIRE(byteSwap(testFlip16) == expectFlip16);
-    STATIC_REQUIRE(byteSwap(testFlip32) == expectFlip32);
-    STATIC_REQUIRE(byteSwap(testFlip64) == expectFlip64);
+    SECTION("Constexpr byteSwap functions test")
+    {
+        STATIC_REQUIRE(byteSwap(testFlip16) == expectFlip16);
+        STATIC_REQUIRE(byteSwap(testFlip32) == expectFlip32);
+        STATIC_REQUIRE(byteSwap(testFlip64) == expectFlip64);
+    }
 
-    u16 volatile vTestFlip16 = testFlip16;
-    u32 volatile vTestFlip32 = testFlip32;
-    u64 volatile vTestFlip64 = testFlip64;
+    SECTION("Runtime byteSwap functions test")
+    {
+        u16 volatile vTestFlip16 = testFlip16;
+        u32 volatile vTestFlip32 = testFlip32;
+        u64 volatile vTestFlip64 = testFlip64;
 
-    REQUIRE(byteSwap(vTestFlip16) == expectFlip16);
-    REQUIRE(byteSwap(vTestFlip32) == expectFlip32);
-    REQUIRE(byteSwap(vTestFlip64) == expectFlip64);
+        REQUIRE(byteSwap(vTestFlip16) == expectFlip16);
+        REQUIRE(byteSwap(vTestFlip32) == expectFlip32);
+        REQUIRE(byteSwap(vTestFlip64) == expectFlip64);
+    }
 
 #if defined(KH_USE_128BIT_TYPES)
     constexpr u128 testFlip128   = (static_cast<u128>(testFlip32) << Platform::bitsInU64) | testFlip64;
     constexpr u128 expectFlip128 = (static_cast<u128>(expectFlip64) << Platform::bitsInU64) |
                                    (static_cast<u128>(expectFlip32) << Platform::bitsInU32);
 
-    STATIC_REQUIRE(byteSwap(testFlip128) == expectFlip128);
+    SECTION("128-bit constexpr byteSwap function test")
+    {
+        STATIC_REQUIRE(byteSwap(testFlip128) == expectFlip128);
+    }
 
-    u128 volatile vTestFlip128 = testFlip128;
+    SECTION("128-bit runtime byteSwap function test")
+    {
+        u128 volatile vTestFlip128 = testFlip128;
 
-    REQUIRE(byteSwap(vTestFlip128) == expectFlip128);
+        REQUIRE(byteSwap(vTestFlip128) == expectFlip128);
+    }
 #endif
 }
 
@@ -226,7 +315,7 @@ TEST_CASE("ConvertsTo concept constraints", "[base][concepts]")
     }
 }
 
-TEST_CASE("InstanceOf concept basic behavior", "[base][concepts]")
+TEST_CASE("InstanceOf concept constraints", "[base][concepts]")
 {
     SECTION("Basic checks of various template types")
     {
@@ -269,6 +358,413 @@ TEST_CASE("InstanceOf concept basic behavior", "[base][concepts]")
     }
     // The following line fails to compile:
     // STATIC_REQUIRE(InstanceOf<std::array<int, 4>, std::array>);
+}
+
+TEST_CASE("SpanOf concept constraints", "[base][concepts]")
+{
+    using IntSpan         = span<int>;
+    using ConstIntSpan    = span<int const>;
+    using DoubleSpan      = span<double>;
+    using ConstDoubleSpan = span<double const>;
+    using IntConstSpan    = span<int> const;
+
+    SECTION("Matches writable spans only")
+    {
+        STATIC_REQUIRE(SpanOf<IntSpan>);
+        STATIC_REQUIRE(SpanOf<IntSpan, int>);
+        STATIC_REQUIRE(SpanOf<ConstIntSpan, int const>);
+        STATIC_REQUIRE(SpanOf<DoubleSpan>);
+        STATIC_REQUIRE(SpanOf<ConstDoubleSpan, double const>);
+
+        STATIC_REQUIRE_FALSE(SpanOf<ConstIntSpan>);
+        STATIC_REQUIRE_FALSE(SpanOf<ConstDoubleSpan, int>);
+        STATIC_REQUIRE_FALSE(SpanOf<ConstDoubleSpan>);
+    }
+
+    SECTION("Rejects cv-qualified or reference span types")
+    {
+        STATIC_REQUIRE_FALSE(SpanOf<IntConstSpan>);
+        STATIC_REQUIRE_FALSE(SpanOf<IntSpan &>);
+        STATIC_REQUIRE_FALSE(SpanOf<IntSpan const &>);
+    }
+
+    SECTION("Rejects reference element types")
+    {
+        STATIC_REQUIRE_FALSE(SpanOf<IntSpan, int &>);
+        STATIC_REQUIRE_FALSE(SpanOf<IntSpan, int const &>);
+    }
+
+    SECTION("Multiple element types")
+    {
+        STATIC_REQUIRE(SpanOf<IntSpan, int, double, float>);
+        STATIC_REQUIRE_FALSE(SpanOf<ConstIntSpan, double, float>);
+    }
+
+    SECTION("Empty element list implies writable span")
+    {
+        STATIC_REQUIRE(SpanOf<IntSpan>);
+        STATIC_REQUIRE_FALSE(SpanOf<ConstIntSpan>);
+    }
+}
+
+TEST_CASE("ReadableSpanOf concept constraints", "[base][concepts]")
+{
+    using IntSpan         = span<int>;
+    using ConstIntSpan    = span<int const>;
+    using DoubleSpan      = span<double>;
+    using ConstDoubleSpan = span<double const>;
+    using IntConstSpan    = span<int> const;
+
+    SECTION("Matches readable spans regardless of element constness")
+    {
+        STATIC_REQUIRE(ReadableSpanOf<IntSpan>);
+        STATIC_REQUIRE(ReadableSpanOf<ConstIntSpan>);
+        STATIC_REQUIRE(ReadableSpanOf<ConstIntSpan, int>);
+        STATIC_REQUIRE(ReadableSpanOf<IntSpan, int>);
+        STATIC_REQUIRE(ReadableSpanOf<ConstDoubleSpan, double>);
+    }
+
+    SECTION("Rejects cv-qualified or reference span types")
+    {
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<IntConstSpan>);
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<IntSpan &>);
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<IntSpan const &>);
+    }
+
+    SECTION("Requires Element_Ts to be non-cv-qualified")
+    {
+        STATIC_REQUIRE(ReadableSpanOf<ConstIntSpan, int>);
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<ConstIntSpan, int const>);
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<ConstIntSpan, int volatile>);
+    }
+
+    SECTION("Rejects reference element types")
+    {
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<IntSpan, int &>);
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<IntSpan, int const &>);
+    }
+
+    SECTION("Empty element list means any readable span")
+    {
+        STATIC_REQUIRE(ReadableSpanOf<IntSpan>);
+        STATIC_REQUIRE(ReadableSpanOf<ConstIntSpan>);
+        STATIC_REQUIRE(ReadableSpanOf<DoubleSpan>);
+    }
+
+    SECTION("Multiple element types")
+    {
+        STATIC_REQUIRE(ReadableSpanOf<ConstIntSpan, int, double, float>);
+        STATIC_REQUIRE(ReadableSpanOf<ConstDoubleSpan, double, float>);
+        STATIC_REQUIRE_FALSE(ReadableSpanOf<ConstDoubleSpan, int, char>);
+    }
+}
+
+TEST_CASE("ByteType concept constraints")
+{
+    SECTION("Accepts standard byte-like types")
+    {
+        STATIC_REQUIRE(ByteType<char>);
+        STATIC_REQUIRE(ByteType<unsigned char>);
+        STATIC_REQUIRE(ByteType<std::byte>);
+        STATIC_REQUIRE(ByteType<char const>);
+        STATIC_REQUIRE(ByteType<unsigned char volatile>);
+        STATIC_REQUIRE(ByteType<std::byte const>);
+    }
+
+    SECTION("Rejects signed char")
+    {
+        STATIC_REQUIRE_FALSE(ByteType<signed char>);
+        STATIC_REQUIRE_FALSE(ByteType<signed char const>);
+    }
+
+    SECTION("Rejects other integer types")
+    {
+        STATIC_REQUIRE_FALSE(ByteType<int>);
+        STATIC_REQUIRE_FALSE(ByteType<short>);
+        STATIC_REQUIRE_FALSE(ByteType<long>);
+        STATIC_REQUIRE_FALSE(ByteType<bool>);
+    }
+
+    SECTION("Rejects unrelated types")
+    {
+        STATIC_REQUIRE_FALSE(ByteType<void>);
+        STATIC_REQUIRE_FALSE(ByteType<float>);
+        STATIC_REQUIRE_FALSE(ByteType<double>);
+        STATIC_REQUIRE_FALSE(ByteType<void *>);
+        STATIC_REQUIRE_FALSE(ByteType<char *>);
+        STATIC_REQUIRE_FALSE(ByteType<SomeObject>);
+    }
+
+    SECTION("Rejects references to byte types")
+    {
+        STATIC_REQUIRE_FALSE(ByteType<char &>);
+        STATIC_REQUIRE_FALSE(ByteType<unsigned char const &>);
+        STATIC_REQUIRE_FALSE(ByteType<std::byte &&>);
+    }
+}
+
+TEST_CASE("ByteSpan and ReadableByteSpan concept constraints")
+{
+    SECTION("Accepts spans of writable byte-like types")
+    {
+        STATIC_REQUIRE(ByteSpan<span<char>>);
+        STATIC_REQUIRE(ByteSpan<span<unsigned char>>);
+        STATIC_REQUIRE(ByteSpan<span<byte>>);
+        STATIC_REQUIRE(ByteSpan<span<std::byte>>);
+    }
+
+    SECTION("Rejects spans of const byte-like types for ByteSpan")
+    {
+        STATIC_REQUIRE_FALSE(ByteSpan<span<char const>>);
+        STATIC_REQUIRE_FALSE(ByteSpan<span<unsigned char const>>);
+        STATIC_REQUIRE_FALSE(ByteSpan<span<byte const>>);
+        STATIC_REQUIRE_FALSE(ByteSpan<span<std::byte const>>);
+    }
+
+    SECTION("Accepts spans of readable (const) byte-like types for ReadableByteSpan")
+    {
+        STATIC_REQUIRE(ReadableByteSpan<span<char const>>);
+        STATIC_REQUIRE(ReadableByteSpan<span<unsigned char const>>);
+        STATIC_REQUIRE(ReadableByteSpan<span<byte const>>);
+        STATIC_REQUIRE(ReadableByteSpan<span<std::byte const>>);
+    }
+
+    SECTION("Accepts writable spans for ReadableByteSpan")
+    {
+        STATIC_REQUIRE(ReadableByteSpan<span<char>>);
+        STATIC_REQUIRE(ReadableByteSpan<span<unsigned char>>);
+        STATIC_REQUIRE(ReadableByteSpan<span<byte>>);
+        STATIC_REQUIRE(ReadableByteSpan<span<std::byte>>);
+    }
+
+    SECTION("Rejects spans of unrelated element types")
+    {
+        STATIC_REQUIRE_FALSE(ByteSpan<span<int>>);
+        STATIC_REQUIRE_FALSE(ByteSpan<span<double>>);
+        STATIC_REQUIRE_FALSE(ReadableByteSpan<span<int>>);
+        STATIC_REQUIRE_FALSE(ReadableByteSpan<span<void *>>);
+    }
+
+    SECTION("Rejects completely unrelated types")
+    {
+        STATIC_REQUIRE_FALSE(ByteSpan<int>);
+        STATIC_REQUIRE_FALSE(ReadableByteSpan<int>);
+        STATIC_REQUIRE_FALSE(ByteSpan<std::array<char, 4>>);
+        STATIC_REQUIRE_FALSE(ReadableByteSpan<std::array<std::byte, 4>>);
+        STATIC_REQUIRE_FALSE(ByteSpan<SomeObject>);
+        STATIC_REQUIRE_FALSE(ReadableByteSpan<SomeOtherObject>);
+    }
+
+    SECTION("Rejects references to spans")
+    {
+        STATIC_REQUIRE_FALSE(ByteSpan<span<char> &>);
+        STATIC_REQUIRE_FALSE(ReadableByteSpan<span<std::byte const> &>);
+    }
+
+    SECTION("Rejects volatile spans")
+    {
+        STATIC_REQUIRE_FALSE(ByteSpan<span<char> volatile>);
+        STATIC_REQUIRE_FALSE(ReadableByteSpan<span<std::byte const> volatile>);
+    }
+}
+
+TEST_CASE("HasTypeOption concept correctness")
+{
+    using V1 = std::variant<int, float, std::string>;
+    using V2 = Var<int, double, char>;
+
+    SECTION("Matches when the type is an exact alternative")
+    {
+        STATIC_REQUIRE(HasTypeOption<V1, int>);
+        STATIC_REQUIRE(HasTypeOption<V1, float>);
+        STATIC_REQUIRE(HasTypeOption<V1, std::string>);
+
+        STATIC_REQUIRE(HasTypeOption<V2, double>);
+        STATIC_REQUIRE(HasTypeOption<V2, char>);
+    }
+
+    SECTION("Matches when any of multiple types are valid alternatives")
+    {
+        STATIC_REQUIRE(HasTypeOption<V1, double, std::string>);
+        STATIC_REQUIRE(HasTypeOption<V2, char, std::byte>);
+    }
+
+    SECTION("Rejects when none of the given types match")
+    {
+        STATIC_REQUIRE_FALSE(HasTypeOption<V1, double>);
+        STATIC_REQUIRE_FALSE(HasTypeOption<V1, void *>);
+        STATIC_REQUIRE_FALSE(HasTypeOption<V2, long, bool>);
+    }
+
+    SECTION("Rejects completely unrelated types")
+    {
+        STATIC_REQUIRE_FALSE(HasTypeOption<int, int>);
+        STATIC_REQUIRE_FALSE(HasTypeOption<std::string, char>);
+    }
+
+    SECTION("Works equally for std::variant and alias Var")
+    {
+        using A = std::variant<int, char>;
+        using B = Var<int, char>;
+        STATIC_REQUIRE(HasTypeOption<A, int>);
+        STATIC_REQUIRE(HasTypeOption<B, char>);
+    }
+
+    SECTION("Const-qualified variants still match")
+    {
+        using CV = std::variant<int, float> const;
+        STATIC_REQUIRE(HasTypeOption<CV, int>);
+        STATIC_REQUIRE_FALSE(HasTypeOption<CV, double>);
+    }
+
+    SECTION("Reference variants are accepted")
+    {
+        using V = std::variant<int, float>;
+        STATIC_REQUIRE(HasTypeOption<V &, int>);
+        STATIC_REQUIRE(HasTypeOption<V const &, float>);
+    }
+}
+
+TEST_CASE("TypeOptionOf concept constraints")
+{
+    using V1 = std::variant<int, float, std::string>;
+    using V2 = Var<char, double, bool>;
+
+    SECTION("Recognizes valid type options for std::variant")
+    {
+        STATIC_REQUIRE(TypeOptionOf<int, V1>);
+        STATIC_REQUIRE(TypeOptionOf<float, V1>);
+        STATIC_REQUIRE(TypeOptionOf<std::string, V1>);
+    }
+
+    SECTION("Rejects types not in the variant")
+    {
+        STATIC_REQUIRE_FALSE(TypeOptionOf<char, V1>);
+        STATIC_REQUIRE_FALSE(TypeOptionOf<long, V1>);
+    }
+
+    SECTION("Recognizes valid type options for Var alias")
+    {
+        STATIC_REQUIRE(TypeOptionOf<char, V2>);
+        STATIC_REQUIRE(TypeOptionOf<double, V2>);
+        STATIC_REQUIRE(TypeOptionOf<bool, V2>);
+    }
+
+    SECTION("Rejects invalid types for Var alias")
+    {
+        STATIC_REQUIRE_FALSE(TypeOptionOf<int, V2>);
+        STATIC_REQUIRE_FALSE(TypeOptionOf<std::string, V2>);
+    }
+
+    SECTION("Works with const and reference variants")
+    {
+        using CV1 = const V1;
+        using RV1 = V1 &;
+        STATIC_REQUIRE(TypeOptionOf<float, CV1>);
+        STATIC_REQUIRE(TypeOptionOf<int, RV1>);
+    }
+
+    SECTION("Works equally for Var and std::variant interchangeably")
+    {
+        STATIC_REQUIRE(TypeOptionOf<bool, V2>);
+        STATIC_REQUIRE(TypeOptionOf<std::string, V1>);
+    }
+}
+
+TEST_CASE("EmptyClass concept constraints")
+{
+    SECTION("Fundamental empty classes")
+    {
+        STATIC_REQUIRE(EmptyClass<SomeObject>);
+        STATIC_REQUIRE(EmptyClass<WithStatic>);
+        STATIC_REQUIRE(EmptyClass<WithMemberFunc>);
+    }
+
+    SECTION("Non-empty classes fail the concept")
+    {
+        STATIC_REQUIRE_FALSE(EmptyClass<NonEmpty>);
+        STATIC_REQUIRE_FALSE(EmptyClass<WithVirtual>);
+        STATIC_REQUIRE_FALSE(EmptyClass<WithBool>);
+    }
+
+    SECTION("Empty classes with inheritance still satisfy EBO")
+    {
+        STATIC_REQUIRE(EmptyClass<SomeEmptyObject>);
+        STATIC_REQUIRE(EmptyClass<ThirdEmptyObject>);
+    }
+
+    SECTION("Multiple empty base classes should still have EBO")
+    {
+        STATIC_REQUIRE(EmptyClass<DerivedEmpty>);
+    }
+
+    SECTION("Classes with empty members fail EBO")
+    {
+        STATIC_REQUIRE_FALSE(EmptyClass<HasEmptyMember>);
+    }
+
+    SECTION("Const/volatile/reference qualified variants")
+    {
+        STATIC_REQUIRE(EmptyClass<SomeObject const>);
+        STATIC_REQUIRE(EmptyClass<SomeObject volatile>);
+        STATIC_REQUIRE(EmptyClass<SomeObject const volatile>);
+        STATIC_REQUIRE_FALSE(EmptyClass<SomeObject &>);
+        STATIC_REQUIRE_FALSE(EmptyClass<SomeObject const &>);
+    }
+
+    SECTION("Standard library empty types")
+    {
+        // These should always be EBO...
+        STATIC_REQUIRE(EmptyClass<std::default_delete<int>>);
+        STATIC_REQUIRE(EmptyClass<std::allocator<void>>);
+    }
+}
+
+TEST_CASE("varIndex function returns correct index for std::variant and Var")
+{
+    using V1 = std::variant<int, float, std::string>;
+    using V2 = Var<char, double, bool>;
+
+    constexpr V1 v1{};
+    constexpr V2 v2{};
+
+    SECTION("Correctly finds index of existing types")
+    {
+        STATIC_REQUIRE(varIndex<int>(v1) == 0);
+        STATIC_REQUIRE(varIndex<float>(v1) == 1);
+        STATIC_REQUIRE(varIndex<std::string>(v1) == 2);
+
+        STATIC_REQUIRE(varIndex<char>(v2) == 0);
+        STATIC_REQUIRE(varIndex<double>(v2) == 1);
+        STATIC_REQUIRE(varIndex<bool>(v2) == 2);
+    }
+
+    SECTION("Works with const-qualified variants")
+    {
+        constexpr const V1 cv1{};
+        STATIC_REQUIRE(varIndex<float>(cv1) == 1);
+    }
+
+    SECTION("Works with reference to variant")
+    {
+        constexpr static V1 v1_local{};
+        constexpr V1 const &ref = v1_local;
+        STATIC_REQUIRE(varIndex<std::string>(ref) == 2);
+    }
+
+    SECTION("Returns sentinel index (variant_size) for types not present")
+    {
+        constexpr auto missing = varIndex<long>(v1);
+        STATIC_REQUIRE(missing == std::variant_size_v<V1>);
+        constexpr auto also_missing = varIndex<int>(v2);
+        STATIC_REQUIRE_FALSE(also_missing < std::variant_size_v<V2>);
+    }
+
+    SECTION("Works equally for Var alias and std::variant")
+    {
+        STATIC_REQUIRE(varIndex<double>(v2) == 1);
+        STATIC_REQUIRE(varIndex<std::string>(v1) == 2);
+    }
 }
 
 TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges]")

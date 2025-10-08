@@ -1084,6 +1084,24 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 # define KH_ATTR_FLATTEN gnu::flatten
 #endif
 
+/*!
+ * \def KH_EBO_EMPTY_BASES
+ * Preprocessor define to the correct attribute syntax to use flatten for the current compiler.
+ *
+ * The "flatten" directive has not made its way to standard C++, so this attribute is dependent on using a supported
+ * compiler. If libKirHut is being compiled on an unsupported compiler, this will simply generate "flatten" which should
+ * emit a warning and be ignored by all C++ compliant compilers.
+ *
+ * This is always defined after including this header.
+ *
+ * \hideinitializer
+ */
+#if KH_COMPILED_WITH_MSVC
+# define KH_EBO_EMPTY_BASES __declspec(empty_bases)
+#else
+# define KH_EBO_EMPTY_BASES
+#endif
+
 namespace KirHut
 {
 
