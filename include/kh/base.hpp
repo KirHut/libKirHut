@@ -487,24 +487,24 @@ concept InstanceOf = InstanceOfValue<Test_T, Template>;
  *
  * \brief SpanOfValue
  */
-template <typename Wrong_T, typename Element_T>
-constexpr bool SpanOfValue = false;
+template <typename Wrong_T>
+constexpr bool SpanTypeValue = false;
 
 /*!
  * \internal
  *
  * \brief SpanOfValue
  */
-template <typename Element_T, size_t Extent>
-constexpr bool SpanOfValue<span<Element_T, Extent>, Element_T> = true;
+template <typename Element_T, size_t extent>
+constexpr bool SpanTypeValue<span<Element_T, extent>> = true;
 
 /*!
  * \internal
  *
  *
  */
-template <typename Test_T, typename Element_T>
-concept SpanOf = SpanOfValue<Test_T, std::remove_cv_t<Element_T>>;
+template <typename Test_T>
+concept SpanType = SpanTypeValue<Test_T>;
 
 /*!
  * \internal
@@ -639,10 +639,10 @@ constexpr Tested_T convertTest(Arg_Ts &&...args)
 /*!
  * Concept to identify if a type is one of a set of distinct types.
  *
- * There are times when you just want a concept to be some fixed set of types you want to accept, but don't want to just
- * make separate overloads of that function for each type. This concept simplifies taking those arguments, and you can
- * easily define other concepts in terms of this concept. You can also check the return types of expressions to ensure
- * that they return one of a distinct set of types.
+ * There are times when you just want a concept to a specific fixed set of types you want to accept, but don't want to
+ * just make separate overloads of that function for each type. This concept simplifies taking those arguments, and you
+ * can easily define other concepts in terms of this concept. You can also check the return types of expressions to
+ * ensure that they return one of a distinct set of types.
  */
 template <typename Tested_T, typename First_T, typename... Rest_Ts>
 concept OneOf = std::same_as<Tested_T, First_T> or (std::same_as<Tested_T, Rest_Ts> or ...);
@@ -651,8 +651,8 @@ concept OneOf = std::same_as<Tested_T, First_T> or (std::same_as<Tested_T, Rest_
  * Concept to identify if a type can be converted to one of a set of distinct types.
  *
  * This is just the std::convertible_to concept applied to multiple types instead of one, so you are not forced to make
- * a long chain of std::convertible_to concepts or std::is_convertible_to_v templates, and can instead just use this
- * concept to get the same power.
+ * a long chain of std::convertible_to concepts or std::is_convertible_to_v, and can instead just use this concept to
+ * get the same power.
  */
 template <typename Tested_T, typename First_T, typename... Rest_Ts>
 concept ConvertsTo = std::convertible_to<Tested_T, First_T> or (std::convertible_to<Tested_T, Rest_Ts> or ...);
@@ -664,12 +664,17 @@ concept ConvertsTo = std::convertible_to<Tested_T, First_T> or (std::convertible
  * allows matching against a given set of template types, without needing a bunch of template specializations or
  * overloads. This concept simplifies taking template arguments, and you can easily define other concepts in terms of
  * this concept.
+ *
+ * \note Important: This concept cannot be used to identify a template type that has any non-type template parameters!
+ * As such, you cannot use this concept to identify template types like std::span or std::array, and must instead use
+ * alternative concepts in this library for that.
  */
-template <typename Tested, template <typename...> typename Template, template <typename...> typename... Templates>
-concept InstanceOf = Detail::InstanceOf<Tested, Template> or (Detail::InstanceOf<Tested, Templates> or ...);
+template <typename Tested_T, template <typename...> typename Template_T, template <typename...> typename... Template_Ts>
+concept InstanceOf = Detail::InstanceOf<std::remove_cvref_t<Tested_T>, Template_T> or
+                     (Detail::InstanceOf<std::remove_cvref_t<Tested_T>, Template_Ts> or ...);
 
 /*!
- * Concept to identify types that are std::span of a given set of ElementTypes, or simply a span if no ElementTypes are
+ * Concept to identify types that are std::span of a given set of Element_Ts, or a writable span if no arguments are
  * given.
  *
  * This is similar to InstanceOf in that it is for identifying a std::span template type, however it only works for
@@ -678,12 +683,18 @@ concept InstanceOf = Detail::InstanceOf<Tested, Template> or (Detail::InstanceOf
  * concept accepts no elements and will match with any std::span whatsoever. This is useful to remove the need to
  * explicitly accept an Extent parameter in abbreviated template functions and methods.
  */
-template <typename Tested, typename... ElementTypes>
-concept SpanOf = requires {
-    typename Tested::element_type;
-    requires Detail::SpanOf<Tested, typename Tested::element_type>;
-    ((sizeof...(ElementTypes) == 0) or ... or Detail::SpanOf<Tested, ElementTypes>);
-};
+template <typename Tested_T, typename... Element_Ts>
+concept SpanOf = Detail::SpanType<Tested_T> and
+                 ((sizeof...(Element_Ts) == 0 and not std::is_const_v<typename Tested_T::element_type>) or
+                  (OneOf<typename Tested_T::element_type, Element_Ts> or ...));
+
+/*!
+ * Concept to identify types that are a std::span of a given set of Element_Ts, ignoring cv-qualifications.
+ */
+template <typename Tested_T, typename... Element_Ts>
+concept ReadableSpanOf =
+    Detail::SpanType<Tested_T> and (std::same_as<Element_Ts, std::remove_cv_t<Element_Ts>> and ...) and
+    (sizeof...(Element_Ts) == 0 or (OneOf<std::remove_cv_t<typename Tested_T::element_type>, Element_Ts> or ...));
 
 /*!
  * Concept to identify the different types that may bypass strict aliasing rules in C++.
@@ -745,25 +756,25 @@ template <typename HasType, typename VarType>
 concept TypeOptionOf = Detail::HasTypeOption<VarType, HasType>;
 
 /*!
- * Concept to identify types that are implicitly convertible to other types.
+ * Concept to identify types that are implicitly constructible from a set of arguments.
  *
- * The C++ standard library has std::convertible_to, which is great for checking if a type can be implicitly converted
- * to another type, but if you need to determine if it is convertible using explicit conversion, this concept can be
- * used. This library has two conversion concepts, that follow this truth table:
+ * The C++ standard library has std::constructible_from, which is great for checking if a type can be constructed from
+ * a given set of arguments explicitly, but with C++ universal initialization syntax there is now the ability to
+ * implicitly call any constructor with braced initialization, but there is no test to determine if a constructor
+ * supports that functionality. This test provides that support.
  *
- * | Object Conversion | std::convertible_to | ExplicitlyConvertible | ImplicitlyConvertible |
- * |-------------------|---------------------|-----------------------|-----------------------|
- * | Implicit          | true                | false                 | true                  |
- * | Explicit          | true                | true                  | false                 |
- * | Not Convertible   | false               | false                 | false                 |
+ * | Object Conversion     | std::convertible_to | ExplicitlyConvertible | ImplicitlyConstructible |
+ * |-----------------------|---------------------|-----------------------|-------------------------|
+ * | To{ From }            | true                | true                  | true                    |
+ * | { From } -> To        | true                | false                 | true                    |
+ * | static_cast<To>(From) | true                | true                  | false                   |
  *
  * Using the two concepts defined in this library, you can determine the implicit and explicit conversion status of any
  * given type in C++.
  */
-template <typename To, typename First, typename... From>
-concept ExplicitlyConstructible = std::constructible_from<To, First, From...> and not requires {
-    Detail::convertTest<To>(std::declval<First>(), std::declval<From>()...);
-};
+template <typename To, typename... From>
+concept ImplicitlyConstructible =
+    std::constructible_from<To, From...> and requires { convertTest<To>(std::declval<From>()...); };
 
 /*!
  * Concept to identify types that are (only) explicitly convertible to other types.
@@ -781,7 +792,9 @@ concept ExplicitlyConstructible = std::constructible_from<To, First, From...> an
  * given type in C++.
  */
 template <typename From, typename To>
-concept ExplicitlyConvertible = not std::convertible_to<From, To> and requires(From f) { static_cast<To>(f); };
+concept ExplicitlyConvertible = not std::convertible_to<From, To> and requires(From f) {
+    { static_cast<To>(f) } -> std::same_as<To>;
+};
 
 /*!
  * Read the data pointed at by \p loc and return it as the given \p T integer type for the native platform.
@@ -968,7 +981,7 @@ constexpr void toLittleEndian(Numeric auto value, span<byte, SZ> dest) noexcept(
  * \return The second template argument to the array, as a size_t value.
  */
 template <typename T, size_t SIZE>
-constexpr size_t arraySize([[maybe_unused]] array<T, SIZE> &ar)
+consteval size_t arraySize([[maybe_unused]] array<T, SIZE> &ar)
 {
     return SIZE;
 }
