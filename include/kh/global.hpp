@@ -457,26 +457,6 @@
  */
 
 /*!
- * \def KH_LIBRARY_BUILD
- *
- * Preprocessor flag set by the user to notify libKirHut headers that it is undergoing a library build.
- *
- * On Windows, shared library symbols need to explicitly export themselves, and those same symbols need to be explicitly
- * imported from the user application. This flag tells libKirHut headers that they are undergoing a build as a library,
- * so if there is dynamic linking this flag will influence the expansion of #KH_EXPORT.
- */
-
-/*!
- * \def KH_DYNAMIC_LINK
- *
- * Preprocessor flag set by the build to notify libKirHut headers that it is being built with dynamic linking.
- *
- * On Windows, shared library symbols need to explicitly export themselves, and those same symbols need to be explicitly
- * imported from the user application. This flag tells libKirHut headers that they are undergoing a build with dynamic
- * linking, so #KH_EXPORT will expand into something other than an empty string on Windows.
- */
-
-/*!
  * \def KH_USES_QT
  *
  * Preprocessor flag to build libKirHut and applications using libKirHut using the Qt extensions.
@@ -499,6 +479,19 @@
  *
  * The conversion from UTF-8 to the output format is performed by boost:nowide, which is used internally by this
  * library on Windows. Otherwise, UTF-8 is just assumed as a universal standard.
+ */
+
+/*!
+ * \def KH_USES_TOML
+ *
+ * Preprocessor flag to build libKirHut with the TOML parsing functionality included.
+ *
+ * TOML parsing is a frequently useful capability when developing a very wide variety of applications, however it is a
+ * heavy parsing system and may not be necessary for certain extremely small projects. If your project cannot include
+ * TOML parsing, you can set this to false and the KirHut::TOML namespace will be completely empty and have no members
+ * (save for the member flagging that the namespace is empty).
+ *
+ * TOML documents are required to be in UTF-8 per the TOML 1.0.0 standard.
  */
 
 //! \}
@@ -1045,6 +1038,26 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 #endif
 
 /*!
+ * \def KH_EBO_EMPTY_BASES
+ * Preprocessor define to fix inheriting from multiple empty base classes not applying EBO to those classes in MSVC.
+ *
+ * MSVC sucks when it comes to following C++ standards. There was a long standing bug with MSVC's object model with
+ * regards to inheriting from multiple empty base objects breaking EBO. This is supposed to work per the C++ standard,
+ * however it only works if we use a __declspec(empty_bases) decorator before the name of the class/struct declaration.
+ * This should only need to be done in rare conditions, but when you need EBO to work when inheriting from potentially
+ * multiple empty base classes, this is a necessity.
+ *
+ * This is always defined after including this header.
+ *
+ * \hideinitializer
+ */
+#if KH_COMPILED_WITH_MSVC
+# define KH_EBO_EMPTY_BASES __declspec(empty_bases)
+#else
+# define KH_EBO_EMPTY_BASES
+#endif
+
+/*!
  * \def KH_ATTR_NO_UNIQUE_ADDRESS
  * Preprocessor define to the correct attribute syntax to use no_unique_address for the current compiler.
  *
@@ -1082,24 +1095,6 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 # define KH_ATTR_FLATTEN msvc::flatten
 #else
 # define KH_ATTR_FLATTEN gnu::flatten
-#endif
-
-/*!
- * \def KH_EBO_EMPTY_BASES
- * Preprocessor define to the correct attribute syntax to use flatten for the current compiler.
- *
- * The "flatten" directive has not made its way to standard C++, so this attribute is dependent on using a supported
- * compiler. If libKirHut is being compiled on an unsupported compiler, this will simply generate "flatten" which should
- * emit a warning and be ignored by all C++ compliant compilers.
- *
- * This is always defined after including this header.
- *
- * \hideinitializer
- */
-#if KH_COMPILED_WITH_MSVC
-# define KH_EBO_EMPTY_BASES __declspec(empty_bases)
-#else
-# define KH_EBO_EMPTY_BASES
 #endif
 
 namespace KirHut
@@ -1657,10 +1652,9 @@ constexpr int exitCode(WhyInvalid why) noexcept
 # define KH_DEPRECATED_EXPORT
 # define KH_DEPRECATED_NO_EXPORT
 # define KH_CLANG_GCC_COMPATIBLE
-# define KH_LIBRARY_BUILD
-# define KH_DYNAMIC_LINK
 # define KH_USES_QT
 # define KH_USES_FMT
+# define KH_USES_TOML
 # define KH_DEBUG
 # define KH_RELEASE
 # define KH_MUST_HAVE_16_32_64

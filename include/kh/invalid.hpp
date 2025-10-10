@@ -689,10 +689,10 @@ using BasicMessageInvalid = BasicInvalid<MessageViewWhy<Char_T>>;
 
 //! \cond
 // Poor Doxygen doesn't understand extern template declarations.
-extern template class KH_EXPORT BasicInvalid<WhyInvalid>;
-extern template class KH_EXPORT BasicInvalid<MessageViewWhy<char>>;
-extern template class KH_EXPORT BasicInvalid<string>;
-extern template class KH_EXPORT BasicInvalid<string_view>;
+extern template class KH_EXPLICIT_TEMPLATE_EXPORT BasicInvalid<WhyInvalid>;
+extern template class KH_EXPLICIT_TEMPLATE_EXPORT BasicInvalid<MessageViewWhy<char>>;
+extern template class KH_EXPLICIT_TEMPLATE_EXPORT BasicInvalid<string>;
+extern template class KH_EXPLICIT_TEMPLATE_EXPORT BasicInvalid<string_view>;
 //! \endcond
 
 using Invalid        = BasicInvalid<WhyInvalid>;

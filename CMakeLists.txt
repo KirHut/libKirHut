@@ -246,7 +246,25 @@ endif()
 
 target_link_libraries(libKirHut PUBLIC libKirHutInterface)
 target_link_libraries(libKirHut PRIVATE ${libKirHut_LINK_LIBRARIES})
+
+string(CONCAT KH_EXPORT_HEADER_ADDON
+    "\n"
+    "#ifdef KH_COMPILED_WITH_MSVC\n"
+    "#  ifdef libKirHut_EXPORTS\n"
+    "#    define KH_EXPLICIT_TEMPLATE_EXPORT\n"
+    "#    define KH_EXPLICIT_TEMPLATE_INSTANCE KH_EXPORT\n"
+    "#  else\n"
+    "#    define KH_EXPLICIT_TEMPLATE_EXPORT KH_EXPORT\n"
+    "#    define KH_EXPLICIT_TEMPLATE_INSTANCE\n"
+    "#  endif\n"
+    "#else\n"
+    "#  define KH_EXPLICIT_TEMPLATE_EXPORT KH_EXPORT\n"
+    "#  define KH_EXPLICIT_TEMPLATE_INSTANCE\n"
+    "#endif\n"
+)
+
 generate_export_header(libKirHut
     BASE_NAME kh
     EXPORT_FILE_NAME include/kh/export.hpp
+    CUSTOM_CONTENT_FROM_VARIABLE KH_EXPORT_HEADER_ADDON
 )

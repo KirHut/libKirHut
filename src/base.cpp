@@ -19,7 +19,6 @@
 ***********************************************************************************************************************/
 #include "kh/base.hpp"
 
-#include "kh/ranges.hpp"
 #include "kh/errors.hpp"
 
 #include <chrono>
@@ -36,38 +35,6 @@ void Detail::throwTooSmallSpan(string_view message)
 {
     throw IllegalArgument(message);
 }
-
-// Using a std::span here is more annoying than just using a contiguous_range because the QByteArray in one of the
-// toStr() methods would need to be an lvalue.
-template <typename StrType, R::contiguous_range RangeType>
-inline StrType toStrImpl(RangeType rng)
-{
-    // The below code is shorter, but runs about 5-10% slower on most compilers. This is because memcpy is heavily
-    // optimized.
-    // return { R::begin(rng), R::end(rng) };
-
-    StrType ret(R::size(rng), 0);
-    memcpy(ret.data(), R::data(rng), R::size(rng));
-    return ret;
-}
-
-string toStr(const char *from)
-{
-    return string{ from };
-}
-
-#if KH_USES_QT
-QString toQStr(string_view in) noexcept
-{
-    return { QByteArray::fromRawData(in.data(), in.size()) };
-}
-
-string toStr(QString const &in) noexcept
-{
-    // This used to do something else, but now it just calls a QString method. It is retained for source compatibility.
-    return in.toStdString();
-}
-#endif // KH_USES_QT
 
 u64 currentTicks() noexcept
 {

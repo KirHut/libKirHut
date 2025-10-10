@@ -767,6 +767,338 @@ TEST_CASE("varIndex function returns correct index for std::variant and Var")
     }
 }
 
+TEST_CASE("fromBigEndian() functions", "[base][endian][utility]")
+{
+    // Reference values: we encode these as BE byte arrays
+    constexpr std::array<unsigned char, 2> be16 = { 0x12, 0x34 };
+    constexpr std::array<unsigned char, 4> be32 = { 0x12, 0x34, 0x56, 0x78 };
+    constexpr std::array<unsigned char, 8> be64 = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF };
+
+    constexpr uint16_t expect16 = 0x1234;
+    constexpr uint32_t expect32 = 0x12'34'56'78;
+    constexpr uint64_t expect64 = 0x01'23'45'67'89'AB'CD'EFULL;
+
+    SECTION("Constexpr pointer overloads")
+    {
+        STATIC_REQUIRE(fromBigEndian<uint16_t>(be16.data()) == expect16);
+        STATIC_REQUIRE(fromBigEndian<uint32_t>(be32.data()) == expect32);
+        STATIC_REQUIRE(fromBigEndian<uint64_t>(be64.data()) == expect64);
+    }
+
+    SECTION("Constexpr span overloads")
+    {
+        STATIC_REQUIRE(fromBigEndian<uint16_t>(std::span<unsigned char const, 2>(be16)) == expect16);
+        STATIC_REQUIRE(fromBigEndian<uint32_t>(std::span<unsigned char const, 4>(be32)) == expect32);
+        STATIC_REQUIRE(fromBigEndian<uint64_t>(std::span<unsigned char const, 8>(be64)) == expect64);
+    }
+
+    SECTION("Runtime pointer overloads")
+    {
+        std::array<unsigned char, 2> v16 = be16;
+        std::array<unsigned char, 4> v32 = be32;
+        std::array<unsigned char, 8> v64 = be64;
+
+        unsigned char *volatile vp16 = v16.data();
+        unsigned char *volatile vp32 = v32.data();
+        unsigned char *volatile vp64 = v64.data();
+
+        REQUIRE(fromBigEndian<uint16_t>(vp16) == expect16);
+        REQUIRE(fromBigEndian<uint32_t>(vp32) == expect32);
+        REQUIRE(fromBigEndian<uint64_t>(vp64) == expect64);
+    }
+
+    SECTION("Runtime span overloads")
+    {
+        std::array<unsigned char, 2> v16 = be16;
+        std::array<unsigned char, 4> v32 = be32;
+        std::array<unsigned char, 8> v64 = be64;
+
+        auto s16 = std::span<unsigned char>(v16);
+        auto s32 = std::span<unsigned char const>(v32);
+        auto s64 = std::span<unsigned char const>(v64);
+
+        REQUIRE(fromBigEndian<uint16_t>(s16) == expect16);
+        REQUIRE(fromBigEndian<uint32_t>(s32) == expect32);
+        REQUIRE(fromBigEndian<uint64_t>(s64) == expect64);
+    }
+
+#if defined(KH_USE_128BIT_TYPES)
+    SECTION("Constexpr and runtime 128-bit tests")
+    {
+        constexpr std::array<unsigned char, 16> be128 = { 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+                                                          0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 };
+
+        constexpr u128 expect128 =
+            (static_cast<u128>(0x01'23'45'67'89'AB'CD'EFULL) << 64) | static_cast<u128>(0xFE'DC'BA'98'76'54'32'10ULL);
+
+        STATIC_REQUIRE(fromBigEndian<u128>(be128.data()) == expect128);
+        STATIC_REQUIRE(fromBigEndian<u128>(std::span<unsigned char const, 16>(be128)) == expect128);
+
+        std::array<unsigned char, 16> v128 = be128;
+        unsigned char *volatile vp128      = v128.data();
+        REQUIRE(fromBigEndian<u128>(vp128) == expect128);
+        REQUIRE(fromBigEndian<u128>(std::span<unsigned char const>(v128)) == expect128);
+    }
+#endif
+
+    SECTION("Span too small at runtime throws")
+    {
+        std::array<unsigned char, 2> smallBuf{ 0x12, 0x34 };
+        auto smallSpan = std::span<unsigned char const>(smallBuf);
+        CHECK_THROWS(fromBigEndian<uint32_t>(smallSpan));
+    }
+}
+
+TEST_CASE("fromLittleEndian() conversions", "[base][endian]")
+{
+    constexpr array<u8, 2> bytes16 = { 0x34, 0x12 };
+    constexpr array<u8, 4> bytes32 = { 0x78, 0x56, 0x34, 0x12 };
+    constexpr array<u8, 8> bytes64 = { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01 };
+
+    constexpr u16 expect16 = 0x1234;
+    constexpr u32 expect32 = 0x12'34'56'78;
+    constexpr u64 expect64 = 0x01'23'45'67'89'AB'CD'EFULL;
+
+    SECTION("Constexpr fromLittleEndian pointer overloads")
+    {
+        STATIC_REQUIRE(fromLittleEndian<u16>(bytes16.data()) == expect16);
+        STATIC_REQUIRE(fromLittleEndian<u32>(bytes32.data()) == expect32);
+        STATIC_REQUIRE(fromLittleEndian<u64>(bytes64.data()) == expect64);
+
+        // Signed variants should yield correct values as well
+        STATIC_REQUIRE(fromLittleEndian<i16>(bytes16.data()) == static_cast<i16>(expect16));
+        STATIC_REQUIRE(fromLittleEndian<i32>(bytes32.data()) == static_cast<i32>(expect32));
+        STATIC_REQUIRE(fromLittleEndian<i64>(bytes64.data()) == static_cast<i64>(expect64));
+    }
+
+    SECTION("Runtime fromLittleEndian pointer overloads")
+    {
+        array<u8, 2> bytes16d = bytes16;
+        array<u8, 4> bytes32d = bytes32;
+        array<u8, 8> bytes64d = bytes64;
+
+        u8 *volatile bytes16p = bytes16d.data();
+        u8 *volatile bytes32p = bytes32d.data();
+        u8 *volatile bytes64p = bytes64d.data();
+
+        REQUIRE(fromLittleEndian<u16>(bytes16p) == expect16);
+        REQUIRE(fromLittleEndian<u32>(bytes32p) == expect32);
+        REQUIRE(fromLittleEndian<u64>(bytes64p) == expect64);
+    }
+
+    SECTION("Constexpr fromLittleEndian span<const> overloads")
+    {
+        constexpr static array<u8, 2> bytes16 = { 0x34, 0x12 };
+        constexpr static array<u8, 4> bytes32 = { 0x78, 0x56, 0x34, 0x12 };
+        constexpr static array<u8, 8> bytes64 = { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01 };
+
+        constexpr span<u8 const, 2> span16{ bytes16 };
+        constexpr span<u8 const, 4> span32{ bytes32 };
+        constexpr span<u8 const, 8> span64{ bytes64 };
+
+        STATIC_REQUIRE(fromLittleEndian<u16>(span16) == 0x1234);
+        STATIC_REQUIRE(fromLittleEndian<u32>(span32) == 0x12'34'56'78);
+        STATIC_REQUIRE(fromLittleEndian<u64>(span64) == 0x01'23'45'67'89'AB'CD'EFULL);
+    }
+
+    SECTION("Runtime fromLittleEndian span<const> overloads")
+    {
+        u8 volatile bytes16[2] = { 0x34, 0x12 };
+        u8 volatile bytes32[4] = { 0x78, 0x56, 0x34, 0x12 };
+        u8 volatile bytes64[8] = { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01 };
+
+        array<u8, 2> a16 = { bytes16[0], bytes16[1] };
+        array<u8, 4> a32 = { bytes32[0], bytes32[1], bytes32[2], bytes32[3] };
+        array<u8, 8> a64 = { bytes64[0], bytes64[1], bytes64[2], bytes64[3],
+                             bytes64[4], bytes64[5], bytes64[6], bytes64[7] };
+
+        REQUIRE(fromLittleEndian<u16>(span<u8 const>(a16)) == 0x1234);
+        REQUIRE(fromLittleEndian<u32>(span<u8 const>(a32)) == 0x12'34'56'78);
+        REQUIRE(fromLittleEndian<u64>(span<u8 const>(a64)) == 0x01'23'45'67'89'AB'CD'EFULL);
+    }
+
+    SECTION("Runtime fromLittleEndian span<> overloads (mutable)")
+    {
+        array<u8, 2> bytes16 = { 0x34, 0x12 };
+        array<u8, 4> bytes32 = { 0x78, 0x56, 0x34, 0x12 };
+        array<u8, 8> bytes64 = { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01 };
+
+        REQUIRE(fromLittleEndian<u16>(span<u8>(bytes16)) == 0x1234);
+        REQUIRE(fromLittleEndian<u32>(span<u8>(bytes32)) == 0x12'34'56'78);
+        REQUIRE(fromLittleEndian<u64>(span<u8>(bytes64)) == 0x01'23'45'67'89'AB'CD'EFULL);
+    }
+
+#if defined(KH_USE_128BIT_TYPES)
+    SECTION("Constexpr and runtime fromLittleEndian 128-bit tests")
+    {
+        constexpr array<u8, 16> bytes128 = { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01,
+                                             0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 };
+
+        constexpr u128 expect128 =
+            (static_cast<u128>(0x10'32'54'76'98'BA'DC'FEULL) << 64) | 0x01'23'45'67'89'AB'CD'EFULL;
+
+        STATIC_REQUIRE(fromLittleEndian<u128>(bytes128.data()) == expect128);
+        STATIC_REQUIRE(fromLittleEndian<u128>(span<u8 const, 16>{ bytes128 }) == expect128);
+
+        u8 volatile vBytes128[16] = { 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01,
+                                      0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10 };
+
+        array<u8, 16> r128 = { vBytes128[0],  vBytes128[1],  vBytes128[2],  vBytes128[3], vBytes128[4],  vBytes128[5],
+                               vBytes128[6],  vBytes128[7],  vBytes128[8],  vBytes128[9], vBytes128[10], vBytes128[11],
+                               vBytes128[12], vBytes128[13], vBytes128[14], vBytes128[15] };
+
+        REQUIRE(fromLittleEndian<u128>(span<u8>(r128)) == expect128);
+    }
+#endif
+}
+
+template <std::unsigned_integral UInt_T>
+constexpr array<byte, sizeof(UInt_T)> toBigEndianPtrOverloadTest(UInt_T start)
+{
+    array<byte, sizeof(UInt_T)> retArray{};
+    toBigEndian(start, retArray.data());
+    return retArray;
+}
+
+template <std::unsigned_integral UInt_T>
+constexpr array<byte, sizeof(UInt_T)> toBigEndianSpanOverloadTest(UInt_T start)
+{
+    array<byte, sizeof(UInt_T)> retArray{};
+    toBigEndian(start, span<byte, sizeof(UInt_T)>{ retArray });
+    return retArray;
+}
+
+TEST_CASE("toBigEndian() functions", "[base][utility][endian]")
+{
+    constexpr u16 start16   = 0x1234;
+    constexpr u32 start32   = 0x12'34'56'78;
+    constexpr u64 start64   = 0x01'23'45'67'89'AB'CD'EFULL;
+    constexpr auto expect16 = array<byte, 2>{ byte{ 0x12 }, byte{ 0x34 } };
+    constexpr auto expect32 = array<byte, 4>{ byte{ 0x12 }, byte{ 0x34 }, byte{ 0x56 }, byte{ 0x78 } };
+    constexpr auto expect64 = array<byte, 8>{ byte{ 0x01 }, byte{ 0x23 }, byte{ 0x45 }, byte{ 0x67 },
+                                              byte{ 0x89 }, byte{ 0xAB }, byte{ 0xCD }, byte{ 0xEF } };
+
+    u16 volatile vstart16 = start16;
+    u32 volatile vstart32 = start32;
+    u64 volatile vstart64 = start64;
+
+    SECTION("Constexpr toBigEndian pointer overloads")
+    {
+        STATIC_REQUIRE(toBigEndianPtrOverloadTest(start16) == expect16);
+        STATIC_REQUIRE(toBigEndianPtrOverloadTest(start32) == expect32);
+        STATIC_REQUIRE(toBigEndianPtrOverloadTest(start64) == expect64);
+    }
+
+    SECTION("Constexpr toBigEndian array-return overloads")
+    {
+        STATIC_REQUIRE(toBigEndian(start16) == expect16);
+        STATIC_REQUIRE(toBigEndian(start32) == expect32);
+        STATIC_REQUIRE(toBigEndian(start64) == expect64);
+    }
+
+    SECTION("Constexpr toBigEndian span overloads")
+    {
+        STATIC_REQUIRE(toBigEndianSpanOverloadTest(start16) == expect16);
+        STATIC_REQUIRE(toBigEndianSpanOverloadTest(start32) == expect32);
+        STATIC_REQUIRE(toBigEndianSpanOverloadTest(start64) == expect64);
+    }
+
+    SECTION("Runtime toBigEndian pointer overloads")
+    {
+        REQUIRE(toBigEndianPtrOverloadTest(vstart16) == expect16);
+        REQUIRE(toBigEndianPtrOverloadTest(vstart32) == expect32);
+        REQUIRE(toBigEndianPtrOverloadTest(vstart64) == expect64);
+    }
+
+    SECTION("Runtime toBigEndian array-return overloads")
+    {
+        REQUIRE(toBigEndian(vstart16) == expect16);
+        REQUIRE(toBigEndian(vstart32) == expect32);
+        REQUIRE(toBigEndian(vstart64) == expect64);
+    }
+
+    SECTION("Runtime toBigEndian span overloads")
+    {
+        REQUIRE(toBigEndianSpanOverloadTest(vstart16) == expect16);
+        REQUIRE(toBigEndianSpanOverloadTest(vstart32) == expect32);
+        REQUIRE(toBigEndianSpanOverloadTest(vstart64) == expect64);
+    }
+}
+
+template <std::unsigned_integral UInt_T>
+constexpr array<byte, sizeof(UInt_T)> toLittleEndianPtrOverloadTest(UInt_T start)
+{
+    array<byte, sizeof(UInt_T)> retArray{};
+    toLittleEndian(start, retArray.data());
+    return retArray;
+}
+
+template <std::unsigned_integral UInt_T>
+constexpr array<byte, sizeof(UInt_T)> toLittleEndianSpanOverloadTest(UInt_T start)
+{
+    array<byte, sizeof(UInt_T)> retArray{};
+    toLittleEndian(start, span<byte, sizeof(UInt_T)>{ retArray });
+    return retArray;
+}
+
+TEST_CASE("toLittleEndian() functions", "[base][utility][endian]")
+{
+    constexpr u16 start16 = 0x1234;
+    constexpr u32 start32 = 0x12'34'56'78;
+    constexpr u64 start64 = 0x01'23'45'67'89'AB'CD'EFULL;
+
+    constexpr auto expect16 = array{ byte{ 0x34 }, byte{ 0x12 } };
+    constexpr auto expect32 = array{ byte{ 0x78 }, byte{ 0x56 }, byte{ 0x34 }, byte{ 0x12 } };
+    constexpr auto expect64 = array{ byte{ 0xEF }, byte{ 0xCD }, byte{ 0xAB }, byte{ 0x89 },
+                                     byte{ 0x67 }, byte{ 0x45 }, byte{ 0x23 }, byte{ 0x01 } };
+
+    u16 volatile vstart16 = start16;
+    u32 volatile vstart32 = start32;
+    u64 volatile vstart64 = start64;
+
+    SECTION("Constexpr toLittleEndian pointer overloads")
+    {
+        STATIC_REQUIRE(toLittleEndianPtrOverloadTest(start16) == expect16);
+        STATIC_REQUIRE(toLittleEndianPtrOverloadTest(start32) == expect32);
+        STATIC_REQUIRE(toLittleEndianPtrOverloadTest(start64) == expect64);
+    }
+
+    SECTION("Constexpr toLittleEndian array-return overloads")
+    {
+        STATIC_REQUIRE(toLittleEndian(start16) == expect16);
+        STATIC_REQUIRE(toLittleEndian(start32) == expect32);
+        STATIC_REQUIRE(toLittleEndian(start64) == expect64);
+    }
+
+    SECTION("Constexpr toLittleEndian span overloads")
+    {
+        STATIC_REQUIRE(toLittleEndianSpanOverloadTest(start16) == expect16);
+        STATIC_REQUIRE(toLittleEndianSpanOverloadTest(start32) == expect32);
+        STATIC_REQUIRE(toLittleEndianSpanOverloadTest(start64) == expect64);
+    }
+
+    SECTION("Runtime toLittleEndian pointer overloads")
+    {
+        REQUIRE(toLittleEndianPtrOverloadTest(vstart16) == expect16);
+        REQUIRE(toLittleEndianPtrOverloadTest(vstart32) == expect32);
+        REQUIRE(toLittleEndianPtrOverloadTest(vstart64) == expect64);
+    }
+
+    SECTION("Runtime toLittleEndian array-return overloads")
+    {
+        REQUIRE(toLittleEndian(vstart16) == expect16);
+        REQUIRE(toLittleEndian(vstart32) == expect32);
+        REQUIRE(toLittleEndian(vstart64) == expect64);
+    }
+
+    SECTION("Runtime toLittleEndian span overloads")
+    {
+        REQUIRE(toLittleEndianSpanOverloadTest(vstart16) == expect16);
+        REQUIRE(toLittleEndianSpanOverloadTest(vstart32) == expect32);
+        REQUIRE(toLittleEndianSpanOverloadTest(vstart64) == expect64);
+    }
+}
+
 TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges]")
 {
     std::vector<int> nums{ 1, 2, 3, 4, 5 };

@@ -46,10 +46,6 @@
 #include <variant>
 #include <optional>
 
-#if defined(__cpp_lib_byteswap)
-# include <bit>
-#endif
-
 /*!
  * The primary namespace for all KirHut software, including libraries, applications, and plugins.
  *
@@ -292,6 +288,26 @@ template <typename T>
 concept Numeric = std::is_arithmetic_v<T> and not std::is_same_v<T, bool>;
 
 /*!
+ * Concept to identify if a type is one of a set of distinct types.
+ *
+ * There are times when you just want a concept to a specific fixed set of types you want to accept, but don't want to
+ * just make separate overloads of that function for each type. This concept simplifies taking those arguments, and you
+ * can easily define other concepts in terms of this concept. You can also check the return types of expressions to
+ * ensure that they return one of a distinct set of types.
+ */
+template <typename Tested_T, typename First_T, typename... Rest_Ts>
+concept OneOf = std::same_as<Tested_T, First_T> or (std::same_as<Tested_T, Rest_Ts> or ...);
+
+/*!
+ * Concept to identify the different types that may bypass strict aliasing rules in C++.
+ *
+ * Some types are not undefined behavior to dereference from a different type. Those three types are considered "byte
+ * types" in KirHut software. Obviously, those three types are `char`, `unsigned char`, and std::byte.
+ */
+template <typename Byte_T>
+concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, std::byte>;
+
+/*!
  * Constant expression byte swapping function that should always do the most efficient thing.
  *
  * The byteSwap function in libKirHut is meant to work like std::byteswap in C++23 for applications still only using
@@ -366,8 +382,8 @@ constexpr u32 byteSwap(u32 bytes)
  * Constant expression byte swapping function that should always do the most efficient thing.
  *
  * The byteSwap function in libKirHut is meant to work like std::byteswap in C++23 for applications still only using
- * C++20. When this library is compiled by a C++23 or newer compiler, this function is just a wrapper for std::byteswap.
- * Otherwise, it uses one of the builtin byte swap functions in your according compiler, or if it lacks a builtin, it
+ * C++20. When this library is compiled for C++23 or newer, this function is just a wrapper for std::byteswap.
+ * Otherwise, it uses one of the builtin byte swap functions in your respective compiler, or if it lacks a builtin, it
  * uses a fallback implementation that is constexpr safe. The fallback implementation is deliberately designed to ensure
  * that the compiler generates hardware instructions to perform a byte swap if the hardware has it, even if the compiler
  * lacks a builtin for it.
@@ -519,7 +535,10 @@ concept SpanType = SpanTypeValue<Test_T>;
 /*!
  * \internal
  *
- * \brief The NoChild class
+ * A dummy class used by the EmptyClass concept to compare with another object with an EBO parent class.
+ *
+ * If the EboChild object is of equal size to this object after inheriting from a possibly EBO class, it proves that the
+ * candidate EBO class is actually empty (and not merely containing a single byte like a char or a bool member).
  */
 struct NoChild final
 {
@@ -529,7 +548,10 @@ struct NoChild final
 /*!
  * \internal
  *
- * \brief The EboChild class
+ * A dummy class used by the EmptyClass concept to compare with another object that has no parent class.
+ *
+ * If the NoChild object is of equal size to this object after inheriting from a possibly EBO class, it proves that the
+ * candidate EBO class is actually empty (and not merely containing a single byte like a char or a bool member).
  */
 template <typename EBO>
 struct EboChild final : public EBO
@@ -540,12 +562,16 @@ struct EboChild final : public EBO
 /*!
  * \internal
  *
- * \brief fromEndian
+ * Actual implementation function for all the fromBigEndian/fromLittleEndian public functions.
+ *
+ * This function has two separate behavior branches for constant evaluation vs non-constant evaluation, so it must be
+ * tested under both conditions.
+ *
  * \param source
  * \return
  */
 template <Numeric Num_T, std::endian sourceEndianness>
-constexpr Num_T fromEndian(byte const *source) noexcept
+constexpr Num_T fromEndian(ByteType auto const *source) noexcept
 {
     if constexpr (sizeof(Num_T) == sizeof(byte))
     {
@@ -558,8 +584,10 @@ constexpr Num_T fromEndian(byte const *source) noexcept
         constexpr bool fromBig = sourceEndianness == std::endian::big;
         for (size_t i = 0; i < sizeof(Num_T); ++i)
         {
-            ret |= static_cast<UIntOf<Num_T>>(fromBig ? source[sizeof(Num_T) - 1 - i] : source[i])
-                   << (i * Platform::bitsInByte);
+            // We do a bit_cast to unsigned first because the bytes in source may be signed, so static_cast could change
+            // the binary representation if we don't first bit_cast to u8.
+            auto temp = std::bit_cast<u8>(fromBig ? source[sizeof(Num_T) - 1 - i] : source[i]);
+            ret |= static_cast<UIntOf<Num_T>>(temp) << (i * Platform::bitsInByte);
         }
     }
     else
@@ -583,8 +611,11 @@ constexpr Num_T fromEndian(byte const *source) noexcept
  * \return
  */
 template <std::endian destEndianness>
-constexpr byte *toEndian(Numeric auto value, byte *dest) noexcept
+constexpr auto toEndian(Numeric auto value, ByteType auto *dest) noexcept -> decltype(dest)
 {
+    using Byte_T = std::remove_pointer_t<decltype(dest)>;
+    static_assert(not std::is_const_v<Byte_T>, "toEndian needs a non-const array to write to.");
+
     constexpr auto typeSize = sizeof(decltype(value));
     if constexpr (typeSize == sizeof(byte))
     {
@@ -598,7 +629,9 @@ constexpr byte *toEndian(Numeric auto value, byte *dest) noexcept
         constexpr bool toBig = destEndianness == std::endian::big;
         for (size_t i = 0; i < typeSize; ++i)
         {
-            dest[toBig ? typeSize - 1 - i : i] = static_cast<byte>(bits >> (i * Platform::bitsInByte));
+            auto temp = static_cast<u8>(bits >> (i * Platform::bitsInByte));
+
+            dest[toBig ? typeSize - 1 - i : i] = std::bit_cast<Byte_T>(temp);
         }
     }
     else
@@ -680,17 +713,6 @@ concept HasTypeOption = (InstanceOf<Var_T, Var> or InstanceOf<Var_T, std::varian
 } // namespace Detail
 
 /*!
- * Concept to identify if a type is one of a set of distinct types.
- *
- * There are times when you just want a concept to a specific fixed set of types you want to accept, but don't want to
- * just make separate overloads of that function for each type. This concept simplifies taking those arguments, and you
- * can easily define other concepts in terms of this concept. You can also check the return types of expressions to
- * ensure that they return one of a distinct set of types.
- */
-template <typename Tested_T, typename First_T, typename... Rest_Ts>
-concept OneOf = std::same_as<Tested_T, First_T> or (std::same_as<Tested_T, Rest_Ts> or ...);
-
-/*!
  * Concept to identify if a type can be converted to one of a set of distinct types.
  *
  * This is just the std::convertible_to concept applied to multiple types instead of one, so you are not forced to make
@@ -737,15 +759,6 @@ template <typename Tested_T, typename... Element_Ts>
 concept ReadableSpanOf =
     Detail::SpanType<Tested_T> and (std::same_as<Element_Ts, std::remove_cvref_t<Element_Ts>> and ...) and
     (sizeof...(Element_Ts) == 0 or (OneOf<std::remove_cv_t<typename Tested_T::element_type>, Element_Ts> or ...));
-
-/*!
- * Concept to identify the different types that may bypass strict aliasing rules in C++.
- *
- * Some types are not undefined behavior to dereference from a different type. Those three types are considered "byte
- * types" in KirHut software. Obviously, those three types are `char`, `unsigned char`, and std::byte.
- */
-template <typename Byte_T>
-concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, std::byte>;
 
 /*!
  * Concept to identify a span of some kind of ByteType.
@@ -803,40 +816,65 @@ concept TypeOptionOf = Detail::HasTypeOption<Var_T, Has_T>;
  * \param var
  * \return
  */
-template <typename T>
+template <typename Var_T>
 consteval size_t varIndex(InstanceOf<Var, std::variant> auto const &var)
 {
-    return Detail::varIndex<decltype(var), T>();
+    return Detail::varIndex<decltype(var), Var_T>();
 }
 
 /*!
- * Read the data pointed at by \p loc and return it as the given \p T integer type for the native platform.
+ * Read the data pointed at by \p source and return it as the given T integer type for the native platform.
  *
  * This method should be used any time you need to read a big endian integer value from a source of bytes, such as from
  * an ethernet frame or a data file. On both big endian and little endian systems, this function will return the correct
- * value that is represented by the data pointed to by \p loc, read as a big endian integer.
+ * value that is represented by the data pointed to by \p source, read as a big endian integer.
  *
- * The number of bytes read is equal to the size in bytes of \p T, so you need to ensure that there are sufficient
- * bytes to read from at \p loc or this function will invoke undefined behavior.
+ * Using this function is as simple as designating the desired Numeric return type, and then providing a pointer to a
+ * buffer of bytes. The buffer of bytes will be interpreted as a big endian value of type T and returned to you.
  *
- * \param source
- * \return
+ * ~~~
+ * auto result = fromBigEndian<i32>(buffer);
+ * static_assert(std::is_same_v<decltype(result), i32>);
+ * ~~~
+ *
+ * \warning It is undefined behavior to provide a pointer to a byte buffer that is not at least sizeof(T) bytes large.
+ * This will cause a read to occur in invalid memory and so you should always check that there are sufficient bytes in
+ * the buffer area for conversion.
+ *
+ * \param source A pointer to a buffer of bytes at least sizeof(T) large.
+ * \return The requested Numeric T type.
  */
 template <Numeric T>
-constexpr T fromBigEndian(byte const *source) noexcept
+constexpr T fromBigEndian(ByteType auto const *source) noexcept
 {
     return Detail::fromEndian<T, std::endian::big>(source);
 }
 
 /*!
- * \brief fromBigEndian
- * \param source
- * \return
+ * Read the data in the first sizeof(T) bytes contained in the \p source span and return it as the given T integer type
+ * for the native platform.
+ *
+ * This method should be used any time you need to read a big endian integer value from a given \p source buffer. This
+ * version of fromBigEndian should be favored over the pointer version as this version is guaranteed never to result in
+ * undefined behavior. In the case of a buffer being too small at runtime, this function will throw an exception.
+ *
+ * Using this function is as simple as designating the desired Numeric return type, and then providing a span to a
+ * buffer of bytes. The first sizeof(T) bytes in the buffer will be interpreted as a big endian value of type T and
+ * returned to you.
+ *
+ * ~~~
+ * auto result = fromBigEndian<double>(bufferSpan);
+ * static_assert(std::is_same_v<decltype(result), double>);
+ * ~~~
+ *
+ * \param source A span to a buffer of bytes at least sizeof(T) large.
+ * \return The requested Numeric T type.
  */
-template <Numeric T, size_t SZ>
-constexpr T fromBigEndian(span<byte const, SZ> source) noexcept(SZ != std::dynamic_extent) requires(SZ >= sizeof(T))
+template <Numeric T, ByteType Byte_T, size_t size>
+constexpr T fromBigEndian(span<Byte_T const, size> source) noexcept(size != std::dynamic_extent)
+    requires(size >= sizeof(T))
 {
-    if constexpr (SZ == std::dynamic_extent)
+    if constexpr (size == std::dynamic_extent)
     {
         if (source.size() < sizeof(T))
         {
@@ -848,14 +886,13 @@ constexpr T fromBigEndian(span<byte const, SZ> source) noexcept(SZ != std::dynam
 }
 
 /*!
- * \brief fromBigEndian
- * \param source
- * \return
+ * \copydoc fromBigEndian(span<Byte_T const,SZ>)
  */
-template <Numeric T, size_t SZ>
-constexpr T fromBigEndian(span<byte, SZ> source) noexcept(SZ != std::dynamic_extent) requires(SZ >= sizeof(T))
+template <Numeric T, ByteType Byte_T, size_t fixedSize>
+constexpr T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
+    requires(fixedSize >= sizeof(T))
 {
-    return Detail::fromEndian<T>(span<byte const, SZ>{ source });
+    return fromBigEndian<T>(span<Byte_T const, fixedSize>{ source });
 }
 
 /*!
@@ -864,7 +901,7 @@ constexpr T fromBigEndian(span<byte, SZ> source) noexcept(SZ != std::dynamic_ext
  * \return
  */
 template <Numeric T>
-constexpr T fromLittleEndian(byte const *source) noexcept
+constexpr T fromLittleEndian(ByteType auto const *source) noexcept
 {
     return Detail::fromEndian<T, std::endian::little>(source);
 }
@@ -874,10 +911,11 @@ constexpr T fromLittleEndian(byte const *source) noexcept
  * \param source
  * \return
  */
-template <Numeric T, size_t SZ>
-constexpr T fromLittleEndian(span<byte const, SZ> source) noexcept(SZ != std::dynamic_extent) requires(SZ >= sizeof(T))
+template <Numeric T, ByteType Byte_T, size_t fixedSize>
+constexpr T fromLittleEndian(span<Byte_T const, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
+    requires(fixedSize >= sizeof(T))
 {
-    if constexpr (SZ == std::dynamic_extent)
+    if constexpr (fixedSize == std::dynamic_extent)
     {
         if (source.size() < sizeof(T))
         {
@@ -888,56 +926,62 @@ constexpr T fromLittleEndian(span<byte const, SZ> source) noexcept(SZ != std::dy
     return Detail::fromEndian<T, std::endian::little>(source.data());
 }
 
-/*!
- * \brief fromLittleEndian
- * \param source
- * \return
- */
-template <Numeric T, size_t SZ>
-constexpr T fromLittleEndian(span<byte, SZ> source) noexcept(SZ != std::dynamic_extent) requires(SZ >= sizeof(T))
+template <Numeric T, ByteType Byte_T, size_t fixedSize>
+constexpr T fromLittleEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
+    requires(fixedSize >= sizeof(T))
 {
-    return Detail::fromEndian<T>(span<byte const, SZ>{ source });
+    return fromLittleEndian<T>(span<Byte_T const, fixedSize>{ source });
 }
 
 /*!
- * \brief toBigEndian
- * \param value
- * \param dest
+ * Accept a Numeric \p value of any kind, and write it to the provided \p dest byte buffer as a big endian value.
+ *
+ * \param value The numeric value (a signed or unsigned integer, or a floating point type) to write as big endian.
+ * \param dest The buffer to write the big endian data for \p value.
  */
-constexpr void toBigEndian(Numeric auto value, byte *dest) noexcept
+constexpr void toBigEndian(Numeric auto value, ByteType auto *dest) noexcept
 {
+    static_assert(not std::is_const_v<decltype(*dest)>, "toBigEndian needs a non-const array to write to.");
+
     Detail::toEndian<std::endian::big>(value, dest);
 }
 
 /*!
- * \brief toBigEndian
- * \return
+ * Accept a Numeric \p value of any kind, and return a std::array of \p value stored as a big endian value.
+ *
+ * \param value The numeric value (a signed or unsigned integer, or a floating point type) to return as big endian.
+ * \return A std::array of bytes for \p value in big endian order.
  */
-constexpr auto toBigEndian(Numeric auto value) noexcept -> array<byte, sizeof(value)>
+template <Numeric Num_T>
+constexpr array<byte, sizeof(Num_T)> toBigEndian(Num_T value) noexcept
 {
-    array<byte, sizeof(value)> ret;
+    array<byte, sizeof(Num_T)> ret;
     Detail::toEndian<std::endian::big>(value, ret.data());
     return ret;
 }
 
 /*!
- * \brief toBigEndian
- * \param dest
+ * Accept a Numeric \p value of any kind, and write it to the provided \p dest span buffer as a big endian value.
+ *
+ * \param value The numeric value (a signed or unsigned integer, or a floating point type) to write as big endian.
+ * \param dest The buffer to write the big endian data for \p value.
  * \throws IllegalArgument If the span passed to this method has std::dynamic_extent but size() < sizeof(value).
  */
-template <size_t SZ>
-constexpr void toBigEndian(Numeric auto value, span<byte, SZ> dest) noexcept(SZ != std::dynamic_extent)
-    requires(SZ >= sizeof(decltype(value)))
+template <ByteType Byte_T, size_t fixedSize>
+constexpr void toBigEndian(Numeric auto value, span<Byte_T, fixedSize> dest) noexcept(fixedSize != std::dynamic_extent)
+    requires(fixedSize >= sizeof(decltype(value)))
 {
-    if constexpr (SZ == std::dynamic_extent)
+    static_assert(not std::is_const_v<Byte_T>, "toBigEndian needs a non-const span to write to.");
+
+    if constexpr (fixedSize == std::dynamic_extent)
     {
         if (dest.size() < sizeof(decltype(value)))
         {
-            Detail::throwTooSmallSpan("Destination span is too small.");
+            Detail::throwTooSmallSpan("Destination span is too small for toBigEndian.");
         }
     }
 
-    Detail::toEndian<std::endian::big>(value, dest);
+    Detail::toEndian<std::endian::big>(value, dest.data());
 }
 
 /*!
@@ -945,8 +989,10 @@ constexpr void toBigEndian(Numeric auto value, span<byte, SZ> dest) noexcept(SZ 
  * \param value
  * \param dest
  */
-constexpr void toLittleEndian(Numeric auto value, byte *dest) noexcept
+constexpr void toLittleEndian(Numeric auto value, ByteType auto *dest) noexcept
 {
+    static_assert(not std::is_const_v<decltype(*dest)>, "toLittleEndian needs a non-const array to write to.");
+
     Detail::toEndian<std::endian::little>(value, dest);
 }
 
@@ -954,9 +1000,10 @@ constexpr void toLittleEndian(Numeric auto value, byte *dest) noexcept
  * \brief toLittleEndian
  * \return
  */
-constexpr auto toLittleEndian(Numeric auto value) noexcept -> array<byte, sizeof(value)>
+template <Numeric Num_T>
+constexpr array<byte, sizeof(Num_T)> toLittleEndian(Num_T value) noexcept
 {
-    array<byte, sizeof(value)> ret;
+    array<byte, sizeof(Num_T)> ret{};
     Detail::toEndian<std::endian::little>(value, ret.data());
     return ret;
 }
@@ -965,19 +1012,21 @@ constexpr auto toLittleEndian(Numeric auto value) noexcept -> array<byte, sizeof
  * \brief toLittleEndian
  * \param dest
  */
-template <size_t SZ>
-constexpr void toLittleEndian(Numeric auto value, span<byte, SZ> dest) noexcept(SZ != std::dynamic_extent)
-    requires(SZ >= sizeof(decltype(value)))
+template <ByteType Byte_T, size_t fixedSize>
+constexpr void toLittleEndian(Numeric auto value, span<Byte_T, fixedSize> dest)
+    noexcept(fixedSize != std::dynamic_extent) requires(fixedSize >= sizeof(decltype(value)))
 {
-    if constexpr (SZ == std::dynamic_extent)
+    static_assert(not std::is_const_v<Byte_T>, "toLittleEndian needs a non-const span to write to.");
+
+    if constexpr (fixedSize == std::dynamic_extent)
     {
         if (dest.size() < sizeof(decltype(value)))
         {
-            Detail::throwTooSmallSpan("Destination span is too small.");
+            Detail::throwTooSmallSpan("Destination span is too small for toLittleEndian.");
         }
     }
 
-    Detail::toEndian<std::endian::little>(value, dest);
+    Detail::toEndian<std::endian::little>(value, dest.data());
 }
 
 /*!
@@ -993,50 +1042,11 @@ constexpr void toLittleEndian(Numeric auto value, span<byte, SZ> dest) noexcept(
  * \param ar The array to get the size of.
  * \return The second template argument to the array, as a size_t value.
  */
-template <typename T, size_t SIZE>
-consteval size_t arraySize([[maybe_unused]] array<T, SIZE> &ar)
+template <typename T, size_t size>
+consteval size_t arraySize([[maybe_unused]] array<T, size> &ar)
 {
-    return SIZE;
+    return size;
 }
-
-/*!
- * Convert an array of constant char data that ends with '\0' to a string.
- *
- * This simply constructs a std::string around the data and does nothing else. Since this copies the data this function
- * is not marked `noexcept`, and it is only here for completeness with the other versions of toStr(). There is otherwise
- * no reason to use this function.
- *
- * \param data A pointer to an array of chars that ends with '\0'. The behavior is undefined if this is not the case.
- * \return A string of the data passed to this function.
- */
-[[nodiscard]] KH_EXPORT string toStr(char const *data);
-
-#if KH_PRIV_DOCS or KH_USES_QT
-/*!
- * Conversion function for String to QString.
- *
- * This creates a QByteArray with the data pointed to by \p in and the length, ensuring no copies are made and the
- * QString ctor does not need to get the length of the data. This function still runs at **O(n)** because it must still
- * make at least one copy of the string data to the underlying UTF-16 QString data block.
- *
- * \param in A std::string_view to convert to a QString.
- * \return A QString of the contents in the passed String.
- */
-[[nodiscard]] KH_EXPORT QString toQStr(string_view in) noexcept;
-
-/*!
- * Conversion function for QString to String.
- *
- * This uses QString::toUtf8() to create a UTF-8 QByteArray of the QString data, then must perform a second copy of that
- * UTF-8 data to the returned string objects data buffer because there is no way to initialize a std::string with a
- * char array that does not make a copy. It will then dispose of the QByteArray. This function still runs at **O(n)**
- * time efficiency, despite the dual copies.
- *
- * \param in A QString to convert to a std::string.
- * \return A String copy of the contents in the passed QString.
- */
-[[nodiscard]] KH_EXPORT string toStr(QString const &in) noexcept;
-#endif // KH_USES_QT
 
 /*!
  * Get the current time as a count of "ticks," or the number of units in the smallest measure available on the system.

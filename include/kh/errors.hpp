@@ -102,13 +102,13 @@ using BadState = Error<WhyInvalid::InvalidState>;
 //! \cond
 
 // Poor Doxygen doesn't understand extern template instantiations with KH_EXPORT...
-extern template struct KH_EXPORT Error<WhyInvalid::SoftwareError>;
-extern template struct KH_EXPORT Error<WhyInvalid::AlreadyInitialized>;
-extern template struct KH_EXPORT Error<WhyInvalid::BadEnvironment>;
-extern template struct KH_EXPORT Error<WhyInvalid::IllegalArgument>;
-extern template struct KH_EXPORT Error<WhyInvalid::DataUninitialized>;
-extern template struct KH_EXPORT Error<WhyInvalid::DataRemoved>;
-extern template struct KH_EXPORT Error<WhyInvalid::InvalidState>;
+extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::SoftwareError>;
+extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::AlreadyInitialized>;
+extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::BadEnvironment>;
+extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::IllegalArgument>;
+extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::DataUninitialized>;
+extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::DataRemoved>;
+extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::InvalidState>;
 //! \endcond
 
 } // namespace KirHut

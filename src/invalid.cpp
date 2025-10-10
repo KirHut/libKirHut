@@ -29,17 +29,17 @@ void Detail::throwNoValidData(Invalid const &inv)
     throw NoValidData(inv.info());
 }
 
-template struct KH_EXPORT Error<WhyInvalid::SoftwareError>;
-template struct KH_EXPORT Error<WhyInvalid::AlreadyInitialized>;
-template struct KH_EXPORT Error<WhyInvalid::BadEnvironment>;
-template struct KH_EXPORT Error<WhyInvalid::IllegalArgument>;
-template struct KH_EXPORT Error<WhyInvalid::DataUninitialized>;
-template struct KH_EXPORT Error<WhyInvalid::DataRemoved>;
-template struct KH_EXPORT Error<WhyInvalid::InvalidState>;
+template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::SoftwareError>;
+template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::AlreadyInitialized>;
+template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::BadEnvironment>;
+template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::IllegalArgument>;
+template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataUninitialized>;
+template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataRemoved>;
+template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::InvalidState>;
 
-template class KH_EXPORT BasicInvalid<WhyInvalid>;
-template class KH_EXPORT BasicInvalid<MessageViewWhy<char>>;
-template class KH_EXPORT BasicInvalid<string>;
-template class KH_EXPORT BasicInvalid<string_view>;
+template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<WhyInvalid>;
+template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<MessageViewWhy<char>>;
+template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string>;
+template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string_view>;
 
 } // namespace KirHut
