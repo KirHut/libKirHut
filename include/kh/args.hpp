@@ -43,6 +43,21 @@ namespace KirHut::CLI
 {
 
 /*!
+ * Indication boolean for when command line argument parsing support has been included in libKirHut.
+ *
+ * When you need to check if this library includes argument parsing support using an if constexpr expression rather than
+ * the preprocessor, you can use this to check if the library is built with support.
+ *
+ * \hideinitializer
+ */
+[[maybe_unused]] constexpr bool hasArgParser = false
+#if defined(KH_INCLUDE_ARG_PARSER)
+                                               or true
+#endif
+    ;
+
+#if defined(KH_INCLUDE_ARG_PARSER) or defined(KH_PRIV_DOCS)
+/*!
  * \internal
  *
  * Detail namespace for KirHut::CLI.
@@ -57,41 +72,76 @@ namespace Detail
 /*!
  * \internal
  *
+ * Throws an exception for having an illegal character in the validateOptionString() function.
+ *
+ * This method is not constexpr to cause a compile error when attempting to use an invalid constant string expression
+ * in the Option type constructor. All of these throw methods throw the same thing: IllegalArgument. The only real
+ * distinction is the message the user receives when it is thrown.
+ */
+[[noreturn]] KH_EXPORT void throwIllegalCharacter(char whichOne);
+
+/*!
+ * \internal
+ *
+ * Throws an exception for having no valid tokens available in the validateOptionString() function.
+ *
+ * \copydetails KirHut::Detail::throwIllegalCharacter()
+ */
+[[noreturn]] KH_EXPORT void throwNoValidToken(string_view opStr);
+
+/*!
+ * \internal
+ *
+ * Throws an exception for a token starting with + or - in the validateOptionString() function.
+ *
+ * \copydetails KirHut::Detail::throwIllegalCharacter()
+ */
+[[noreturn]] KH_EXPORT void throwNoPlusMinusBegin(char whichOne);
+
+/*!
+ * \internal
+ *
+ * Throws an exception for having a token made of just digits in the validateOptionString() function.
+ *
+ * \copydetails KirHut::Detail::throwIllegalCharacter()
+ */
+[[noreturn]] KH_EXPORT void throwNotJustDigits(string_view opStr);
+
+/*!
+ * \internal
+ *
  * \brief validateOptionString
  * \param str
  */
 constexpr void validateOptionString(string_view str)
 {
-    constexpr auto isDigit           = [](char c) -> bool { return c >= '0' and c <= '9'; };
-    constexpr string_view legalChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_";
+    constexpr auto isDigit    = [](char c) -> bool { return c >= '0' and c <= '9'; };
+    constexpr auto legalChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_"sv;
 
-    if (str.find_first_not_of(legalChars) != string_view::npos)
+    if (auto pos = str.find_first_not_of(legalChars); pos != string_view::npos)
     {
-        throw "An illegal character was passed to the Option constructor. These are the legal "
-              "characters:\nabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_";
+        throwIllegalCharacter(str[pos]);
     }
 
-    auto words = V::words(str);
-    if (words.empty())
-    {
-        throw "There must be at least one valid token in an Option string.";
-    }
-
-    for (string_view word : words)
+    bool ran = false;
+    for (string_view word : V::words(str))
     {
         if (word.front() == '-' or word.front() == '+')
         {
-            throw "An Option token may not begin with the - or + character.";
-        }
-
-        if (isDigit(word.front()))
-        {
+            throwNoPlusMinusBegin(word.front());
         }
 
         if (R::all_of(word, isDigit))
         {
-            throw "An Option token may not be only composed of numeral digits.";
+            throwNotJustDigits(word);
         }
+
+        ran = true;
+    }
+
+    if (not ran)
+    {
+        throwNoValidToken(str);
     }
 }
 
@@ -100,7 +150,7 @@ constexpr void validateOptionString(string_view str)
  *
  * \brief The OptionString class
  */
-struct OptionString
+struct OptionString final
 {
     /*!
      * \internal
@@ -206,9 +256,9 @@ struct KH_EXPORT Option final
     const bool isFlag;
 
     /*!
-     * The Option object constructor, with a \p takesArgument argument that assumes the Option is a flag.
+     * The compile-time checked Option object constructor, with a \p takesArgument that assumes the Option is a flag.
      *
-     * This is the only constructor for the Option object, and generally this should be created in an OptionList with
+     * This is the main constructor for the Option object, and generally this should be created in an OptionList with
      * a list initialization of bracketed constructor calls, like so:
      *
      * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -221,19 +271,28 @@ struct KH_EXPORT Option final
      *
      * This allows you to set up your commands very quickly and efficiently in the code.
      *
+     * \param optionNames A constant string of space-separated symbols used to identify this Option in the arguments.
+     * \param takesArgument Whether or not this Option requires an argument, or an additional string input.
+     */
+    Option(Detail::OptionString optionNames, bool takesArgument = false) noexcept;
+
+    /*!
+     * The runtime checked Option object constructor, with a \p takesArgument that assumes the Option is a flag.
+     *
+     * \param rt
      * \param optionNames
      * \param takesArgument
-     * \throws IllegalArgument If any of the single character options is a numeral or any argument contains an illegal
+     * \throws IllegalArgument If any of the single character options is a numeral or any symbol contains an illegal
      * character.
      */
-    Option(Detail::OptionString optionNames, bool takesArgument = false);
+    Option(RuntimeFlag rt, string_view optionNames, bool takesArgument = false);
 
     /*!
      * \brief operator ==
      * \param other
      * \return
      */
-    bool operator==(Option const &other) const noexcept;
+    [[nodiscard]] bool operator==(Option const &other) const noexcept;
 
     /*!
      * Class representing that a match was found using the Option::matches(string_view) method.
@@ -298,7 +357,7 @@ struct KH_EXPORT Option final
          *
          * \return Whether or not this Match is expecting an additional parameter from the user.
          */
-        constexpr bool requiresString() const noexcept
+        [[nodiscard]] constexpr bool requiresString() const noexcept
         {
             return parameterString.has_value() and parameterString->empty();
         }
@@ -309,21 +368,21 @@ struct KH_EXPORT Option final
      * \param toCheck
      * \return
      */
-    Maybe<Match> singleMatches(string_view toCheck) const noexcept;
+    [[nodiscard]] Maybe<Match> singleMatches(string_view toCheck) const noexcept;
 
     /*!
      * \brief multiMatches
      * \param toCheck
      * \return
      */
-    Maybe<Match> multiMatches(string_view toCheck) const noexcept;
+    [[nodiscard]] Maybe<Match> multiMatches(string_view toCheck) const noexcept;
 
     /*!
      * \brief matches
      * \param toCheck
      * \return A Maybe with a Match if the match succeeded, or an empty Maybe if it does not.
      */
-    Maybe<Match> matches(string_view toCheck) const noexcept;
+    [[nodiscard]] Maybe<Match> matches(string_view toCheck) const noexcept;
 };
 
 /*!
@@ -434,21 +493,21 @@ public:
      * \brief getOpts
      * \return
      */
-    OptionView getOpts() const noexcept;
+    [[nodiscard]] OptionView getOpts() const noexcept;
 
     /*!
      * \brief matches
      * \param toCheck
      * \return
      */
-    bool matches(string_view toCheck) const noexcept;
+    [[nodiscard]] bool matches(string_view toCheck) const noexcept;
 
     /*!
      * \brief matchOpt
      * \param toCheck
      * \return
      */
-    Maybe<Option::Match> matchOpt(string_view toCheck) const noexcept;
+    [[nodiscard]] Maybe<Option::Match> matchOpt(string_view toCheck) const noexcept;
 };
 
 /*!
@@ -469,13 +528,13 @@ public:
      * \brief matchesFound
      * \return
      */
-    u32 matchesFound() const noexcept;
+    [[nodiscard]] u32 matchesFound() const noexcept;
 
     /*!
      * \brief argumentsFound
      * \return
      */
-    StringViews argumentsFound() const noexcept;
+    [[nodiscard]] StringViews argumentsFound() const noexcept;
 
 private:
     friend class Parser;
@@ -520,6 +579,12 @@ private:
 class KH_EXPORT Parser final
 {
     struct Impl;
+
+    /*!
+     * \internal
+     *
+     * \brief im
+     */
     UPtr<Impl> im;
 
 public:
@@ -559,17 +624,18 @@ public:
      *
      * Moving a Parser object is fine, but it cannot be copied.
      */
-    Parser(Parser &&) = default;
+    Parser(Parser &&) noexcept = default;
 
     /*!
      * Default move assignment operator.
      *
      * Moving a Parser object is fine, but it cannot be copied. The assigned from Parser object will be left in an
-     * unspecified invalid state. It may be move assigned to by another Parser object.
+     * unspecified invalid state. It may be move assigned to by another Parser object, but all other calls on the
+     * resulting moved-from Parser object are undefined behavior until reassigned to another Parser.
      *
      * \return A reference to the current Parser object being assigned to.
      */
-    Parser &operator=(Parser &&) = default;
+    Parser &operator=(Parser &&) noexcept = default;
 
     /*!
      * \pimpldestructor
@@ -586,43 +652,43 @@ public:
      * instead of by the header.
      * \return
      */
-    bool success() const noexcept;
+    [[nodiscard]] bool success() const noexcept;
 
     /*!
      * \brief positionalArguments
      * \return
      */
-    StringViews positionalArguments() const noexcept;
+    [[nodiscard]] StringViews positionalArguments() const noexcept;
 
     /*!
      * \brief activeCommand
      * \return
      */
-    Command const &activeCommand() const noexcept;
+    [[nodiscard]] Command const &activeCommand() const noexcept;
 
     /*!
      * \brief unreadableInput
      * \return
      */
-    StringViews unreadableInput() const noexcept;
+    [[nodiscard]] StringViews unreadableInput() const noexcept;
 
     /*!
      * \brief matchedOptions
      * \return
      */
-    span<OptionMatches const> const &matchedOptions() const noexcept;
+    [[nodiscard]] span<OptionMatches const> const &matchedOptions() const noexcept;
 
     /*!
      * \brief argc
      * \return
      */
-    int argc() const noexcept;
+    [[nodiscard]] int argc() const noexcept;
 
     /*!
      * \brief argv
      * \return
      */
-    char const **argv() const noexcept;
+    [[nodiscard]] char const **argv() const noexcept;
 
     /*!
      * Return a pointer to an array of UTF-8 C strings that
@@ -633,7 +699,8 @@ public:
      *
      * \return
      */
-    char const **envp() const noexcept;
+    [[nodiscard]] char const **envp() const noexcept;
 };
+#endif // defined(KH_INCLUDE_ARG_PARSER) or defined(KH_PRIV_DOCS)
 
 } // namespace KirHut::CLI

@@ -42,7 +42,7 @@ namespace Detail
  *
  * \return whether or not this library was built with 128-bit integer support.
  */
-consteval bool has128bit()
+[[nodiscard]] consteval bool has128bit()
 {
 #if defined(KH_USE_128BIT_TYPES)
     return true;
@@ -76,7 +76,7 @@ struct LimitsFinder
     static_assert(limits::is_specialized, "There must exist a specialization of std::numeric_limits for the given T.");
 };
 
-#if defined(KH_USE_128BIT_TYPES)
+#if defined(KH_USE_128BIT_TYPES) or defined(KH_PRIV_DOCS)
 /*!
  * \internal
  *
@@ -114,47 +114,47 @@ struct LimitsOfUInt128Impl
     constexpr static bool traps           = true;
     constexpr static bool tinyness_before = false;
 
-    constexpr static __uint128_t min() noexcept
+    [[nodiscard]] consteval static __uint128_t min() noexcept
     {
         return {};
     }
 
-    constexpr static __uint128_t lowest() noexcept
+    [[nodiscard]] consteval static __uint128_t lowest() noexcept
     {
         return min();
     }
 
-    constexpr static __uint128_t max() noexcept
+    [[nodiscard]] consteval static __uint128_t max() noexcept
     {
         return ~__uint128_t{};
     }
 
-    constexpr static __uint128_t epsilon() noexcept
+    [[nodiscard]] consteval static __uint128_t epsilon() noexcept
     {
         return {};
     }
 
-    constexpr static __uint128_t round_error() noexcept
+    [[nodiscard]] consteval static __uint128_t round_error() noexcept
     {
         return {};
     }
 
-    constexpr static __uint128_t infinity() noexcept
+    [[nodiscard]] consteval static __uint128_t infinity() noexcept
     {
         return {};
     }
 
-    constexpr static __uint128_t quiet_NaN() noexcept
+    [[nodiscard]] consteval static __uint128_t quiet_NaN() noexcept
     {
         return {};
     }
 
-    constexpr static __uint128_t signaling_NaN() noexcept
+    [[nodiscard]] consteval static __uint128_t signaling_NaN() noexcept
     {
         return {};
     }
 
-    constexpr static __uint128_t denorm_min() noexcept
+    [[nodiscard]] consteval static __uint128_t denorm_min() noexcept
     {
         return {};
     }
@@ -207,47 +207,47 @@ struct LimitsOfInt128Impl
      *
      * \return The minimum signed 128-bit integer value.
      */
-    consteval static __int128_t min() noexcept
+    [[nodiscard]] consteval static __int128_t min() noexcept
     {
         return std::bit_cast<__int128_t>(static_cast<__uint128_t>(1) << digits);
     }
 
-    constexpr static __int128_t lowest() noexcept
+    [[nodiscard]] consteval static __int128_t lowest() noexcept
     {
         return min();
     }
 
-    constexpr static __int128_t max() noexcept
+    [[nodiscard]] consteval static __int128_t max() noexcept
     {
         return std::bit_cast<__int128_t>(LimitsOfUInt128Impl::max() >> 1);
     }
 
-    constexpr static __int128_t epsilon() noexcept
+    [[nodiscard]] consteval static __int128_t epsilon() noexcept
     {
         return {};
     }
 
-    constexpr static __int128_t round_error() noexcept
+    [[nodiscard]] consteval static __int128_t round_error() noexcept
     {
         return {};
     }
 
-    constexpr static __int128_t infinity() noexcept
+    [[nodiscard]] consteval static __int128_t infinity() noexcept
     {
         return {};
     }
 
-    constexpr static __int128_t quiet_NaN() noexcept
+    [[nodiscard]] consteval static __int128_t quiet_NaN() noexcept
     {
         return {};
     }
 
-    constexpr static __int128_t signaling_NaN() noexcept
+    [[nodiscard]] consteval static __int128_t signaling_NaN() noexcept
     {
         return {};
     }
 
-    constexpr static __int128_t denorm_min() noexcept
+    [[nodiscard]] consteval static __int128_t denorm_min() noexcept
     {
         return {};
     }
@@ -540,6 +540,15 @@ namespace Platform
 [[maybe_unused]] constexpr u64 u64Max = Limits<u64>::max();
 
 /*!
+ * The highest (maximum) value of a 128 bit unsigned integer.
+ *
+ * This type is only supported on GCC and Clang versions that have support for 128 bit types. As such, it is usually not
+ * a good idea to use these types except when wrapping the code with `#if defined(KH_HAS_128)` blocks or if the
+ * application should only support building with GCC or Clang.
+ */
+[[maybe_unused]] constexpr u128 u128Max = Limits<u128>::max();
+
+/*!
  * The highest (maximum) value of the widest unsigned integer.
  *
  * The uWidest type is guaranteed to be the largest integer type supported on the platform, and should be at
@@ -769,9 +778,12 @@ namespace Platform
  * Non Preprocessor equivalent to #KH_LINUX.
  *
  * \copydetails KirHut::Platform::windows
+ *
+ * This cannot simply be named "linux" because of an existing C preprocessor define.
+ *
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool linux = false
+[[maybe_unused]] constexpr bool linuxos = false
 #if defined(KH_LINUX)
                                         or true
 #endif

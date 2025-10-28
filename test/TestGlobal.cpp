@@ -17,79 +17,75 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
+#include "kh/global.hpp"
 
-#include "kh/platform.hpp"
+#include <array>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_all.hpp>
 // clazy:excludeall=non-pod-global-static
 
 using namespace KirHut;
 
-constexpr bool sizesCheck()
+consteval auto generateWhyInvalidList() noexcept
 {
-    using namespace KirHut::Platform;
-    // clang-format off
-    return Limits<i8>::max()      == i8Max 
-	    && Limits<i16>::max()     == i16Max
-		&& Limits<i32>::max()     == i32Max
-		&& Limits<i64>::max()     == i64Max
-		&& Limits<iWidest>::max() == iWidestMax
-		&& Limits<i8>::min()      == i8Min
-	    && Limits<i16>::min()     == i16Min
-		&& Limits<i32>::min()     == i32Min
-		&& Limits<i64>::min()     == i64Min
-		&& Limits<iWidest>::min() == iWidestMin
-		&& Limits<u8>::max()      == u8Max
-	    && Limits<u16>::max()     == u16Max
-		&& Limits<u32>::max()     == u32Max
-		&& Limits<u64>::max()     == u64Max
-		&& Limits<uWidest>::max() == uWidestMax
-		&& Limits<e8>::max()      == e8Max
-	    && Limits<e16>::max()     == e16Max
-		&& Limits<e32>::max()     == e32Max
-		&& Limits<e64>::max()     == e64Max
-		&& Limits<e8>::min()      == e8Min
-	    && Limits<e16>::min()     == e16Min
-		&& Limits<e32>::min()     == e32Min
-		&& Limits<e64>::min()     == e64Min
-		&& Limits<ue8>::max()     == ue8Max
-	    && Limits<ue16>::max()    == ue16Max
-		&& Limits<ue32>::max()    == ue32Max
-		&& Limits<ue64>::max()    == ue64Max;
-    // clang-format on
+    using enum WhyInvalid;
+
+    return std::array{
+        Success,
+        Unknown,
+        IncorrectInput,
+        FileNotFound,
+        TooManyOpenFiles,
+        CouldntOpenFile,
+        InvalidHandle,
+        ArenaTrashed,
+        OutOfBounds,
+        DataRemoved,
+        BadEnvironment,
+        PatternMismatch,
+        AlreadyInitialized,
+        IllegalArgument,
+        OutOfMemory,
+        CurrentDirectory,
+        DataUninitialized,
+        InvalidState,
+        BadCRCResult,
+        HandleEndOfFile,
+        DiskFullError,
+        ConfigCmdInvalid,
+        IncorrectDataFormat,
+        CannotOpenInput,
+        UsernameUnknown,
+        HostnameUnknown,
+        ServiceUnavailable,
+        SoftwareError,
+        OperatingSystemError,
+        OSFileMissingError,
+        CannotCreateFile,
+        InputOutputError,
+        TemporaryError,
+        ProtocolError,
+        PermissionDenied,
+        ConfigurationError,
+    };
 }
 
-constexpr bool hasTypesCheck()
+constexpr auto whyInvalidList = generateWhyInvalidList();
+
+TEST_CASE("Test return values of exitCode()", "[global][exitCode]")
 {
-    using namespace KirHut::Platform;
-    // clang-format off
-	return i8Is8Bits               == (Limits<i8>::digits  == 7)
-       and i16Is16Bits             == (Limits<i16>::digits == 15)
-       and i32Is32Bits             == (Limits<i32>::digits == 31)
-       and i64Is64Bits             == (Limits<i64>::digits == 63)
-       and u8Is8Bits               == (Limits<u8>::digits  == 8)
-       and u16Is16Bits             == (Limits<u16>::digits == 16)
-       and u32Is32Bits             == (Limits<u32>::digits == 32)
-       and u64Is64Bits             == (Limits<u64>::digits == 64)
-       and reallyHas8BitTypes      == (i8Is8Bits and u8Is8Bits)
-	   and reallyHas16BitTypes     == (i16Is16Bits and u16Is16Bits)
-	   and reallyHas32BitTypes     == (i32Is32Bits and u32Is32Bits)
-	   and reallyHas64BitTypes     == (i64Is64Bits and u64Is64Bits)
-       and i3264Are3264Bits        == (i32Is32Bits and i64Is64Bits)
-	   and u3264Are3264Bits        == (u32Is32Bits and u64Is64Bits)
-       and reallyHas3264BitTypes   == (reallyHas32BitTypes and reallyHas64BitTypes)
-       and i163264Are163264Bits    == (i16Is16Bits and i3264Are3264Bits)
-	   and u163264Are163264Bits    == (u16Is16Bits and u3264Are3264Bits)
-       and reallyHas163264BitTypes == (reallyHas16BitTypes and reallyHas3264BitTypes);
-    // clang-format on
+    auto why       = GENERATE(from_range(whyInvalidList));
+    int integerVal = static_cast<int>(why);
+    REQUIRE(KirHut::exitCode(why) == integerVal);
 }
 
-TEST_CASE("Ensure MIN and MAX sizes are correct", "[global]")
+TEST_CASE("Ensure correct integer types from Integer", "[global][Integer]")
 {
-	STATIC_REQUIRE(sizesCheck());
-}
-
-TEST_CASE("Ensure type info is correct", "[global]")
-{
-	STATIC_REQUIRE(hasTypesCheck());
+    SECTION("Direct Integer type checks")
+    {
+        STATIC_REQUIRE(std::same_as<Integer<>, int>);
+        STATIC_REQUIRE(std::same_as<Integer<1>, signed char>);
+        STATIC_REQUIRE(std::same_as<Integer<1, false>, unsigned char>);
+    }
 }

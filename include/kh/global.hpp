@@ -44,13 +44,10 @@
  * \see TypeRequirements
  */
 
-#include <cstdint>
-#include <cstddef>
-#include <type_traits>
-
-#if KH_USE_128BIT_TYPES
-# include <cmath>
-#endif
+// The standard headers are actually included **underneath** the definitions as a workaround for MinGW sucking so hard.
+// MinGW will define _WIN32_WINNT on its own if you #include <cstdint>, which it should never do and MSVC doesn't do
+// this at all. To allow this library to define the WINVER and _WIN32_WINNT values (if the builder hasn't set them
+// directly already), the includes are done after our preprocessor defines are completed.
 
 #include "kh/export.hpp" // IWYU pragma: export
 
@@ -80,15 +77,20 @@
  * Preprocessor define indicating if the system is compiled on Windows.
  *
  * This is dependent on the `_WIN32` preprocessor definition. This should be defined by the compiler on any Windows
- * platform, both 32 and 64 bit.
+ * platform, both 32 and 64 bit. The value of this define will be equal to the defined value of WINVER, unless that
+ * value has not been set by the user, than it will be whatever it is by default in the sdkddkver.h Windows header.
  */
 
 /*!
  * \def KH_LINUX
  * Preprocessor define indicating if the system is compiled on Linux.
  *
- * This is dependent on the `__linux` preprocessor definition. This should be defined by the compiler on any Linux
- * kernel platform, both 32 and 64 bit.
+ * This is dependent on the `__linux` or `__linux__` preprocessor definitions. This should only be defined on Linux
+ * systems that have not been detected as an Android system, as they are treated as completely separate. This is
+ * defined on Linux workstations or servers, or embedded systems with a fully effective Linux kernel that are not
+ * Android.
+ *
+ * As kernel versions are not really meaningful or useful at compile time, this value is simply always 1 when defined.
  */
 
 /*!
@@ -133,7 +135,7 @@
  * Preprocessor define indicating if the system is compiled on Mac OS X.
  *
  * This is dependent on Apple's TargetConditionals.h `TARGET_OS_IPHONE` macro. If `TARGET_OS_IPHONE` is not defined or
- * equal to 0, than this is defined.
+ * equal to 0, than this is defined. This will also only be defined if KH_APPLE is also defined.
  */
 
 /*!
@@ -141,21 +143,21 @@
  * Preprocessor define indicating if the system is compiled for Apple iPhone or iPad OS.
  *
  * This is dependent on Apple's TargetConditionals.h `TARGET_OS_IPHONE` macro. If `TARGET_OS_IPHONE` is defined, than
- * this is defined.
+ * this is defined. This will also only be defined if KH_APPLE is also defined.
  */
 
 /*!
  * \def KH_DESKTOP
  * Preprocessor define indicating if the system is compiled for a desktop or laptop.
  *
- * This will be defined if either KH_WINDOWS, KH_LINUX, or KH_MACOS are defined.
+ * This will conventionally be defined if either KH_WINDOWS, KH_LINUX, KH_MACOS, or KH_BSD are defined.
  */
 
 /*!
  * \def KH_MOBILE
  * Preprocessor define indicating if the system is compiled for a mobile device.
  *
- * This will be defined if either KH_ANDROID or KH_IPHONE are defined.
+ * This will conventionally be defined if either KH_ANDROID or KH_IPHONE are defined.
  */
 
 //! \}
@@ -373,6 +375,13 @@
  */
 
 /*!
+ * \def KH_128BIT
+ *
+ * Preprocessor define indicating if the system is compiled for 128-bit systems. Currently, the only hardware platform
+ * this will be defined for is RISC-V 128-bit systems.
+ */
+
+/*!
  * \def KH_64BIT
  *
  * Preprocessor define indicating if the system is compiled for 64-bit systems.
@@ -482,7 +491,98 @@
  */
 
 /*!
- * \def KH_USES_TOML
+ * \def KH_NO_BADALLOC
+ *
+ * Preprocessor flag to build libKirHut without support for throwing std::bad_alloc exceptions.
+ *
+ * The std::bad_alloc exception is a particularly finicky and troublesome part of the exception specification. Namely,
+ * there is very little correct behavior for a program to do in the face of a failure to allocate memory other than to
+ * simply immediately terminate. Further, the usual case for most hosted operating systems is to simply lie about not
+ * having sufficient memory space, and to cause a segmentation fault or simply run an OOM killing process to kill
+ * another process or application to get the sufficient memory. With this being the case, there is hardly ever any
+ * useful purpose in trying to prevent crashes from memory allocation issues.
+ *
+ * The Qt library effectively already actually does this, because it unconditionally marks multiple methods that
+ * allocate memory as noexcept, meaning the only supported function in the face of std::bad_alloc is to call
+ * std::terminate(). This library, instead, allows the builder to select if this library supports throwing
+ * std::bad_alloc using this flag, and otherwise will behave like Qt, where the only supported action due to
+ * std::bad_alloc is to immediately call std::terminate(). This does have the benefit of marking several additional
+ * functions and methods in this library as noexcept, namely any function or method that only throws std::bad_alloc.
+ *
+ * The use of #KH_USES_QT or #KH_NO_EXCEPTIONS implies that this is also defined, even if that option was not passed in
+ * as a CMake build option.
+ *
+ * \see KH_THROWS_BADALLOC
+ */
+
+/*!
+ * \def KH_NO_EXCEPTIONS
+ *
+ * Preprocessor flag to build libKirHut without support for throwing any exceptions at all.
+ *
+ * This will cause all functions and methods to stop throwing exceptions, and they will usually instead either fallback
+ * to an alternative or simply crash the application. Unlike with KH_NO_BADALLOC, this will **not** mark all functions
+ * and methods in this library as noexcept!
+ */
+
+/*!
+ * \def KH_INCLUDE_ARG_PARSER
+ *
+ * Preprocessor flag to build libKirHut with the command line argument parsing functionality included.
+ *
+ * Some projects have no need for command line argument parsing at all, and in those cases, why drag an argument parser
+ * with you? Generally speaking, unless you use the argument parser it will not be included in an executable that is
+ * statically linked anyway, so you can usually include it no matter what, but sometimes you want to avoid this
+ * additional portion if you do not need it.
+ */
+
+/*!
+ * \def KH_INCLUDE_FILESYSTEM
+ *
+ * Preprocessor flag to build libKirHut with the std::filesystem library included as KirHut::FS.
+ *
+ * This does almost nothing except provide a convenience namespace within the KirHut namespace to access
+ * std::filesystem functions and types. There are times you would want to remove this, though, namely when you want to
+ * compile for an embedded platform that does not support a file system at all, in which case this would not be a useful
+ * namespace or extension.
+ */
+
+/*!
+ * \def KH_INCLUDE_MD5HASH
+ *
+ * Preprocessor flag to build libKirHut with the MD5 Hashing object and functions included.
+ *
+ * The MD5 Hashing functionality of this library is extremely lightweight and there's little reason to want to remove
+ * this, but there is also never any real reason you would use this outside of specifically needing to support legacy
+ * hashing functions or if you want a kind-of-slow, insecure hashing function to uniquely identify some asset.
+ */
+
+/*!
+ * \def KH_INCLUDE_TASK_SYSTEM
+ *
+ * Preprocessor flag to build libKirHut with the Multithreaded task system included.
+ *
+ * The Task system is an out-of-the-box thread pool like set of functions that allow running multiple separate threads
+ * of execution using a global thread pool. The pool is provided either directly by this library or it is provided by
+ * Qt using Qt Concurrent. The task system allow for cancelling the task, pausing and unpausing the task, and getting
+ * the current progress of a task that is currently running. It is up to the thread itself to report this information
+ * using the provided KirHut::Promise object.
+ *
+ * This system is not yet implemented, so this flag currently does a fat lot of nothing.
+ */
+
+/*!
+ * \def KH_INCLUDE_TERMINAL_PRINT
+ *
+ * Preprocessor flag to build libKirHut with the MD5 Hashing object and functions included.
+ *
+ * The MD5 Hashing functionality of this library is extremely lightweight and there's little reason to want to remove
+ * this, but there is also never any real reason you would use this outside of specifically needing to support legacy
+ * hashing functions or if you want a kind-of-slow, insecure hashing function to uniquely identify some asset.
+ */
+
+/*!
+ * \def KH_INCLUDE_TOML
  *
  * Preprocessor flag to build libKirHut with the TOML parsing functionality included.
  *
@@ -572,6 +672,20 @@
  * Preprocessor define indicating if the library is compiled in release mode.
  *
  * This is defined if the preprocessor define `NDEBUG` is defined.
+ */
+
+/*!
+ * \def KH_CLANG_GNUC_COMPATIBLE
+ *
+ * Preprocessor define to indicate the compiler used to compile libKirHut is "Clang GNUC compatible."
+ *
+ * This is defined if this library is built with most compilers that are not MSVC. These defines are not based on any
+ * preprocessor defines by the compiler itself, so it is irrelevant if __GNUC__ is defined. Instead, this information is
+ * directly provided by a CMake script in this project.
+ *
+ * "Clang GNUC" can be thought of as the shittier version of GCC support that Clang provides that justifies defining the
+ * __GNUC__ preprocessor macro. It can be useful as a substitute of looking for __GNUC__ directly if you hate that for
+ * some reason.
  */
 
 /*!
@@ -684,14 +798,15 @@
  * - NVidia HPC SDK
  * - NVidia CUDA
  * - Cray Clang
- * - QNX QCC
- * - Wind River Diab
- * - Green Hills
- * - IAR Embedded Workbench
+ * - QNX QCC (future)
+ * - Wind River Diab (future)
+ * - Green Hills (future)
+ * - IAR Embedded Workbench (future)
  *
  * C++ compilers currently detected by CMake but not included in the list have their reasons below:
  * - Analog VisualDSP++: Nowhere close to C++20 support and for hardware architectures unsupported by this library.
- * - ARM C++ Compiler: Will never support C++20.
+ *   https://www.analog.com/en/resources/evaluation-hardware-and-software/software/vdsp-bf-sh-ts.html
+ * - ARM C++ Compiler for Embedded: Will never support C++20.
  * - Embarcadero C++ Compiler: Stuck in C++11, doesn't look like it's going to progress.
  * - Fujitsu HPC C++ Compiler: I can't figure out anything about this compiler!
  * - HP C/aC++ Compiler: No longer supported and never got close to C++20.
@@ -699,8 +814,9 @@
  * - TIClang: Isn't keeping up with C++ standards, so unless things change, I don't see it.
  * - SCO OpenServer C++ Compiler: It doesn't even support C++98, and will never be updated.
  * - Oracle Developer Studio: Only supports up to C++14, and doesn't look like that will improve.
- * - Renesas C++ Compiler:
- * - Tasking Compiler Toolsets:
+ * - Renesas C++ Compiler: Still in C++11 despite MISRA supporting C++17. Doesn't look like it will improve.
+ * - Tasking Compiler Toolsets: Only seems to support C++03, and doesn't look like it will improve.
+ *   https://www.tasking.com/documentation/tricore/ctc/reference/cppcompiler.html
  * - Open Watcom C++ Compiler: It barely supports C++98, and will never update.
  * - PathScale C++ Compiler: Company is defunct, hasn't had an update in over a decade, and isn't C++20.
  * - PGI C++ Compiler: Technically now the NVidia HPC SDK Compiler, so it is supported.
@@ -788,47 +904,75 @@
 
 //! \cond
 #if defined(_WIN32)
-# undef KH_WINDOWS
-# undef KH_DESKTOP
-# define KH_WINDOWS 1
-# define KH_DESKTOP 1
-#endif
-
-#if defined(__linux)
-# undef KH_LINUX
-# undef KH_DESKTOP
-# define KH_LINUX 1
-# define KH_DESKTOP 1
-#endif
-
-#if defined(__APPLE__) or defined(__MACH__)
-# include <TargetConditionals.h>
-# undef KH_APPLE
-# define KH_APPLE 1
-# if not TARGET_OS_IPHONE
-#  undef KH_MACOS
-#  undef KH_DESKTOP
-#  define KH_MACOS 1
+// The builder can set _WIN32_WINNT and WINVER to the desired values before compiling, or this library will just use
+// whatever default value is decided by the Windows headers.
+# include <sdkddkver.h>
+# if not defined(KH_WINDOWS)
+#  define KH_WINDOWS WINVER
+# endif
+# if not defined(KH_DESKTOP) and not defined(KH_MOBILE) and not defined(KH_EMBEDDED)
 #  define KH_DESKTOP 1
+# endif
+#elif defined(__APPLE__) or defined(__MACH__)
+# include <TargetConditionals.h>
+# if not defined(TARGET_OS_MAC)
+static_assert(false, "Building for an unsupported Apple OS or OS version.");
+# endif
+# if not defined(KH_APPLE)
+#  define KH_APPLE KH_APPLE_DARWIN_KERNEL
+# endif
+# if not TARGET_OS_IPHONE
+#  if defined(TARGET_OS_DRIVERKIT)
+#   if not defined(KH_DESKTOP) and not defined(KH_MOBILE) and not defined(KH_EMBEDDED)
+#    define KH_EMBEDDED 1
+#   endif
+#  else
+#   if not defined(KH_MACOS)
+#    define KH_MACOS 1
+#   endif
+#   if not defined(KH_DESKTOP) and not defined(KH_MOBILE) and not defined(KH_EMBEDDED)
+#    define KH_DESKTOP 1
+#   endif
+#  endif // defined(TARGET_OS_DRIVERKIT)
 # else
-#  undef KH_IPHONE
-#  undef KH_MOBILE
-#  define KH_IPHONE 1
-#  define KH_MOBILE 1
+#  if not defined(KH_MOBILE)
+#   define KH_MOBILE 1
+#  endif
+#  if not defined(KH_IPHONE) and not defined(KH_TVOS) and not defined(KH_WATCHOS) and not defined(KH_VISIONOS)
+#   if defined(TARGET_OS_IOS)
+#    define KH_IPHONE 1
+#   elif defined(TARGET_OS_VISION)
+#    define KH_VISIONOS 1
+#   elif defined(TARGET_OS_TV)
+#    define KH_TVOS 1
+#   elif defined(TARGET_OS_WATCH)
+#    define KH_WATCHOS 1
+#   else
+static_assert(false, "The iOS hardware platform that this library is being built for is unsupported.");
+#   endif
+#  endif // not defined(KH_IPHONE) and not defined(KH_TVOS) and not defined(KH_WATCHOS) and not defined(KH_VISIONOS)
 # endif // not TARGET_OS_IPHONE
-#endif // defined(__APPLE__) or defined(__MACH__)
-
-#if defined(__ANDROID__) or defined(ANDROID)
-# undef KH_ANDROID
-# undef KH_MOBILE
-# define KH_ANDROID 1
-# define KH_MOBILE 1
-#endif
-
-#if defined(__EMSCRIPTEN__)
-# undef KH_WASM
-# define KH_WASM 1
-#endif
+#elif defined(__ANDROID__) or defined(ANDROID)
+# if not defined(KH_ANDROID)
+#  define KH_ANDROID 1
+# endif
+# if not defined(KH_DESKTOP) and not defined(KH_MOBILE) and not defined(KH_EMBEDDED)
+#  define KH_MOBILE 1
+# endif
+#elif defined(__EMSCRIPTEN__)
+// Emscripten versions prior to 1.3.7 are not supported at all by libKirHut.
+# if not defined(KH_WASM)
+#  define KH_WASM 1
+# endif
+#elif defined(__linux) or defined(__linux__)
+# if not defined(KH_LINUX)
+#  define KH_LINUX 1
+# endif
+# if not defined(KH_DESKTOP) and not defined(KH_MOBILE) and not defined(KH_EMBEDDED)
+// Just take a guess at a desktop if this isn't set by the builder...
+#  define KH_DESKTOP 1
+# endif
+#endif // defined(__linux) or defined(__linux__)
 
 #if defined(__FreeBSD__) or defined(__DragonFly__) or defined(__NetBSD__) or defined(__OpenBSD__)
 # undef KH_BSD
@@ -837,7 +981,7 @@
 # define KH_DESKTOP 1
 #endif
 
-#if defined(__sun) or defined(sun)
+#if defined(__sun)
 # undef KH_SUN
 # undef KH_DESKTOP
 # define KH_SUN 1
@@ -845,15 +989,18 @@
 #endif
 
 #if defined(__x86_64__) or defined(_M_X64)
-# undef KH_X64
-# undef KH_X86
-# undef KH_64BIT
-# define KH_X64 1
-# define KH_X86 1
-# define KH_64BIT 1
+# if not defined(KH_X64)
+#  define KH_X64 1
+# endif
+# if not defined(KH_X86)
+#  define KH_X86 1
+# endif
+# if not defined(KH_32BIT) and not defined(KH_64BIT) and not defined(KH_128BIT)
+#  define KH_64BIT 1
+# endif
 #endif
 
-#if not KH_X64 and (defined(i386) or defined(__i386__) or defined(__i386) or defined(_M_IX86))
+#if not defined(KH_X64) and (defined(i386) or defined(__i386__) or defined(__i386) or defined(_M_IX86))
 # undef KH_X32
 # undef KH_X86
 # undef KH_32BIT
@@ -943,17 +1090,27 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 #if defined(__riscv)
 # undef KH_RISCV
 # define KH_RISCV 1
-# if __riscv_xlen == 32
-#  define KH_RISCV32 1
-# elif __riscv_xlen == 64
-#  define KH_RISCV64 1
-# elif __riscv_xlen == 128
-#  define KH_RISCV128 1
+# if defined(__riscv_xlen)
+#  if __riscv_xlen == 32
+#   define KH_RISCV32 1
+#   define KH_32BIT 1
+#  elif __riscv_xlen == 64
+#   define KH_RISCV64 1
+#   define KH_64BIT 1
+#  elif __riscv_xlen == 128
+#   define KH_RISCV128 1
+#   define KH_128BIT 1
 static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support RISC-V 128-bit builds!");
+#  endif
+# else
+#  define KH_RISCV32 1
+#  define KH_32BIT 1
+static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
+              "libKirHut could not determine the processor bitlength for this RISC-V target.");
 # endif
 #endif
 
-#if KH_USES_QT
+#if defined(KH_USES_QT)
 # include <QtGlobal>
 # if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0) and QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
 #  define KH_QT5_15 1
@@ -970,6 +1127,8 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 # else
 #  define KH_QT_VERSION (-1)
 # endif // QT_VERSION < QT_VERSION_CHECK
+# undef KH_NO_BADALLOC
+# define KH_NO_BADALLOC 1
 #else
 # define KH_QT_VERSION 0
 #endif // KH_USES_QT
@@ -1003,15 +1162,11 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 #if defined(__GNUC__) and not defined(KH_COMPILED_WITH_MSVC)
 # define KH_COMPILED_GCC_COMPATIBLE 1
 #endif
-//! \endcond
 
-/*!
- * \def KH_CLANG_GCC_COMPATIBLE
- *
- * Preprocessor define to indicate the compiler used to compile libKirHut is "GCC compatible."
- *
- * This is always defined after including this header.
- */
+#if not defined(KH_OVERRIDE_PLATFORM_SAFETY)
+# define KH_OVERRIDE_PLATFORM_SAFETY 0
+#endif
+//! \endcond
 
 /*!
  * \def KH_FORCEINLINE
@@ -1035,6 +1190,27 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 # define KH_FORCEINLINE __attribute__((always_inline))
 #else
 # define KH_FORCEINLINE
+#endif
+
+/*!
+ * \def KH_THROWS_BADALLOC
+ *
+ * Preprocessor define used to mark certain methods as noexcept when support for throwing std::bad_alloc is removed.
+ *
+ * There are many cases, especially on hosted operating systems, where there is no useful way to handle or expect a
+ * failure to allocate memory. As such, it is sometimes useful to remove support for throwing std::bad_alloc exceptions
+ * as this does so as to provide optimization in some circumstances and to make the methods more useful in certain
+ * contexts (for example, they may now be used in noexcept contexts).
+ *
+ * This is always defined after including this header.
+ *
+ * \hideinitializer
+ */
+
+#if defined(KH_NO_BADALLOC)
+# define KH_THROWS_BADALLOC noexcept
+#else
+# define KH_THROWS_BADALLOC
 #endif
 
 /*!
@@ -1091,17 +1267,27 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
  * \hideinitializer
  */
 
-#if KH_COMPILED_WITH_MSVC
+#if KH_COMPILED_WITH_MSVC and not defined(__clang__)
 # define KH_ATTR_FLATTEN msvc::flatten
 #else
 # define KH_ATTR_FLATTEN gnu::flatten
 #endif
 
+#include <cstdint>
+#include <cstddef>
+#include <type_traits>
+
+#if KH_USE_128BIT_TYPES
+# include <cmath>
+#endif
+
 namespace KirHut
 {
 
+//! \cond
 using std::byte;
 using std::size_t;
+//! \endcond
 
 /*!
  * The standard 8 bit signed integer type.
@@ -1309,9 +1495,9 @@ namespace Detail
  *
  * A type that is only used by templates to find the appropriate integer type for a given number of bytes.
  *
- * This class exists for the Integer type inside of it, as that is the only public member. This cla
+ * This class exists for the Integer type inside of it, as that is the only public member.
  */
-template <size_t bytes, bool isSigned, bool isFast>
+template <size_t bytes, bool isSigned, bool isFast, bool mustBeExact = true>
 class IntFinder
 {
     /*!
@@ -1413,6 +1599,9 @@ public:
      */
     using Integer = std::
         conditional_t<isFast, std::conditional_t<isSigned, fints, ufints>, std::conditional_t<isSigned, ints, uints>>;
+
+    static_assert(not mustBeExact or sizeof(Integer) == bytes,
+                  "This platform does not have a type with an exact number of bytes as requested.");
 };
 
 /*!
@@ -1447,11 +1636,15 @@ constexpr T staticConstRef{};
  * and if you need a fast integer, but these are usually known in advance so you should just use the convenience aliases
  * Int, UInt, FastInt, and UFastInt instead when it is known.
  *
- * Valid values for BYTES are any amount that is equal to or less than sizeof(conditional_t<SIGNED, iWidest, uWidest>).
  * The type returned will be the smallest type on the target platform that can fit the number of bytes requested.
+ *
+ * \tparam bytes Any number of bytes equal to or less than sizeof(conditional_t<isSigned,iWidest,uWidest>).
+ * \tparam isSigned Whether or not the resulting type is a signed integer type.
+ * \tparam isFast Whether or not the resulting type is from the "fast" integer set.
+ * \tparam mustBeExact Whether having a type that is not exactly \p bytes large should be a compile error.
  */
-template <size_t BYTES = sizeof(int), bool SIGNED = true, bool FAST = false>
-using Integer = Detail::IntFinder<BYTES, SIGNED, FAST>::Integer;
+template <size_t bytes = sizeof(int), bool isSigned = true, bool isFast = false, bool mustBeExact = false>
+using Integer = Detail::IntFinder<bytes, isSigned, isFast, mustBeExact>::Integer;
 
 /*!
  * A size-based unsigned integer type alias.
@@ -1460,11 +1653,12 @@ using Integer = Detail::IntFinder<BYTES, SIGNED, FAST>::Integer;
  * explicitly pick one of them. This can be useful in multiple situations involving templates, when you do not know the
  * size of the types or number of bytes when the template is written but it will be determined at compile time.
  *
- * Valid values for BYTES are any amount that is equal to or less than sizeof(iWidest). The type returned will be the
- * smallest type on the target platform that can fit the number of bytes requested.
+ * The type returned will be the smallest type on the target platform that can fit the number of bytes requested.
+ *
+ * \tparam bytes Any number of bytes equal to or less than sizeof(uWidest).
  */
-template <size_t BYTES = sizeof(unsigned int)>
-using UInt = Integer<BYTES, false, false>;
+template <size_t bytes = sizeof(unsigned int)>
+using UInt = Integer<bytes, false>;
 
 /*!
  * A type-based unsigned integer type alias.
@@ -1474,6 +1668,8 @@ using UInt = Integer<BYTES, false, false>;
  * the types of bytes at the time of writing, but will be determined at compile time. If the size of the type used in
  * this template is larger than any according integer type that the platform supports, this will simply fail to
  * compile.
+ *
+ * \tparam T Any type that is equal to or smaller than the largest integer on this platform.
  */
 template <typename T>
 using UIntOf = UInt<sizeof(T)>;
@@ -1483,8 +1679,8 @@ using UIntOf = UInt<sizeof(T)>;
  *
  * \copydetails UInt<BYTES>
  */
-template <size_t BYTES = sizeof(int)>
-using Int = Integer<BYTES, true, false>;
+template <size_t bytes = sizeof(int)>
+using Int = Integer<bytes>;
 
 /*!
  * A type-based integer type alias.
@@ -1499,8 +1695,8 @@ using IntOf = Int<sizeof(T)>;
  *
  * \copydetails UInt<BYTES>
  */
-template <size_t BYTES = sizeof(unsigned int)>
-using UFastInt = Integer<BYTES, false, true>;
+template <size_t bytes = sizeof(unsigned int)>
+using UFastInt = Integer<bytes, false, true>;
 
 /*!
  * A type-based unsigned fast integer type alias.
@@ -1515,8 +1711,8 @@ using UFastIntOf = UFastInt<sizeof(T)>;
  *
  * \copydetails UInt<BYTES>
  */
-template <size_t BYTES = sizeof(int)>
-using FastInt = Integer<BYTES, true, true>;
+template <size_t bytes = sizeof(int)>
+using FastInt = Integer<bytes, true, true>;
 
 /*!
  * A type-based signed fast integer type alias.
@@ -1525,6 +1721,50 @@ using FastInt = Integer<BYTES, true, true>;
  */
 template <typename T>
 using FastIntOf = FastInt<sizeof(T)>;
+
+/*!
+ * A size-based unsigned integer type alias.
+ *
+ * This is a useful template when you want to use sizeof() to select the size of an integer type instead of needing to
+ * explicitly pick one of them. This can be useful in multiple situations involving templates, when you do not know the
+ * size of the types or number of bytes when the template is written but it will be determined at compile time.
+ *
+ * The type returned will be the smallest type on the target platform that can fit the number of bytes requested.
+ *
+ * \tparam bytes Any number of bytes equal to or less than sizeof(uWidest).
+ */
+template <size_t bytes = sizeof(unsigned int)>
+using ExactUInt = Integer<bytes, false, false, true>;
+
+/*!
+ * A type-based unsigned integer type alias.
+ *
+ * This is a useful template when you want to get an integer type that is capable of carrying the entirety of the passed
+ * in object's bytes. This can be useful in multiple situations involving templates, when you do not know the size of
+ * the types of bytes at the time of writing, but will be determined at compile time. If the size of the type used in
+ * this template is larger than any according integer type that the platform supports, this will simply fail to
+ * compile.
+ *
+ * \tparam T Any type that is equal to or smaller than the largest integer on this platform.
+ */
+template <typename T>
+using ExactUIntOf = ExactUInt<sizeof(T)>;
+
+/*!
+ * A size-based integer type alias.
+ *
+ * \copydetails ExactUInt<BYTES>
+ */
+template <size_t bytes = sizeof(int)>
+using ExactInt = Integer<bytes, true, false, true>;
+
+/*!
+ * A type-based integer type alias.
+ *
+ * \copydetails ExactUIntOf<T>
+ */
+template <typename T>
+using ExactIntOf = Int<sizeof(T)>;
 
 /*!
  * Enumeration for reasons why a function or command failed or the input was invalid.
@@ -1593,7 +1833,7 @@ enum class WhyInvalid
  * \param why A WhyInvalid type (which is just an integer underneath) to cast to int.
  * \return an int representation of the WhyInvalid exit code.
  */
-constexpr int exitCode(WhyInvalid why) noexcept
+[[nodiscard]] constexpr int exitCode(WhyInvalid why) noexcept
 {
     return static_cast<int>(why);
 }
@@ -1651,10 +1891,20 @@ constexpr int exitCode(WhyInvalid why) noexcept
 # define KH_DEPRECATED
 # define KH_DEPRECATED_EXPORT
 # define KH_DEPRECATED_NO_EXPORT
+# define KH_EXPLICIT_TEMPLATE_EXPORT
+# define KH_EXPLICIT_TEMPLATE_INSTANCE
 # define KH_CLANG_GCC_COMPATIBLE
 # define KH_USES_QT
 # define KH_USES_FMT
-# define KH_USES_TOML
+# define KH_NO_BADALLOC
+# define KH_NO_EXCEPTIONS
+# define KH_INCLUDE_MD5HASH
+# define KH_INCLUDE_TOML
+# define KH_INCLUDE_ARG_PARSER
+# define KH_INCLUDE_FILESYSTEM
+# define KH_INCLUDE_TASK_SYSTEM
+# define KH_INCLUDE_TERMINAL_PRINT
+# define KH_OVERRIDE_PLATFORM_SAFETY
 # define KH_DEBUG
 # define KH_RELEASE
 # define KH_MUST_HAVE_16_32_64

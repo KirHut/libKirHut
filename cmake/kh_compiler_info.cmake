@@ -28,9 +28,8 @@ function(kh_set_compiler_info arg_COMPILER_NAME arg_DISPLAY_NAME)
        arg_COMPILER_NAME STREQUAL "ARMCLANG" OR
        arg_COMPILER_NAME STREQUAL "ICX" OR
        arg_COMPILER_NAME STREQUAL "IBMXL" OR
-       arg_COMPILER_NAME STREQUAL "CRAY" OR
-       arg_COMPILER_NAME STREQUAL "MCST")
-        set(KH_CLANG_GCC_COMPATIBLE YES PARENT_SCOPE)
+       arg_COMPILER_NAME STREQUAL "CRAY")
+        set(KH_CLANG_GNUC_COMPATIBLE YES PARENT_SCOPE)
     endif()
 endfunction()
 
@@ -59,6 +58,8 @@ function(kh_find_compiler_info)
         kh_set_compiler_info("QNX" "QNX C++ Compiler")
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Diab")
         kh_set_compiler_info("DIAB" "Wind River Systems Diab Compiler")
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GHS")
+        kh_set_compiler_info("GHS" "Green Hills Software C++ Compiler")
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "LCC")
         kh_set_compiler_info("MCST" "MCST Elbrus C++ Compiler")
     else()
@@ -69,7 +70,7 @@ function(kh_find_compiler_info)
     set(${KH_COMPILED_WITH_NAME} ${${KH_COMPILED_WITH_NAME}} PARENT_SCOPE)
     set(KH_COMPILER_DISPLAY_STRING "${KH_COMPILER_DISPLAY_STRING}" PARENT_SCOPE)
 
-    if(KH_CLANG_GCC_COMPATIBLE)
-        set(KH_CLANG_GCC_COMPATIBLE YES PARENT_SCOPE)
+    if(KH_CLANG_GNUC_COMPATIBLE)
+        set(KH_CLANG_GNUC_COMPATIBLE YES PARENT_SCOPE)
     endif()
 endfunction()

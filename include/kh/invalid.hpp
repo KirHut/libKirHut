@@ -34,8 +34,6 @@ namespace KirHut
 /*!
  * Dumb data object containing a view to a static message and a WhyInvalid.
  *
- * \headerfile invalid.hpp "kh/invalid.hpp"
- *
  * This can be returned by some functions if a WhyInvalid fails to provide an adequate info string for the issue at hand
  * but there is still no need to perform dynamic memory allocation.
  */
@@ -70,6 +68,12 @@ struct MessageViewWhy
     constexpr static bool isQuickCopy = true;
 
     /*!
+     * \brief operator <=>
+     * \param other
+     */
+    constexpr auto operator<=>(MessageViewWhy const &other) const noexcept = default;
+
+    /*!
      * Returns this object's WhyInvalid type.
      *
      * Just returns why.
@@ -96,8 +100,6 @@ struct MessageViewWhy
 
 /*!
  * Concept that an object type can model to meet the requirements of the ValidWhyType concept.
- *
- * \headerfile invalid.hpp "kh/invalid.hpp"
  *
  * Any object type that meets the WhyObject concept will automatically be a ValidWhyType, even if no WhyTypeTraits
  * specialization for the type is defined. This is because any object which models this concept is clearly intending to
@@ -310,6 +312,8 @@ struct QuickCopyExtractor
 
 /*!
  * \internal
+ *
+ * \brief The QuickCopyExtractor class
  */
 template <WhyObject Why_T>
 requires requires {
@@ -336,12 +340,31 @@ constexpr WhyInvalid getWhyInvalid(WhyInvalid why) noexcept;
  * \return
  */
 constexpr string_view getInvalidInfo(WhyInvalid why) noexcept;
+
+/*!
+ * \brief getWhyInvalid
+ * \param view
+ * \return
+ */
+template <typename Char_T>
+constexpr WhyInvalid getWhyInvalid(std::basic_string_view<Char_T> view) noexcept;
 #endif
 
 namespace
 {
 
+/*!
+ * \internal
+ *
+ * \brief getWhyInvalid
+ */
 constexpr auto const &getWhyInvalid  = Detail::staticConstRef<Detail::GetWhyInvalidImpl>;
+
+/*!
+ * \internal
+ *
+ * \brief getInvalidInfo
+ */
 constexpr auto const &getInvalidInfo = Detail::staticConstRef<Detail::GetInvalidInfoImpl>;
 
 } // namespace
@@ -424,8 +447,6 @@ concept QuickWhyType = ValidWhyType<T> and std::is_nothrow_move_constructible_v<
 /*!
  * Provides a simple interface to an error type object with a message and a why for the failure.
  *
- * \headerfile invalid.hpp "kh/invalid.hpp"
- *
  * This class is designed to be flexible enough to use any type as the "why" for possible subclasses that may have
  * more complicated internal representations, but for most use cases you should just use the Invalid typedef of this
  * class. The Invalid typedef uses the enum WhyInvalid to provide a method for programmers to know what happened and
@@ -476,11 +497,17 @@ class BasicInvalid
 
 public:
     /*!
+     * Typedef for BasicInvalid types to identify the character type of the returned info() string.
+     */
+    using CharType = WhyTypeTraits<Why_T>::CharType;
+
+    /*!
      * \brief BasicInvalid
-     * \param args
+     * \param args The arguments to pass to the Why_T constructor to build this BasicInvalid object around.
      */
     template <typename... Arg_Ts>
-    inline explicit BasicInvalid(Arg_Ts &&...args) requires(std::is_constructible_v<Why_T, Arg_Ts...>)
+    inline explicit(sizeof...(Arg_Ts) < 2) BasicInvalid(Arg_Ts &&...args)
+        requires(std::is_constructible_v<Why_T, Arg_Ts...>)
         : data(make_shared<Why_T>(std::forward<Arg_Ts>(args)...))
     {
         // No further implementation.
@@ -525,19 +552,47 @@ public:
     }
 
     /*!
+     * Equality operator for complex BasicInvalid types.
+     *
+     * Both the simple and complex BasicInvalid types work the same for equality operators: They just delegate to the
+     * underlying Why_T object for comparison. If two Why_T objects contained in a BasicInvalid would return true for
+     * `data == other.data`, than so will the wrapping BasicInvalid objects, even if those two Why_T objects are
+     * different instances.
+     *
+     * Complex BasicInvalids have an additional "empty" state where they only compare equal to \p other empty
+     * BasicInvalid objects. The only way to create an "empty" BasicInvalid is to create one with an instance of the
+     * object in it, then move it to another BasicInvalid using the move constructor or assignment operator.
+     *
+     * \param other The other BasicInvalid you are comparing this one to.
+     * \return Whether or not this BasicInvalid is equal to \p other.
+     */
+    inline bool operator==(BasicInvalid const &other) const noexcept
+    {
+        if (data and other.data)
+        {
+            return *data == *other.data;
+        }
+
+        return data == other.data;
+    }
+
+    /*!
      * Get the reason for this BasicInvalid object's creation.
      *
      * This value can only be changed when the Invalid object is constructed or reassigned from another object. A
      * constant enumeration of why this Invalid object was returned. You should use this in a switch/case statement or
      * to match against possible options in an if statement.
      *
-     * For simple Invalid types, why() can be set using setInfo().
-     *
      * \return A reason why this BasicInvalid object was created.
      */
     [[nodiscard]] inline WhyInvalid why() const noexcept
     {
-        return getWhyInvalid(whyData());
+        if (Why_T const *internal = whyData())
+        {
+            return getWhyInvalid(*internal);
+        }
+
+        return WhyInvalid::DataRemoved;
     }
 
     /*!
@@ -550,10 +605,28 @@ public:
      *
      * \return A string_view of the info in this Invalid object.
      */
-    [[nodiscard]] inline string_view info() const noexcept
+    [[nodiscard]] inline std::basic_string_view<CharType> info() const noexcept
     {
-        return getInvalidInfo(whyData());
+        if (Why_T const *internal = whyData())
+        {
+            return getInvalidInfo(*internal);
+        }
+
+        return "";
     }
+
+    /*!
+     * Constant expression flag for BasicInvalid types to distinguish between simple BasicInvalids and complex ones.
+     *
+     * A "Simple" BasicInvalid is one that simply copies the underlying Why_T to every instance of BasicInvalid, which
+     * ensures the validity of the data in all cases, including when a BasicInvalid object is moved from. A complex
+     * BasicInvalid becomes invalid itself after being moved from, so you should not use a BasicInvalid after it has
+     * been moved from at all.
+     *
+     * If you do, the complex BasicInvalid does have a predictable result: Calls to why() will always return
+     * WhyInvalid::DataRemoved and calls to info() will always return an empty string_view.
+     */
+    constexpr static bool simple = false;
 
 protected:
     /*!
@@ -566,17 +639,17 @@ protected:
      *
      * \return The internal Why_T type stored by this BasicInvalid.
      */
-    [[nodiscard]] inline Why_T &whyData() noexcept
+    [[nodiscard]] inline Why_T *whyData() noexcept
     {
-        return *data;
+        return data.get();
     }
 
     /*!
      * \copydoc whyData()
      */
-    [[nodiscard]] inline std::add_const_t<Why_T> &whyData() const noexcept
+    [[nodiscard]] inline Why_T const *whyData() const noexcept
     {
-        return *data;
+        return data.get();
     }
 };
 
@@ -594,6 +667,11 @@ class BasicInvalid<Why_T>
     Why_T data;
 
 public:
+    /*!
+     * Typedef for BasicInvalid types to identify the character type of the returned info() string.
+     */
+    using CharType = WhyTypeTraits<Why_T>::CharType;
+
     /*!
      * \brief BasicInvalid
      * \param args
@@ -637,6 +715,23 @@ public:
     }
 
     /*!
+     * Equality operator for complex BasicInvalid types.
+     *
+     * Both the simple and complex BasicInvalid types work the same for equality operators: They just delegate to the
+     * underlying Why_T object for comparison. If two Why_T objects contained in a BasicInvalid would return true for
+     * `data == other.data`, than so will the wrapping BasicInvalid objects, even if those two Why_T objects are
+     * different instances.
+     *
+     * Complex BasicInvalids have an additional "empty" state where they only compare equal to \p other empty
+     * BasicInvalid objects. The only way to create an "empty" BasicInvalid is to create one with an instance of the
+     * object in it, then move it to another BasicInvalid using the move constructor or assignment operator.
+     *
+     * \param other The other BasicInvalid you are comparing this one to.
+     * \return Whether or not this BasicInvalid is equal to \p other.
+     */
+    constexpr bool operator==(BasicInvalid const &other) const noexcept = default;
+
+    /*!
      * Get the reason for this Invalid object's creation.
      *
      * This value can only be changed when the Invalid object is constructed or reassigned from another object. A
@@ -654,7 +749,7 @@ public:
      * \brief info
      * \return
      */
-    [[nodiscard]] constexpr string_view info() const noexcept
+    [[nodiscard]] constexpr std::basic_string_view<CharType> info() const noexcept
     {
         return getInvalidInfo(data);
     }
@@ -683,6 +778,9 @@ protected:
     }
 };
 
+/*!
+ *
+ */
 template <typename Char_T>
 requires(not std::same_as<Char_T, void>)
 using BasicMessageInvalid = BasicInvalid<MessageViewWhy<Char_T>>;
@@ -695,7 +793,22 @@ extern template class KH_EXPLICIT_TEMPLATE_EXPORT BasicInvalid<string>;
 extern template class KH_EXPLICIT_TEMPLATE_EXPORT BasicInvalid<string_view>;
 //! \endcond
 
-using Invalid        = BasicInvalid<WhyInvalid>;
+/*!
+ * The most common use case for the BasicInvalid class in a convenient typedef.
+ *
+ * The MaybeInv class returns exclusively this typedef of the BasicInvalid class, and is also the one you will most
+ * likely want to use in your application. If you need a message included, the MessageInvalid typedef is also very
+ * useful. If you need something more complicated than an enum and a static message, you can use your own ValidWhyType
+ * or you can use a std::string as the why type for BasicInvalid.
+ */
+using Invalid = BasicInvalid<WhyInvalid>;
+
+/*!
+ * The standard BasicMessageInvalid type using char.
+ *
+ * All text in KirHut software is represented using UTF-8, so this is the only MessageInvalid type that is used in
+ * KirHut software. The flexibility remains to use wide characters or other character types if you so choose.
+ */
 using MessageInvalid = BasicMessageInvalid<char>;
 
 /*!
@@ -713,6 +826,8 @@ namespace Detail
 // We need a special detail namespace *right here*! It can only go specifically right here!
 
 /*!
+ * \internal
+ *
  * \brief throwNoValidData
  * \param inv
  */
@@ -720,13 +835,11 @@ namespace Detail
 
 } // namespace Detail
 
-template <typename T>
+template <typename Contained_T, typename Invalid_T>
 class MaybeInv;
 
 /*!
  * A function concept that modifies the data in a MaybeInv.
- *
- * \headerfile invalid.hpp "kh/invalid.hpp"
  *
  * The type used for FirstArg here will determine if this may be used in MaybeInv::then() methods or in
  * MaybeInv::orElse() methods, and in both cases the argument passed as the first argument in the invocable type is
@@ -740,15 +853,18 @@ concept MaybeTransform = std::invocable<Function, FirstArg, Args...> and
 /*!
  * A class that resembles std::expected in C++23 but is slightly simpler.
  *
- * \headerfile invalid.hpp kh/invalid.hpp
- *
  * Since KirHut codebases are still only using and expecting C++20, types like std::expected have yet to make it into
- * use. Further, the std::expected class has some small deficiencies, namely the mostly unnecessary "unexpected" type
- * (which for our use cases would just be defined `template <class Contained_T> using MaybeInv =
- * std::expected<Contained_T, Invalid>;`) has been removed, and this class is deliberately designed to never throw an
- * exception or invoke undefined behavior when used correctly (after successful construction). Some methods, like a
- * "value" method or `operator*`, have been removed from the class, as you can simply get access using the get() method,
- * or use the monadic take(Contained_T&&) method to not deal with the potential null pointer being returned.
+ * use. Further, the std::expected class has some small deficiencies, namely the mostly unnecessary "unexpected" type,
+ * which for our use cases would just be defined...
+ *
+ * ~~~
+ * template <class Contained_T> using MaybeInv = std::expected<Contained_T, Invalid>;
+ * ~~~
+ *
+ * ...has been removed. This class is deliberately designed to never throw an exception or invoke undefined behavior
+ * when used correctly (after successful construction). Some methods, like a "value" method or `operator*`, have been
+ * removed from the class, as you can simply get access using the get() method, or use the monadic take(Contained_T&&)
+ * method to not deal with the potential null pointer being returned.
  *
  * The ideal way to use this class is like so:
  *
@@ -759,7 +875,7 @@ concept MaybeTransform = std::invocable<Function, FirstArg, Args...> and
  *   // Search for your index, if you do not find it, do not set foundIndex.
  *   if (foundIndex == -1)
  *   {
- *     return Invalid{ WhyInvalid::NotFound, "An index could not be found for "s + seek };
+ *     return Invalid{ WhyInvalid::NotFound };
  *   }
  *
  *   return foundIndex;
@@ -775,7 +891,7 @@ concept MaybeTransform = std::invocable<Function, FirstArg, Args...> and
  * }
  * else
  * {
- *   KirHut::IO::println("findIndex() failed!\nReason: {}", index.failure()->message());
+ *   KirHut::IO::report("findIndex() failed!\nReason: {}", index.failure()->info());
  * }
  * ~~~
  *
@@ -789,15 +905,24 @@ concept MaybeTransform = std::invocable<Function, FirstArg, Args...> and
  * lead to data race conditions. If you have two or more threads that need access to this MaybeInv's data, **always
  * remove the data first and store it in an atomic value or control access with a mutex!**
  */
-template <typename Contained_T>
+template <typename Contained_T, typename Invalid_T = Invalid>
 class MaybeInv final
 {
-    using Data = Var<Contained_T, Invalid>;
+    /*!
+     * \internal
+     *
+     * Data object typedef to simplify certain other template calls.
+     *
+     * The data object is of this type.
+     */
+    using Data = Var<Contained_T, Invalid_T>;
 
     /*!
      * \internal
      *
-     * \brief data
+     * The MaybeInv internal data representation.
+     *
+     * It is just a std::variant of the Contained_T type or an Invalid.
      */
     Data data;
 
@@ -811,16 +936,15 @@ public:
      * ~~~
      * typedef MaybeInv<int> MaybeInt;
      *
-     * template <typename Contained_T>
-     * Maybe<Contained_T>::JustType getValueOrMessage(Maybe<Contained_T> const &val, Maybe<Contained_T>::JustType &&alt)
+     * MaybeInt::JustType getValueOrMessage(MaybeInt const &val, MaybeInt::JustType &&alt)
      * {
-     *     if (val.isValid())
-     *     {
-     *         return *val.get();
-     *     }
+     *   if (val.isValid())
+     *   {
+     *     return *val.get();
+     *   }
      *
-     *     IO::out().print("Invalid value attempted to convert.");
-     *     return { forward<Maybe<Contained_T>::JustType>(alt) };
+     *   KirHut::IO::report("Invalid MaybeInt passed to getValueOrMessage!.");
+     *   return { forward<MaybeInt::JustType>(alt) };
      * }
      * ~~~
      */

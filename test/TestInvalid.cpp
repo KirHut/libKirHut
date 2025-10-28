@@ -17,7 +17,6 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-
 #include "kh/invalid.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -31,6 +30,7 @@ struct MissingCharType
     {
         return WhyInvalid::Success;
     }
+
     std::string_view getInvalidInfo() const noexcept
     {
         return "ok";
@@ -40,6 +40,7 @@ struct MissingCharType
 struct MissingGetWhyInvalid
 {
     using CharType = char;
+
     std::string_view getInvalidInfo() const noexcept
     {
         return "ok";
@@ -49,10 +50,12 @@ struct MissingGetWhyInvalid
 struct WrongReturnTypes
 {
     using CharType = char;
+
     constexpr int getWhyInvalid() const noexcept
     {
         return 42;
     }
+
     constexpr std::string getInvalidInfo() const noexcept
     {
         return "ok";
@@ -63,10 +66,12 @@ struct CorrectWhyObject
 {
     using CharType                    = char;
     constexpr static bool isQuickCopy = true;
+
     constexpr WhyInvalid getWhyInvalid() const noexcept
     {
         return WhyInvalid::SoftwareError;
     }
+
     constexpr std::basic_string_view<CharType> getInvalidInfo() const noexcept
     {
         return "error";
@@ -75,8 +80,6 @@ struct CorrectWhyObject
 
 TEST_CASE("MessageViewWhy object basic behavior", "[invalid][utility]")
 {
-    using namespace std::string_view_literals;
-
     SECTION("MessageViewWhy expected invariants")
     {
         // MessageViewWhy should be trivially copyable, but Clang does not implement std::is_trivially_copyable
@@ -116,7 +119,7 @@ TEST_CASE("MessageViewWhy object basic behavior", "[invalid][utility]")
 
     SECTION("Runtime construction and access")
     {
-        std::string_view const text = "Something went wrong";
+        string_view const text = "Something went wrong";
         MessageViewWhy<char> const msg{ WhyInvalid::SoftwareError, text };
 
         REQUIRE(msg.why == WhyInvalid::SoftwareError);
@@ -153,7 +156,7 @@ TEST_CASE("getWhyInvalid overloads", "[invalid][concepts]")
 
     SECTION("getWhyInvalid(std::basic_string_view<Char_T>) overload")
     {
-        constexpr std::string_view sv   = "test";
+        constexpr string_view sv        = "test";
         constexpr std::wstring_view wsv = L"wide";
         STATIC_REQUIRE(getWhyInvalid(sv) == WhyInvalid::Unknown);
         STATIC_REQUIRE(getWhyInvalid(wsv) == WhyInvalid::Unknown);
@@ -161,7 +164,7 @@ TEST_CASE("getWhyInvalid overloads", "[invalid][concepts]")
 
     SECTION("getWhyInvalid(std::basic_string<Char_T> const&) overload")
     {
-        std::string const s   = "test";
+        string const s        = "test";
         std::wstring const ws = L"wide";
         STATIC_REQUIRE(getWhyInvalid(s) == WhyInvalid::Unknown);
         STATIC_REQUIRE(getWhyInvalid(ws) == WhyInvalid::Unknown);
@@ -188,7 +191,7 @@ TEST_CASE("getWhyInvalid overloads", "[invalid][concepts]")
 template <typename T>
 constexpr bool testInvalidInfo = requires { Detail::getInvalidInfo(std::declval<T>()); };
 
-template <OneOf<std::string, std::wstring> Str_T>
+template <OneOf<string, std::wstring> Str_T>
 consteval bool getInvalidInfoStringTest(typename Str_T::value_type const (&data)[])
 {
     Str_T str = data;
@@ -206,7 +209,7 @@ TEST_CASE("getInvalidInfo overloads", "[invalid][concepts]")
 
     SECTION("getInvalidInfo(std::basic_string_view<Char_T>) overload")
     {
-        constexpr std::string_view sv   = "simple view";
+        constexpr string_view sv        = "simple view";
         constexpr std::wstring_view wsv = L"wide view";
         STATIC_REQUIRE(getInvalidInfo(sv) == sv);
         STATIC_REQUIRE(getInvalidInfo(wsv) == wsv);
@@ -214,7 +217,7 @@ TEST_CASE("getInvalidInfo overloads", "[invalid][concepts]")
 
     SECTION("getInvalidInfo(std::basic_string<Char_T> const&) overload")
     {
-        STATIC_REQUIRE(getInvalidInfoStringTest<std::string>("string content"));
+        STATIC_REQUIRE(getInvalidInfoStringTest<string>("string content"));
         STATIC_REQUIRE(getInvalidInfoStringTest<std::wstring>(L"wide content"));
     }
 
@@ -253,9 +256,9 @@ TEST_CASE("WhyTypeTraits specializations", "[invalid][traits]")
 
     SECTION("WhyTypeTraits<std::basic_string_view<Char_T>> specializations")
     {
-        STATIC_REQUIRE(WhyTypeTraits<std::string_view>::isImplemented);
-        STATIC_REQUIRE(WhyTypeTraits<std::string_view>::isQuickCopy);
-        STATIC_REQUIRE(std::is_same_v<typename WhyTypeTraits<std::string_view>::CharType, char>);
+        STATIC_REQUIRE(WhyTypeTraits<string_view>::isImplemented);
+        STATIC_REQUIRE(WhyTypeTraits<string_view>::isQuickCopy);
+        STATIC_REQUIRE(std::is_same_v<typename WhyTypeTraits<string_view>::CharType, char>);
 
         STATIC_REQUIRE(WhyTypeTraits<std::wstring_view>::isImplemented);
         STATIC_REQUIRE(WhyTypeTraits<std::wstring_view>::isQuickCopy);
@@ -264,9 +267,9 @@ TEST_CASE("WhyTypeTraits specializations", "[invalid][traits]")
 
     SECTION("WhyTypeTraits<std::basic_string<Char_T>> specializations")
     {
-        STATIC_REQUIRE(WhyTypeTraits<std::string>::isImplemented);
-        STATIC_REQUIRE_FALSE(WhyTypeTraits<std::string>::isQuickCopy);
-        STATIC_REQUIRE(std::is_same_v<typename WhyTypeTraits<std::string>::CharType, char>);
+        STATIC_REQUIRE(WhyTypeTraits<string>::isImplemented);
+        STATIC_REQUIRE_FALSE(WhyTypeTraits<string>::isQuickCopy);
+        STATIC_REQUIRE(std::is_same_v<typename WhyTypeTraits<string>::CharType, char>);
 
         STATIC_REQUIRE(WhyTypeTraits<std::wstring>::isImplemented);
         STATIC_REQUIRE_FALSE(WhyTypeTraits<std::wstring>::isQuickCopy);
@@ -291,7 +294,8 @@ struct ValidWhyObject
     {
         return WhyInvalid::Unknown;
     }
-    std::string_view getInvalidInfo() const noexcept
+
+    string_view getInvalidInfo() const noexcept
     {
         return "";
     }
@@ -306,7 +310,8 @@ struct ValidQuickWhyObject
     {
         return WhyInvalid::Unknown;
     }
-    std::string_view getInvalidInfo() const noexcept
+
+    string_view getInvalidInfo() const noexcept
     {
         return "";
     }
@@ -317,9 +322,9 @@ TEST_CASE("ValidWhyType concept constraints", "[invalid][concepts]")
     SECTION("Valid Why types")
     {
         STATIC_REQUIRE(ValidWhyType<WhyInvalid>);
-        STATIC_REQUIRE(ValidWhyType<std::string_view>);
+        STATIC_REQUIRE(ValidWhyType<string_view>);
         STATIC_REQUIRE(ValidWhyType<std::wstring_view>);
-        STATIC_REQUIRE(ValidWhyType<std::string>);
+        STATIC_REQUIRE(ValidWhyType<string>);
         STATIC_REQUIRE(ValidWhyType<std::wstring>);
         STATIC_REQUIRE(ValidWhyType<ValidWhyObject>);
     }
@@ -347,7 +352,7 @@ TEST_CASE("ValidWhyType concept constraints", "[invalid][concepts]")
             {
                 return WhyInvalid::Unknown;
             }
-            std::string_view getInvalidInfo() const noexcept
+            string_view getInvalidInfo() const noexcept
             {
                 return "";
             }
@@ -356,7 +361,7 @@ TEST_CASE("ValidWhyType concept constraints", "[invalid][concepts]")
         struct MissingGetWhyInvalid
         {
             using CharType = char;
-            std::string_view getInvalidInfo() const noexcept
+            string_view getInvalidInfo() const noexcept
             {
                 return "";
             }
@@ -388,15 +393,15 @@ TEST_CASE("QuickWhyType concept constraints", "[invalid][concepts]")
     SECTION("Valid quick copy types")
     {
         STATIC_REQUIRE(QuickWhyType<WhyInvalid>);
-        STATIC_REQUIRE(QuickWhyType<std::string_view>);
+        STATIC_REQUIRE(QuickWhyType<string_view>);
         STATIC_REQUIRE(QuickWhyType<std::wstring_view>);
         STATIC_REQUIRE(QuickWhyType<ValidQuickWhyObject>);
     }
 
     SECTION("ValidWhyType but not quick copy")
     {
-        STATIC_REQUIRE(ValidWhyType<std::string>);
-        STATIC_REQUIRE_FALSE(QuickWhyType<std::string>);
+        STATIC_REQUIRE(ValidWhyType<string>);
+        STATIC_REQUIRE_FALSE(QuickWhyType<string>);
         STATIC_REQUIRE(ValidWhyType<std::wstring>);
         STATIC_REQUIRE_FALSE(QuickWhyType<std::wstring>);
         STATIC_REQUIRE(ValidWhyType<ValidWhyObject>);
@@ -419,14 +424,80 @@ TEST_CASE("QuickWhyType concept constraints", "[invalid][concepts]")
     }
 }
 
-TEST_CASE("Simple Invalid Construction State", "[invalid][constructor]")
+TEST_CASE("Simple BasicInvalid constructor overloads", "[invalid][constructor]")
 {
-    Invalid in{ WhyInvalid::Unknown };
-    REQUIRE(in.why() == WhyInvalid::Unknown);
-    REQUIRE(in.info().empty());
+    using TestInvalid = BasicInvalid<string_view>;
+
+    SECTION("construction using argument forwarding constructor")
+    {
+        MessageInvalid test(WhyInvalid::Success, "My test invalid.");
+        REQUIRE(test.why() == WhyInvalid::Success);
+        REQUIRE(test.info() == "My test invalid.");
+    }
+
+    SECTION("Construction using Why_T copy constructor.")
+    {
+        auto const view = "My test invalid."sv;
+        TestInvalid test(view);
+        REQUIRE(test.why() == WhyInvalid::Unknown);
+        REQUIRE(test.info() == "My test invalid.");
+    }
+
+    SECTION("Construction using Why_T rvalue constructor.")
+    {
+        auto view = "My test invalid."sv;
+        TestInvalid test(std::move(view));
+        REQUIRE(test.why() == WhyInvalid::Unknown);
+        REQUIRE(test.info() == "My test invalid.");
+    }
 }
 
-TEST_CASE("Invalid Copy Constuction State", "[invalid][constructor]")
+struct ComplexWhyType
+{
+    using CharType = char;
+    WhyInvalid why;
+    string message;
+
+    WhyInvalid getWhyInvalid() const noexcept
+    {
+        return why;
+    }
+
+    string_view getInvalidInfo() const noexcept
+    {
+        return message;
+    }
+};
+
+TEST_CASE("Complex BasicInvalid constructor overloads", "[invalid][constructor]")
+{
+    using TestInvalid = BasicInvalid<string>;
+
+    SECTION("Construction using argument forwarding constructor")
+    {
+        BasicInvalid<ComplexWhyType> test(WhyInvalid::Success, "My test invalid.");
+        REQUIRE(test.why() == WhyInvalid::Success);
+        REQUIRE(test.info() == "My test invalid.");
+    }
+
+    SECTION("Construction using Why_T copy constructor.")
+    {
+        auto const view = "My test invalid."s;
+        TestInvalid test(view);
+        REQUIRE(test.why() == WhyInvalid::Unknown);
+        REQUIRE(test.info() == "My test invalid.");
+    }
+
+    SECTION("Construction using Why_T rvalue constructor.")
+    {
+        auto view = "My test invalid."s;
+        TestInvalid test(std::move(view));
+        REQUIRE(test.why() == WhyInvalid::Unknown);
+        REQUIRE(test.info() == "My test invalid.");
+    }
+}
+
+TEST_CASE("Simple BasicInvalid Copy Constuction State", "[invalid][constructor]")
 {
     Invalid first{ WhyInvalid::Success };
 
@@ -442,7 +513,23 @@ TEST_CASE("Invalid Copy Constuction State", "[invalid][constructor]")
     REQUIRE(first.info() == second.info());
 }
 
-TEST_CASE("Invalid Move Construction State", "[invalid][constructor]")
+TEST_CASE("Complex BasicInvalid Copy Constuction State", "[invalid][constructor]")
+{
+    BasicInvalid<std::string> first{ "Test String."s };
+
+    REQUIRE(first.why() == WhyInvalid::Unknown);
+    REQUIRE(first.info() == "Test String.");
+
+    BasicInvalid<std::string> second(first);
+
+    REQUIRE(first.why() == WhyInvalid::Unknown);
+    REQUIRE(first.info() == "Test String.");
+    REQUIRE(second.why() == WhyInvalid::Unknown);
+    REQUIRE(second.info() == "Test String.");
+    REQUIRE(second == first);
+}
+
+TEST_CASE("Simple Invalid Move Construction State", "[invalid][constructor]")
 {
     Invalid first{ WhyInvalid::Success };
 
@@ -486,13 +573,13 @@ struct ThrowTest
     bool should = false;
 };
 
+static_assert(std::is_nothrow_copy_constructible_v<NothrowTest>);
+static_assert(std::is_nothrow_move_constructible_v<NothrowTest>);
+static_assert(!std::is_nothrow_copy_constructible_v<ThrowTest>);
+static_assert(!std::is_nothrow_move_constructible_v<ThrowTest>);
+
 TEST_CASE("Good Data MaybeInv Construction State", "[maybeinv][constructor]")
 {
-    STATIC_REQUIRE(std::is_nothrow_copy_constructible_v<NothrowTest>);
-    STATIC_REQUIRE(std::is_nothrow_move_constructible_v<NothrowTest>);
-    STATIC_REQUIRE_FALSE(std::is_nothrow_copy_constructible_v<ThrowTest>);
-    STATIC_REQUIRE_FALSE(std::is_nothrow_move_constructible_v<ThrowTest>);
-
     MaybeInv<NothrowTest> good = NothrowTest{};
 
     REQUIRE(good.isValid());

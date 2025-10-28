@@ -46,6 +46,10 @@
 #include <variant>
 #include <optional>
 
+#if not defined(KH_WINDOWS)
+# include <cstring>
+#endif
+
 /*!
  * The primary namespace for all KirHut software, including libraries, applications, and plugins.
  *
@@ -163,6 +167,14 @@ enum class CopyFlag
 };
 
 /*!
+ * \brief The RuntimeFlag enum
+ */
+enum class RuntimeFlag
+{
+    runtime = 1 //!< Value indicating that a check or action should be done at runtime rather than compile time.
+};
+
+/*!
  * Alias name for the std::in_place_t type.
  *
  * This allows using a more natural type name for passing the make flag than "std::in_place_t". An "emplace flag" is
@@ -196,6 +208,11 @@ namespace Flags
  * This is just CopyFlag::copy, in a more intuitive location.
  */
 [[maybe_unused]] constexpr CopyFlag copy = CopyFlag::copy;
+
+/*!
+ * \brief runtime
+ */
+[[maybe_unused]] constexpr RuntimeFlag runtime = RuntimeFlag::runtime;
 
 /*!
  * A flag type that is used to select the "emplace" override of a particular method, usually a constructor.
@@ -278,8 +295,6 @@ inline span<byte, sizeof(T)> asWritableBytes(T &object) noexcept
 /*!
  * Concept representing a "numeric" type, which means either an integer literal or a floating point value.
  *
- * \headerfile base.hpp "kh/base.hpp"
- *
  * This matches with any type that returns true from std::is_arithmetic_v<T>, with the exception of the bool type, as
  * bools are not considered "numbers" for these purposes. Bool types tend to be special cases in a lot of contexts so it
  * is better to remove them.
@@ -308,6 +323,95 @@ template <typename Byte_T>
 concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, std::byte>;
 
 /*!
+ * A constexpr version of the std::abs function that is free of UB.
+ *
+ * For some inexplicable reason, the std::abs() function is not constexpr until C++23, and this library needs to provide
+ * support for C++20. As such, a constexpr abs function is provided by this library directly, but unlike the C++
+ * std::abs() function, if the result of the absolute transformation cannot be represented by the return value, the
+ * original value passed in as \p number is returned instead. This gives at least some kind of defined behavior in that
+ * case. In short, this means if \p number is Limits<decltype(number)>::min(), it will not convert to the positive
+ * value, but only in that case.
+ *
+ * This version of abs should not accept passing an unsigned integer type as \p number at all, unlike the std::abs()
+ * function overloads, which will perform integer promotions in that case. The failure to compile behavior of this
+ * template function is considered desireable and is retained.
+ *
+ * \param number A signed integer to get the absolute value of (or to return as-is if this is impossible).
+ * \return The absolute value of \p number, unless this is impossible to represent, then \p number.
+ */
+[[nodiscard]] constexpr auto abs(std::signed_integral auto number) noexcept -> decltype(number)
+{
+    return number < 0 and number != Limits<decltype(number)>::min() ? -number : number;
+}
+
+/*!
+ * A version of abs that returns an unsigned value instead of a signed value, and is free of UB.
+ *
+ * For some inexplicable reason, the std::abs() function returns a signed integer, even though by all logical accounts,
+ * the abs() function always returns an unsigned value. This makes it so the edge case of Limits<int>::min() is not
+ * converted at all, so you end up needing to check an edge case when you really just wanted an unsigned value in the
+ * first place. This is guaranteed to always work, even with min(), and always works correctly on all standard C++
+ * compilers and environments.
+ *
+ * Because this library supports the standard syntax, KirHut::abs() also returns a signed integer, and will simply not
+ * convert the value when Limits<int>::min() is passed. If you would prefer to always get an unsigned value regardless
+ * of what signed value is passed, use this function instead. This function should almost always be preferred over abs()
+ * unless you have some genuine requirement to get a signed integer value.
+ *
+ * Unlike abs(), this function is designed to support unsigned integers as well, simply returning them as passed. This
+ * function is designed to prevent integer promotions in that case. KirHut::uabs() is what std::abs() should have been.
+ *
+ * \param number An integer to get the unsigned absolute value of.
+ * \return The absolute value of \p number, as an unsigned value.
+ */
+[[nodiscard]] constexpr auto uabs(std::signed_integral auto number) noexcept -> std::make_unsigned_t<decltype(number)>
+{
+    using Ret_T = std::make_unsigned_t<decltype(number)>;
+    return number < 0 ? static_cast<Ret_T>(abs(number + 1)) + 1u : static_cast<Ret_T>(number);
+}
+
+/*!
+ * \copydoc KirHut::uabs(std::signed_integral auto)noexcept
+ */
+[[nodiscard]] constexpr auto uabs(std::unsigned_integral auto number) noexcept -> decltype(number)
+{
+    return number;
+}
+
+/*!
+ * Perform a bit shift of a given mask to a given bit location, but without UB risk.
+ *
+ * In C and C++, if you perform a bitwise left shift to a bit location beyond the size in bits of the integer you are
+ * modifying, or you use a negative value for the shift amount, the behavior is undefined. This is fine if you are very
+ * conscious of what values are passed to the bit shift operators, but in most cases it can be much safer to use
+ * something that has guaranteed defined behavior when a less-than expected value is passed. The maskAt function is just
+ * such a function: If \p location is greater than the number of bits in \p mask, than the "bit shift operation" simply
+ * results in 0. If \p location is negative, it shifts to the right instead and uses the same "zeroing" technique, but
+ * otherwise behaves as a positive \p location.
+ *
+ * "Oh, so it's like a shitty std::rotl?"
+ *
+ * Well, kind of, but no. The std::rotl() function *rotates* a set of bits, whereas this function **only shifts** the
+ * bits, it does not rotate them. Sometimes this is preferred over a rotation, when you want bits to fall off instead of
+ * appearing in the lower bits.
+ *
+ * This function is constexpr like std::rotl() so that it may be used in precalculations at compile time.
+ *
+ * \param mask The bitmask to apply the bit shift operation to.
+ * \param location The number of bits to shift left (or right if negative).
+ * \return The \p mask shifted to the desired \p location.
+ */
+[[nodiscard]] constexpr auto maskAt(std::unsigned_integral auto mask, int location) noexcept -> decltype(mask)
+{
+    if (auto shift = uabs(location); shift < sizeof(mask) * Platform::bitsInByte)
+    {
+        return location < 0 ? mask >> shift : mask << shift;
+    }
+
+    return 0;
+}
+
+/*!
  * Constant expression byte swapping function that should always do the most efficient thing.
  *
  * The byteSwap function in libKirHut is meant to work like std::byteswap in C++23 for applications still only using
@@ -320,7 +424,7 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
  * \param bytes An unsigned 16 bit integer you want to have the bytes swapped in.
  * \return The same 16 bit integer passed as \p bytes, but with the bytes swapped.
  */
-constexpr u16 byteSwap(u16 bytes)
+[[nodiscard]] constexpr u16 byteSwap(u16 bytes)
 {
 #if defined(__cpp_lib_byteswap)
     return std::byteswap(bytes);
@@ -352,7 +456,7 @@ constexpr u16 byteSwap(u16 bytes)
  * \param bytes An unsigned 32 bit integer you want to have the bytes swapped in.
  * \return The same 32 bit integer passed as \p bytes, but with the bytes swapped.
  */
-constexpr u32 byteSwap(u32 bytes)
+[[nodiscard]] constexpr u32 byteSwap(u32 bytes)
 {
 #if defined(__cpp_lib_byteswap)
     return std::byteswap(bytes);
@@ -369,12 +473,13 @@ constexpr u32 byteSwap(u32 bytes)
 
     constexpr int outerShift = Platform::bitsInByte * 3;
     constexpr int innerShift = Platform::bitsInByte * 1;
+    constexpr u32 bitMask    = 0xFF;
 
     // clang-format off
-    return ((bytes & 0x0000'00FF) << outerShift) |
-           ((bytes & 0x0000'FF00) << innerShift) |
-           ((bytes & 0x00FF'0000) >> innerShift) |
-           ((bytes & 0xFF00'0000) >> outerShift);
+    return ((bytes & maskAt(bitMask, Platform::bitsInByte * 0)) << outerShift) |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 1)) << innerShift) |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 2)) >> innerShift) |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 3)) >> outerShift);
     // clang-format on
 }
 
@@ -391,7 +496,7 @@ constexpr u32 byteSwap(u32 bytes)
  * \param bytes An unsigned 64 bit integer you want to have the bytes swapped in.
  * \return The same 64 bit integer passed as \p bytes, but with the bytes swapped.
  */
-constexpr u64 byteSwap(u64 bytes)
+[[nodiscard]] constexpr u64 byteSwap(u64 bytes)
 {
 #if defined(__cpp_lib_byteswap)
     return std::byteswap(bytes);
@@ -410,16 +515,17 @@ constexpr u64 byteSwap(u64 bytes)
     constexpr int midOuterShift = Platform::bitsInByte * 5;
     constexpr int midInnerShift = Platform::bitsInByte * 3;
     constexpr int innerShift    = Platform::bitsInByte * 1;
+    constexpr u64 bitMask       = 0xFF;
 
     // clang-format off
-    return ((bytes & 0x0000'0000'0000'00FFull) << outerShift)    |
-           ((bytes & 0x0000'0000'0000'FF00ull) << midOuterShift) |
-           ((bytes & 0x0000'0000'00FF'0000ull) << midInnerShift) |
-           ((bytes & 0x0000'0000'FF00'0000ull) << innerShift)    |
-           ((bytes & 0x0000'00FF'0000'0000ull) >> innerShift)    |
-           ((bytes & 0x0000'FF00'0000'0000ull) >> midInnerShift) |
-           ((bytes & 0x00FF'0000'0000'0000ull) >> midOuterShift) |
-           ((bytes & 0xFF00'0000'0000'0000ull) >> outerShift);
+    return ((bytes & maskAt(bitMask, Platform::bitsInByte * 0)) << outerShift)    |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 1)) << midOuterShift) |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 2)) << midInnerShift) |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 3)) << innerShift)    |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 4)) >> innerShift)    |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 5)) >> midInnerShift) |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 6)) >> midOuterShift) |
+           ((bytes & maskAt(bitMask, Platform::bitsInByte * 7)) >> outerShift);
     // clang-format on
 }
 
@@ -436,7 +542,7 @@ constexpr u64 byteSwap(u64 bytes)
  * \param bytes An unsigned 128 bit integer you want to have the bytes swapped in.
  * \return The same 128 bit integer passed as \p bytes, but with the bytes swapped.
  */
-constexpr u128 byteSwap(u128 bytes)
+[[nodiscard]] constexpr u128 byteSwap(u128 bytes)
 {
 # if defined(__cpp_lib_byteswap)
     // Extra if constexpr to ensure that the library byteswap supports 128-bit integers. It should on both GCC and
@@ -470,8 +576,10 @@ namespace Detail
  * Default wrong type base template for InstanceOfValue.
  *
  * Credit to Lawrence Murray for this InstanceOfValue implementation to determine if a type is a given template type.
- * I just do not possess the profound galaxy brain necessary to concoct this monstrosity. Thank you!
+ * I just did not possess the profound galaxy brain necessary to concoct this monstrosity. Thank you!
  * https://indii.org/blog/is-type-instantiation-of-template/
+ *
+ * I extend this idea to other template identifiers, but I did not invent this at all.
  */
 template <typename Wrong_T, template <typename...> typename Template_T>
 constexpr bool InstanceOfValue = false;
@@ -482,8 +590,10 @@ constexpr bool InstanceOfValue = false;
  * Correct type template specialization for InstanceOfValue.
  *
  * Credit to Lawrence Murray for this InstanceOfValue implementation to determine if a type is a given template type.
- * I just do not possess the profound galaxy brain necessary to concoct this monstrosity. Thank you!
+ * I just did not possess the profound galaxy brain necessary to concoct this monstrosity. Thank you!
  * https://indii.org/blog/is-type-instantiation-of-template/
+ *
+ * I extend this idea to other template identifiers, but I did not invent this at all.
  */
 template <template <typename...> typename Template_T, typename... Arg_Ts>
 constexpr bool InstanceOfValue<Template_T<Arg_Ts...>, Template_T> = true;
@@ -571,14 +681,18 @@ struct EboChild final : public EBO
  * \return
  */
 template <Numeric Num_T, std::endian sourceEndianness>
-constexpr Num_T fromEndian(ByteType auto const *source) noexcept
+[[nodiscard]] constexpr Num_T fromEndian(ByteType auto const *source) noexcept
 {
+    // This assert should never happen because of the Numeric constraint, but here's a pedantic check anyway.
+    static_assert(sizeof(Num_T) == sizeof(ExactUIntOf<Num_T>),
+                  "The requested return type is of an invalid size for fromEndian.");
+
     if constexpr (sizeof(Num_T) == sizeof(byte))
     {
         return std::bit_cast<Num_T>(*source);
     }
 
-    UIntOf<Num_T> ret = 0;
+    ExactUIntOf<Num_T> ret = 0;
     if (std::is_constant_evaluated())
     {
         constexpr bool fromBig = sourceEndianness == std::endian::big;
@@ -587,7 +701,7 @@ constexpr Num_T fromEndian(ByteType auto const *source) noexcept
             // We do a bit_cast to unsigned first because the bytes in source may be signed, so static_cast could change
             // the binary representation if we don't first bit_cast to u8.
             auto temp = std::bit_cast<u8>(fromBig ? source[sizeof(Num_T) - 1 - i] : source[i]);
-            ret |= static_cast<UIntOf<Num_T>>(temp) << (i * Platform::bitsInByte);
+            ret |= static_cast<ExactUIntOf<Num_T>>(temp) << (i * Platform::bitsInByte);
         }
     }
     else
@@ -616,35 +730,39 @@ constexpr auto toEndian(Numeric auto value, ByteType auto *dest) noexcept -> dec
     using Byte_T = std::remove_pointer_t<decltype(dest)>;
     static_assert(not std::is_const_v<Byte_T>, "toEndian needs a non-const array to write to.");
 
-    constexpr auto typeSize = sizeof(decltype(value));
-    if constexpr (typeSize == sizeof(byte))
+    constexpr auto returnTypeSize = sizeof(decltype(value));
+    // This assert should never happen because of the Numeric constraint, but here's a pedantic check anyway.
+    static_assert(returnTypeSize == sizeof(UInt<returnTypeSize>),
+                  "The requested type to convert is of an invalid size for toEndian.");
+
+    if constexpr (returnTypeSize == sizeof(byte))
     {
         *dest = std::bit_cast<byte>(value);
         return ++dest;
     }
 
-    auto bits = std::bit_cast<UInt<typeSize>>(value);
+    auto bits = std::bit_cast<ExactUInt<returnTypeSize>>(value);
     if (std::is_constant_evaluated())
     {
         constexpr bool toBig = destEndianness == std::endian::big;
-        for (size_t i = 0; i < typeSize; ++i)
+        for (size_t i = 0; i < returnTypeSize; ++i)
         {
             auto temp = static_cast<u8>(bits >> (i * Platform::bitsInByte));
 
-            dest[toBig ? typeSize - 1 - i : i] = std::bit_cast<Byte_T>(temp);
+            dest[toBig ? returnTypeSize - 1 - i : i] = std::bit_cast<Byte_T>(temp);
         }
     }
     else
     {
-        if constexpr (Platform::Endianness != destEndianness)
+        if constexpr (destEndianness != Platform::Endianness)
         {
             bits = byteSwap(bits);
         }
 
-        memcpy(dest, &bits, typeSize);
+        memcpy(dest, &bits, returnTypeSize);
     }
 
-    return dest + typeSize;
+    return dest + returnTypeSize;
 }
 
 /*!
@@ -653,7 +771,7 @@ constexpr auto toEndian(Numeric auto value, ByteType auto *dest) noexcept -> dec
  * \brief throwTooSmallSpan
  * \param message
  */
-[[noreturn]] void throwTooSmallSpan(string_view message);
+[[noreturn]] KH_EXPORT void throwTooSmallSpan(string_view message);
 
 /*!
  * \internal
@@ -668,8 +786,14 @@ constexpr Tested_T convertTest(Arg_Ts &&...args)
     return { std::forward<Arg_Ts>(args)... };
 }
 
+/*!
+ * \internal
+ *
+ * \brief varIndexLoop
+ * \return
+ */
 template <typename Var_T, typename T, size_t indexPos>
-consteval size_t varIndexLoop()
+[[nodiscard]] consteval size_t varIndexLoop()
 {
     using UnqualVar = std::remove_cvref_t<Var_T>;
 
@@ -690,8 +814,14 @@ consteval size_t varIndexLoop()
     }
 }
 
+/*!
+ * \internal
+ *
+ * \brief varIndex
+ * \return
+ */
 template <typename Var_T, typename T>
-consteval size_t varIndex()
+[[nodiscard]] consteval size_t varIndex()
 {
     static_assert(InstanceOf<Var_T, Var> or InstanceOf<Var_T, std::variant>);
     return varIndexLoop<Var_T, T, 0>();
@@ -817,7 +947,7 @@ concept TypeOptionOf = Detail::HasTypeOption<Var_T, Has_T>;
  * \return
  */
 template <typename Var_T>
-consteval size_t varIndex(InstanceOf<Var, std::variant> auto const &var)
+[[nodiscard]] consteval size_t varIndex(InstanceOf<Var, std::variant> auto const &var)
 {
     return Detail::varIndex<decltype(var), Var_T>();
 }
@@ -845,7 +975,7 @@ consteval size_t varIndex(InstanceOf<Var, std::variant> auto const &var)
  * \return The requested Numeric T type.
  */
 template <Numeric T>
-constexpr T fromBigEndian(ByteType auto const *source) noexcept
+[[nodiscard]] constexpr T fromBigEndian(ByteType auto const *source) noexcept
 {
     return Detail::fromEndian<T, std::endian::big>(source);
 }
@@ -871,7 +1001,7 @@ constexpr T fromBigEndian(ByteType auto const *source) noexcept
  * \return The requested Numeric T type.
  */
 template <Numeric T, ByteType Byte_T, size_t size>
-constexpr T fromBigEndian(span<Byte_T const, size> source) noexcept(size != std::dynamic_extent)
+[[nodiscard]] constexpr T fromBigEndian(span<Byte_T const, size> source) noexcept(size != std::dynamic_extent)
     requires(size >= sizeof(T))
 {
     if constexpr (size == std::dynamic_extent)
@@ -886,10 +1016,10 @@ constexpr T fromBigEndian(span<Byte_T const, size> source) noexcept(size != std:
 }
 
 /*!
- * \copydoc fromBigEndian(span<Byte_T const,SZ>)
+ * \copydoc fromBigEndian(span<Byte_T const,size>)
  */
 template <Numeric T, ByteType Byte_T, size_t fixedSize>
-constexpr T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
+[[nodiscard]] constexpr T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
     requires(fixedSize >= sizeof(T))
 {
     return fromBigEndian<T>(span<Byte_T const, fixedSize>{ source });
@@ -901,7 +1031,7 @@ constexpr T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != 
  * \return
  */
 template <Numeric T>
-constexpr T fromLittleEndian(ByteType auto const *source) noexcept
+[[nodiscard]] constexpr T fromLittleEndian(ByteType auto const *source) noexcept
 {
     return Detail::fromEndian<T, std::endian::little>(source);
 }
@@ -912,8 +1042,8 @@ constexpr T fromLittleEndian(ByteType auto const *source) noexcept
  * \return
  */
 template <Numeric T, ByteType Byte_T, size_t fixedSize>
-constexpr T fromLittleEndian(span<Byte_T const, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
-    requires(fixedSize >= sizeof(T))
+[[nodiscard]] constexpr T fromLittleEndian(span<Byte_T const, fixedSize> source)
+    noexcept(fixedSize != std::dynamic_extent) requires(fixedSize >= sizeof(T))
 {
     if constexpr (fixedSize == std::dynamic_extent)
     {
@@ -927,7 +1057,7 @@ constexpr T fromLittleEndian(span<Byte_T const, fixedSize> source) noexcept(fixe
 }
 
 template <Numeric T, ByteType Byte_T, size_t fixedSize>
-constexpr T fromLittleEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
+[[nodiscard]] constexpr T fromLittleEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
     requires(fixedSize >= sizeof(T))
 {
     return fromLittleEndian<T>(span<Byte_T const, fixedSize>{ source });
@@ -938,12 +1068,13 @@ constexpr T fromLittleEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize 
  *
  * \param value The numeric value (a signed or unsigned integer, or a floating point type) to write as big endian.
  * \param dest The buffer to write the big endian data for \p value.
+ * \return A pointer to the first byte in \p dest that was **not** written to as a result of this call.
  */
-constexpr void toBigEndian(Numeric auto value, ByteType auto *dest) noexcept
+constexpr auto toBigEndian(Numeric auto value, ByteType auto *dest) noexcept -> decltype(dest)
 {
     static_assert(not std::is_const_v<decltype(*dest)>, "toBigEndian needs a non-const array to write to.");
 
-    Detail::toEndian<std::endian::big>(value, dest);
+    return Detail::toEndian<std::endian::big>(value, dest);
 }
 
 /*!
@@ -953,7 +1084,7 @@ constexpr void toBigEndian(Numeric auto value, ByteType auto *dest) noexcept
  * \return A std::array of bytes for \p value in big endian order.
  */
 template <Numeric Num_T>
-constexpr array<byte, sizeof(Num_T)> toBigEndian(Num_T value) noexcept
+[[nodiscard]] constexpr array<byte, sizeof(Num_T)> toBigEndian(Num_T value) noexcept
 {
     array<byte, sizeof(Num_T)> ret;
     Detail::toEndian<std::endian::big>(value, ret.data());
@@ -988,12 +1119,13 @@ constexpr void toBigEndian(Numeric auto value, span<Byte_T, fixedSize> dest) noe
  * \brief toLittleEndian
  * \param value
  * \param dest
+ * \return A pointer to the first byte in \p dest that was **not** written to as a result of this call.
  */
-constexpr void toLittleEndian(Numeric auto value, ByteType auto *dest) noexcept
+constexpr auto toLittleEndian(Numeric auto value, ByteType auto *dest) noexcept -> decltype(dest)
 {
     static_assert(not std::is_const_v<decltype(*dest)>, "toLittleEndian needs a non-const array to write to.");
 
-    Detail::toEndian<std::endian::little>(value, dest);
+    return Detail::toEndian<std::endian::little>(value, dest);
 }
 
 /*!
@@ -1001,7 +1133,7 @@ constexpr void toLittleEndian(Numeric auto value, ByteType auto *dest) noexcept
  * \return
  */
 template <Numeric Num_T>
-constexpr array<byte, sizeof(Num_T)> toLittleEndian(Num_T value) noexcept
+[[nodiscard]] constexpr array<byte, sizeof(Num_T)> toLittleEndian(Num_T value) noexcept
 {
     array<byte, sizeof(Num_T)> ret{};
     Detail::toEndian<std::endian::little>(value, ret.data());
@@ -1043,7 +1175,7 @@ constexpr void toLittleEndian(Numeric auto value, span<Byte_T, fixedSize> dest)
  * \return The second template argument to the array, as a size_t value.
  */
 template <typename T, size_t size>
-consteval size_t arraySize([[maybe_unused]] array<T, size> &ar)
+[[nodiscard]] consteval size_t arraySize([[maybe_unused]] array<T, size> &ar)
 {
     return size;
 }

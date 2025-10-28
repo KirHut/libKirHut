@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** invalid.cpp
+** kh/priv/format.hpp
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -17,29 +17,21 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-#include "kh/invalid.hpp"
+#pragma once
 
-#include "kh/errors.hpp"
+/*!
+ * \internal
+ *
+ * \file kh/priv/format.hpp
+ *
+ * Header that encapsulates including the appropriate formatting library namespace under FMT, and prevents redefinition
+ * using include guards.
+ */
 
-namespace KirHut
-{
-
-void Detail::throwNoValidData(Invalid const &inv)
-{
-    throw NoValidData(inv.info());
-}
-
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<WhyInvalid>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<MessageViewWhy<char>>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string_view>;
-
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::SoftwareError>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::AlreadyInitialized>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::BadEnvironment>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::IllegalArgument>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataUninitialized>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataRemoved>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::InvalidState>;
-
-} // namespace KirHut
+#if KH_USES_FMT
+# include "fmt/format.h" // IWYU pragma: export
+# define FMT fmt
+#else
+# include <format> // IWYU pragma: export
+# define FMT std
+#endif

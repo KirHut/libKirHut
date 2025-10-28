@@ -17,7 +17,7 @@ if(POLICY CMP0141)
 endif()
 
 project(libKirHut
-    VERSION 0.1.1
+    VERSION 0.1.2
     LANGUAGES CXX
     DESCRIPTION "The KirHut Software Company General C++ Development Library"
 )
@@ -29,11 +29,10 @@ include(cmake/kh_compiler_info.cmake)
 
 kh_find_compiler_info()
 
-if(KH_COMPILED_WITH_MSVC)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-    set(KH_SUPPORTS_128_TYPES OFF)
-elseif(KH_CLANG_GCC_COMPATIBLE)
+if(KH_CLANG_GNUC_COMPATIBLE)
     cmake_host_system_information(RESULT KH_SUPPORTS_128_TYPES QUERY IS_64BIT)
+else()
+    set(KH_SUPPORTS_128_TYPES OFF)
 endif()
 
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
@@ -48,14 +47,19 @@ option(KH_MUST_HAVE_16BIT_TYPES "Require that the platform has 16 bit integers."
 option(KH_MUST_HAVE_32BIT_TYPES "Require that the platform has 32 bit integers." OFF)
 option(KH_MUST_HAVE_64BIT_TYPES "Require that the platform has 64 bit integers." OFF)
 
-option(KH_USES_QT "Build libKirHut with Qt extensions enabled." ON)
+option(KH_USES_QT "Build libKirHut with Qt extensions enabled (implies KH_NO_BADALLOC)." ON)
 option(KH_USES_FMT "Build libKirHut with {fmt} dependency instead of std::format." ON)
 option(KH_LIB_BUILD_TESTS "Build the tests for this library." ${KH_LIB_BUILD_TESTS_DEFAULT})
-option(KH_MD5_SUPPORT "Build this library with MD5 Hash support." ${KH_MUST_HAVE_32_64})
-option(KH_TOML_SUPPORT "Build this library with TOML parsing support." ON)
-option(KH_PERFORM_COMPILE_CHECKS "Have libKirHut perform compile time checking during this build (recommended)." ON)
+option(BUILD_SHARED_LIBS "Build this library (and its dependencies) as shared libraries." ON)
+option(KH_NO_BADALLOC "Remove support for throwing or catching std::bad_alloc." OFF)
+option(KH_NO_EXCEPTIONS "Removes exception support entirely, along with the Error type (implies KH_NO_BADALLOC)." OFF)
+option(KH_INCLUDE_ARG_PARSER "Include KirHut::CLI command line argument parsing functionality." ON)
 option(KH_INCLUDE_FILESYSTEM "Include std::filesystem under the KirHut::FS namespace." ON)
-option(KH_OVERRIDE_PLATFORM_SAFETY "Ignore unsupported platform checks during compile time checking." OFF)
+option(KH_INCLUDE_MD5HASH "Build this library with MD5Hash support (implies KH_MUST_HAVE_32_64)." ${KH_MUST_HAVE_32_64})
+option(KH_INCLUDE_TASK_SYSTEM "Include controllable multithreaded task system." ON)
+option(KH_INCLUDE_TERMINAL_PRINT "Include UTF-8 C++23 style printing support in KirHut::IO." ON)
+option(KH_INCLUDE_TOML "Build this library with TOML parsing support." ON)
+option(KH_OVERRIDE_PLATFORM_SAFETY "Ignore unsupported platform checks during compile time checking (dangerous)." OFF)
 cmake_dependent_option(KH_USE_128BIT_TYPES
     "Use 128 bit types on platforms that support it."
     ON
@@ -69,8 +73,15 @@ mark_as_advanced(
     KH_MUST_HAVE_16BIT_TYPES
     KH_MUST_HAVE_32BIT_TYPES
     KH_MUST_HAVE_64BIT_TYPES
-    KH_PERFORM_COMPILE_CHECKS
+    KH_LIB_BUILD_TESTS
+    KH_NO_BADALLOC
+    KH_NO_EXCEPTIONS
+    KH_INCLUDE_ARG_PARSER
     KH_INCLUDE_FILESYSTEM
+    KH_INCLUDE_MD5HASH
+    KH_INCLUDE_TASK_SYSTEM
+    KH_INCLUDE_TERMINAL_PRINT
+    KH_INCLUDE_TOML
     KH_OVERRIDE_PLATFORM_SAFETY
 )
 
@@ -98,6 +109,8 @@ if(KH_USES_QT)
     )
 endif()
 
+set(KH_BINARY_DIR ${PROJECT_BINARY_DIR})
+
 if(WIN32)
     # Boost::nowide is unconditionally downloaded and built, unlike other dependencies that check find_package first.
     # This is because this library uses the standalone version of nowide, which is almost never distributed using
@@ -110,7 +123,12 @@ if(WIN32)
 
     FetchContent_MakeAvailable(nowide)
     target_compile_features(nowide PUBLIC cxx_std_20)
-    get_target_property(KH_NOWIDE_BINARY_DIR nowide BINARY_DIR)
+    set_target_properties(nowide
+        PROPERTIES
+            ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+            LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+            RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+    )
 endif()
 
 if(KH_USES_FMT)
@@ -123,9 +141,15 @@ if(KH_USES_FMT)
 
     FetchContent_MakeAvailable(fmt)
     target_compile_features(fmt PUBLIC cxx_std_20)
+    set_target_properties(fmt
+        PROPERTIES
+            ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+            LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+            RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+    )
 endif()
 
-set(libKirHut_LIBRARY_HEADERS
+set(libKirHut_HEADERS
     args.hpp
     base.hpp
     error.hpp
@@ -135,57 +159,73 @@ set(libKirHut_LIBRARY_HEADERS
     invalid.hpp
     math.hpp
     md5hash.hpp
+    packedtuple.hpp
     platform.hpp
     print.hpp
     ranges.hpp
+    task.hpp
     toml.hpp
 )
 
-list(TRANSFORM libKirHut_LIBRARY_HEADERS PREPEND "kh/")
-
-set(libKirHut_SOURCES
-    args.cpp
-    base.cpp
-    invalid.cpp
-    print.cpp
+set(libKirHut_PRIV_HEADERS
+    format.hpp
 )
 
-if(KH_MD5_SUPPORT)
+set(libKirHut_SOURCES
+    base.cpp
+    invalid.cpp
+)
+
+if(KH_INCLUDE_ARG_PARSER)
+    list(APPEND libKirHut_SOURCES args.cpp)
+endif()
+
+if(KH_INCLUDE_MD5HASH)
     list(APPEND libKirHut_SOURCES md5hash.cpp)
 endif()
 
-if(KH_TOML_SUPPORT)
+if(KH_INCLUDE_TASK_SYSTEM)
+    list(APPEND libKirHut_SOURCES task.cpp)
+endif()
+
+if(KH_INCLUDE_TERMINAL_PRINT)
+    list(APPEND libKirHut_SOURCES print.cpp)
+endif()
+
+if(KH_INCLUDE_TOML)
     list(APPEND libKirHut_SOURCES toml.cpp)
 endif()
 
-set(libKirHut_HEADERS
-    ${libKirHut_LIBRARY_HEADERS}
-)
+if(APPLE)
+    set(KH_KERNEL_VERSION ${CMAKE_SYSTEM_VERSION})
+endif()
 
 list(TRANSFORM libKirHut_SOURCES PREPEND "src/")
-list(TRANSFORM libKirHut_HEADERS PREPEND "include/")
-
-add_library(libKirHut
-    ${libKirHut_HEADERS}
-    ${libKirHut_SOURCES}
-)
-add_library(KirHut::libKirHut ALIAS libKirHut)
-set_target_properties(libKirHut PROPERTIES OUTPUT_NAME "KirHut")
-
-if(MINGW AND BUILD_SHARED_LIBS)
-    # This is an ugly hack for MinGW because of a long unresolved bug.
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109380
-    target_link_options(libKirHut PRIVATE LINKER:--export-all-symbols)
-endif()
+list(TRANSFORM libKirHut_PRIV_HEADERS PREPEND "priv/")
+list(APPEND libKirHut_HEADERS ${libKirHut_PRIV_HEADERS})
+list(TRANSFORM libKirHut_HEADERS PREPEND "include/kh/")
 
 set(libKirHut_COMPILE_DEFS
     $<$<BOOL:${KH_USES_QT}>:KH_USES_QT>
     $<$<BOOL:${KH_USES_FMT}>:KH_USES_FMT>
-    $<$<BOOL:${KH_MD5_SUPPORT}>:KH_MD5_SUPPORT>
     $<$<BOOL:${KH_USE_128BIT_TYPES}>:KH_USE_128BIT_TYPES>
+    $<$<BOOL:${KH_NO_EXCEPTIONS}>:KH_NO_EXCEPTIONS>
+    $<$<BOOL:${KH_NO_BADALLOC}>:KH_NO_BADALLOC>
+    $<$<BOOL:${KH_INCLUDE_ARG_PARSER}>:KH_INCLUDE_ARG_PARSER>
     $<$<BOOL:${KH_INCLUDE_FILESYSTEM}>:KH_INCLUDE_FILESYSTEM>
-    $<$<BOOL:${KH_CLANG_GCC_COMPATIBLE}>:KH_CLANG_GCC_COMPATIBLE>
+    $<$<BOOL:${KH_INCLUDE_MD5HASH}>:KH_INCLUDE_MD5HASH>
+    $<$<BOOL:${KH_INCLUDE_TASK_SYSTEM}>:KH_INCLUDE_TASK_SYSTEM>
+    $<$<BOOL:${KH_INCLUDE_TERMINAL_PRINT}>:KH_INCLUDE_TERMINAL_PRINT>
+    $<$<BOOL:${KH_INCLUDE_TOML}>:KH_INCLUDE_TOML>
+    $<$<BOOL:${KH_MUST_HAVE_16_32_64}>:KH_MUST_HAVE_16_32_64>
+    $<$<BOOL:${KH_MUST_HAVE_32_64}>:KH_MUST_HAVE_32_64>
+    $<$<BOOL:${KH_MUST_HAVE_16BIT_TYPES}>:KH_MUST_HAVE_16BIT_TYPES>
+    $<$<BOOL:${KH_MUST_HAVE_32BIT_TYPES}>:KH_MUST_HAVE_32BIT_TYPES>
+    $<$<BOOL:${KH_MUST_HAVE_64BIT_TYPES}>:KH_MUST_HAVE_64BIT_TYPES>
+    $<$<BOOL:${KH_OVERRIDE_PLATFORM_SAFETY}>:KH_OVERRIDE_PLATFORM_SAFETY>
+    $<$<BOOL:${KH_CLANG_GNUC_COMPATIBLE}>:KH_CLANG_GNUC_COMPATIBLE>
     ${KH_COMPILED_WITH_NAME}=${${KH_COMPILED_WITH_NAME}}
+    $<$<BOOL:${KH_KERNEL_VERSION}>:KH_KERNEL_VERSION=${KH_KERNEL_VERSION}>
     KH_COMPILER_DISPLAY_STRING="${KH_COMPILER_DISPLAY_STRING}"
 )
 
@@ -193,9 +233,30 @@ message(DEBUG "Compile Defs: ${libKirHut_COMPILE_DEFS}")
 
 add_subdirectory(extern)
 
+add_library(libKirHut
+    ${libKirHut_HEADERS}
+    ${libKirHut_SOURCES}
+)
+add_library(KirHut::libKirHut ALIAS libKirHut)
+set_target_properties(libKirHut
+    PROPERTIES
+        OUTPUT_NAME "KirHut"
+        C_VISIBILITY_PRESET hidden
+        CXX_VISIBILITY_PRESET hidden
+        ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+        LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+)
+
+if(MINGW AND BUILD_SHARED_LIBS)
+    # This is an ugly hack for MinGW because of a long unresolved bug.
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109380
+    target_link_options(libKirHut PRIVATE LINKER:--export-all-symbols)
+endif()
+
 set(libKirHut_PUBLIC_LIBRARIES
     $<$<BOOL:${KH_USES_QT}>:Qt${QT_VERSION_MAJOR}::Core>
-    fmt::fmt
+    $<$<BOOL:${KH_USES_FMT}>:fmt::fmt>
 )
 
 message(DEBUG "Public Libs: ${libKirHut_PUBLIC_LIBRARIES}")
@@ -223,25 +284,6 @@ target_compile_features(libKirHutInterface INTERFACE cxx_std_20)
 
 if(KH_LIB_BUILD_TESTS)
     add_subdirectory(test)
-endif()
-
-if(KH_PERFORM_COMPILE_CHECKS)
-    add_executable(libKirHutCompileCheck "src/ctchecks.cpp")
-    add_custom_target(runCompileChecks ALL
-        DEPENDS libKirHutCompileCheck
-    )
-
-    target_compile_definitions(libKirHutCompileCheck PRIVATE
-        $<$<BOOL:${KH_MUST_HAVE_16_32_64}>:KH_MUST_HAVE_16_32_64>
-        $<$<BOOL:${KH_MUST_HAVE_32_64}>:KH_MUST_HAVE_32_64>
-        $<$<BOOL:${KH_MUST_HAVE_16BIT_TYPES}>:KH_MUST_HAVE_16BIT_TYPES>
-        $<$<BOOL:${KH_MUST_HAVE_32BIT_TYPES}>:KH_MUST_HAVE_32BIT_TYPES>
-        $<$<BOOL:${KH_MUST_HAVE_64BIT_TYPES}>:KH_MUST_HAVE_64BIT_TYPES>
-        $<$<BOOL:${KH_OVERRIDE_PLATFORM_SAFETY}>:KH_OVERRIDE_PLATFORM_SAFETY>
-    )
-
-    target_link_libraries(libKirHutCompileCheck PRIVATE libKirHutInterface)
-    add_dependencies(libKirHut libKirHutCompileCheck)
 endif()
 
 target_link_libraries(libKirHut PUBLIC libKirHutInterface)

@@ -17,9 +17,8 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-
 #include "kh/base.hpp"
-#include "kh/ranges.hpp"
+#include "kh/ranges.hpp" // IWYU pragma: export
 
 #include <algorithm>
 #include <list>
@@ -27,6 +26,7 @@
 #include <set>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_template_test_macros.hpp>
 // clazy:excludeall=non-pod-global-static
 
 using namespace KirHut;
@@ -121,7 +121,7 @@ struct FromInt
 template <typename T>
 using Vec = std::vector<T>;
 
-TEST_CASE("Bytes needed for bits", "[base][utility]")
+TEST_CASE("Bytes needed for bits", "[base][utility][bytesNeededForBits]")
 {
     SECTION("Constexpr bytesNeededForBits functions tests")
     {
@@ -141,7 +141,7 @@ TEST_CASE("Bytes needed for bits", "[base][utility]")
     }
 }
 
-TEST_CASE("The asBytes() and asWritableBytes() functions", "[base][utility]")
+TEST_CASE("The asBytes() and asWritableBytes() functions", "[base][utility][asBytes]")
 {
     u32 testVal    = 0x12'34'56'78;
     auto compareTo = std::bit_cast<array<byte, sizeof(u32)>>(testVal);
@@ -151,6 +151,171 @@ TEST_CASE("The asBytes() and asWritableBytes() functions", "[base][utility]")
     writableTestVal2[2]   = byte{ 0x9A };
     compareTo[2]          = byte{ 0x9A };
     REQUIRE(R::equal(compareTo, writableTestVal2));
+}
+
+TEMPLATE_TEST_CASE("abs() handles all signed types correctly", "[base][utility][abs]", i8, i16, i32, i64, iWidest)
+{
+    using T               = TestType;
+    constexpr auto minVal = Limits<T>::min();
+
+    SECTION("Positive numbers remain unchanged")
+    {
+        STATIC_REQUIRE(KirHut::abs(static_cast<T>(0)) == static_cast<T>(0));
+        STATIC_REQUIRE(KirHut::abs(static_cast<T>(42)) == static_cast<T>(42));
+    }
+
+    SECTION("Negative numbers are negated")
+    {
+        STATIC_REQUIRE(KirHut::abs(static_cast<T>(-1)) == static_cast<T>(1));
+        STATIC_REQUIRE(KirHut::abs(static_cast<T>(-42)) == static_cast<T>(42));
+    }
+
+    SECTION("Minimum value remains unchanged (no overflow)")
+    {
+        STATIC_REQUIRE(KirHut::abs(minVal) == minVal);
+    }
+
+    SECTION("Symmetry for small range sanity check")
+    {
+        for (int i = -8; i <= 8; ++i)
+        {
+            T const value = static_cast<T>(i);
+            REQUIRE(abs(value) == (value < 0 ? -value : value));
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("uabs() returns correct unsigned absolute value for signed types",
+                   "[base][utility][uabs]",
+                   i8,
+                   i16,
+                   i32,
+                   i64,
+                   iWidest)
+{
+    using T               = TestType;
+    using U               = std::make_unsigned_t<T>;
+    constexpr auto minVal = Limits<T>::min();
+    constexpr auto maxVal = Limits<T>::max();
+
+    SECTION("Type traits")
+    {
+        STATIC_REQUIRE(std::is_same_v<decltype(uabs(static_cast<T>(0))), U>);
+    }
+
+    SECTION("Positive values are unchanged and correctly cast")
+    {
+        STATIC_REQUIRE(uabs(static_cast<T>(0)) == static_cast<U>(0));
+        STATIC_REQUIRE(uabs(static_cast<T>(42)) == static_cast<U>(42));
+        STATIC_REQUIRE(uabs(maxVal) == static_cast<U>(maxVal));
+    }
+
+    SECTION("Negative values are converted correctly")
+    {
+        STATIC_REQUIRE(uabs(static_cast<T>(-1)) == static_cast<U>(1));
+        STATIC_REQUIRE(uabs(static_cast<T>(-42)) == static_cast<U>(42));
+    }
+
+    SECTION("Minimum representable signed value converts to correct magnitude")
+    {
+        // The magnitude is (abs(min) == max + 1) due to two’s complement representation
+        constexpr U expected = static_cast<U>(maxVal) + 1u;
+        STATIC_REQUIRE(uabs(minVal) == expected);
+    }
+
+    SECTION("Range sanity check")
+    {
+        for (int i = -64; i <= 64; ++i)
+        {
+            T const val = static_cast<T>(i);
+            U expected  = static_cast<U>(i < 0 ? -static_cast<long long>(i) : i);
+            if (val == minVal)
+            {
+                expected = static_cast<U>(maxVal) + 1u;
+            }
+            REQUIRE(uabs(val) == expected);
+        }
+    }
+}
+
+TEMPLATE_TEST_CASE("uabs() returns the input unchanged for unsigned types",
+                   "[base][utility][uabs]",
+                   u8,
+                   u16,
+                   u32,
+                   u64,
+                   uWidest)
+{
+    using T = TestType;
+
+    SECTION("Return type is the same")
+    {
+        STATIC_REQUIRE(std::is_same_v<decltype(uabs(static_cast<T>(0))), T>);
+    }
+
+    SECTION("Values are unchanged")
+    {
+        constexpr auto values = array{ static_cast<T>(0), static_cast<T>(1), static_cast<T>(42), Limits<T>::max() };
+        STATIC_REQUIRE(R::all_of(values, [](auto v) constexpr { return uabs(v) == v; }));
+    }
+}
+
+TEMPLATE_TEST_CASE("maskAt() behaves correctly for unsigned types",
+                   "[base][utility][maskAt]",
+                   u8,
+                   u16,
+                   u32,
+                   u64,
+                   uWidest)
+{
+    using T            = TestType;
+    constexpr int bits = sizeof(T) * Platform::bitsInByte;
+    constexpr T full   = Limits<T>::max();
+
+    SECTION("No shift returns original mask")
+    {
+        STATIC_REQUIRE(maskAt(full, 0) == full);
+        REQUIRE(maskAt(full, 0) == full);
+    }
+
+    SECTION("Positive shift acts as left shift")
+    {
+        auto const shifted = maskAt(full, 1);
+        REQUIRE(shifted == static_cast<T>(full << 1));
+    }
+
+    SECTION("Negative shift acts as right shift")
+    {
+        auto const shifted = maskAt(full, -1);
+        REQUIRE(shifted == static_cast<T>(full >> 1));
+    }
+
+    SECTION("Boundary shift just below overflow limit")
+    {
+        auto const expected = static_cast<T>(T{ 1 } << (bits - 1));
+        STATIC_REQUIRE(maskAt(full, bits - 1) == expected);
+        REQUIRE(maskAt(full, bits - 1) == expected);
+    }
+
+    SECTION("Out-of-range shifts yield zero")
+    {
+        REQUIRE(maskAt(full, bits) == 0);
+        REQUIRE(maskAt(full, bits + 1) == 0);
+        REQUIRE(maskAt(full, Limits<int>::max()) == 0);
+        REQUIRE(maskAt(full, Limits<int>::min()) == 0);
+        REQUIRE(maskAt(full, -bits) == 0);
+        REQUIRE(maskAt(full, -bits - 1) == 0);
+    }
+
+    SECTION("Runtime equivalence with built-in shifts within valid range")
+    {
+        T const pattern = static_cast<T>(0x55u); // alternating bits
+        for (int shift = -(bits - 1); shift < bits - 1; ++shift)
+        {
+            T const expected = (shift < 0) ? static_cast<T>(pattern >> -shift) : static_cast<T>(pattern << shift);
+            REQUIRE(maskAt(pattern, shift) == expected);
+        }
+    }
 }
 
 TEST_CASE("Numeric concept constraints", "[base][concepts]")
@@ -179,7 +344,7 @@ TEST_CASE("Numeric concept constraints", "[base][concepts]")
     }
 }
 
-TEST_CASE("Raw byteSwap() functions", "[base][utility]")
+TEST_CASE("Raw byteSwap() functions", "[base][utility][byteSwap]")
 {
     // We obviously cannot use the byteSwap functions to initialize expectFlip, otherwise we aren't actually testing it.
     constexpr u16 testFlip16 = 0x1234, expectFlip16 = 0x3412;
@@ -1097,12 +1262,4 @@ TEST_CASE("toLittleEndian() functions", "[base][utility][endian]")
         REQUIRE(toLittleEndianSpanOverloadTest(vstart32) == expect32);
         REQUIRE(toLittleEndianSpanOverloadTest(vstart64) == expect64);
     }
-}
-
-TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges]")
-{
-    std::vector<int> nums{ 1, 2, 3, 4, 5 };
-    auto [f, b] = R::getIters(nums);
-    REQUIRE(f == nums.begin());
-    REQUIRE(b == nums.end());
 }

@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** kh/filesystem.hpp
+** kh/task.hpp
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -19,47 +19,34 @@
 ***********************************************************************************************************************/
 #pragma once
 
-/*!
- * \file kh/filesystem.hpp
- *
- * File System Header that includes the standard filesystem namespace under KirHut::FS.
- */
-
-#if KH_INCLUDE_FILESYSTEM
-# include <filesystem> // IWYU pragma: export
+#if defined(KH_INCLUDE_TASK_SYSTEM) or defined(KH_PRIV_DOCS)
+# include "kh/base.hpp"
 #endif
 
 /*!
- * Namespace used for filesystem operations used in libKirHut.
+ * Namespace for reading and writing TOML files, usually for configuration.
  *
- * This namespace is really just the std::filesystem namespace with an easier to refer to name. Currently there are no
- * aliases used under this namespace so for all intents and purposes you can just use it like std::filesystem. If you
- * are using the KirHut namespace as recommended (using namespace KirHut), then this should be as easy as just using
- * "FS::" in code to get everything in the std::filesystem namespace.
- *
- * This namespace will be empty unless the KH_INCLUDE_FILESYSTEM option is ON. This is by default, so you would need to
- * manually turn this option off to remove KirHut::FS support. This could be useful when attempting to compile libKirHut
- * for platforms that do not properly support std::filesystem.
+ * Under construction
  */
-namespace KirHut::FS
+namespace KirHut::Task
 {
 
 /*!
- * Indication boolean for when std::filesystem can be found under KirHut::FS in libKirHut.
+ * Indication boolean for when the task system has been included in libKirHut.
  *
- * When you need to check if this library includes std::filesystem under KirHut::FS in an if constexpr expression rather
- * than the preprocessor, you can use this to check.
+ * When you need to check if this library includes Task support using an if constexpr expression rather than the
+ * preprocessor, you can use this to check if the library is built with Task support.
  *
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool hasFS = false
-#if defined(KH_INCLUDE_FILESYSTEM)
-                                        or true
+[[maybe_unused]] constexpr bool hasTask = false
+#if defined(KH_INCLUDE_TASK_SYSTEM)
+                                          or true
 #endif
     ;
 
-#if KH_INCLUDE_FILESYSTEM
-using namespace std::filesystem;
+#if defined(KH_INCLUDE_TASK_SYSTEM) or defined(KH_PRIV_DOCS)
+// My library calls would go in here when I get started.
 #endif
 
-} // namespace KirHut::FS
+} // namespace KirHut::Task

@@ -22,7 +22,8 @@
 #include <cstring>
 #include <algorithm>
 
-using namespace KirHut;
+namespace KirHut
+{
 
 constexpr byte PADDING_FRONT = static_cast<byte>(0b1 << (Platform::bitsInByte - 1));
 
@@ -252,3 +253,5 @@ size_t Md5Hash::provideInput(size_t length, byte const *data) noexcept
 
     return 0;
 }
+
+} // namespace KirHut

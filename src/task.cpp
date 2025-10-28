@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** invalid.cpp
+** toml.cpp
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -17,29 +17,11 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-#include "kh/invalid.hpp"
+#include "kh/toml.hpp"
 
-#include "kh/errors.hpp"
+#include "tomlpp.hpp"
 
-namespace KirHut
+namespace KirHut::TOML
 {
 
-void Detail::throwNoValidData(Invalid const &inv)
-{
-    throw NoValidData(inv.info());
-}
-
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<WhyInvalid>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<MessageViewWhy<char>>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string_view>;
-
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::SoftwareError>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::AlreadyInitialized>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::BadEnvironment>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::IllegalArgument>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataUninitialized>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataRemoved>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::InvalidState>;
-
-} // namespace KirHut
+} // namespace KirHut::TOML

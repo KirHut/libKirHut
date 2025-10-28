@@ -17,7 +17,6 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-
 #include "kh/args.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -109,8 +108,7 @@ TEST_CASE("Matching functionality of Option object", "[option]")
     REQUIRE(match3.has_value());
     REQUIRE(match3->parameterString.has_value());
     REQUIRE(match3->parameterString.value() == "MYFILE");
-    // I can now do things like "MYFILE"s.size() since C++20 constexpr strings will just compile to the result.
-    REQUIRE(match3->parameterString.value().data() == &*(argWithParam.end() - "MYFILE"s.size()));
+    REQUIRE(match3->parameterString.value().data() == &*(argWithParam.end() - "MYFILE"sv.size()));
     REQUIRE(configFile == string_view{ match3->matched, configFile.size() });
 
     auto abc    = "-abc"sv;

@@ -17,7 +17,6 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-
 #include "kh/md5hash.hpp"
 
 #include <catch2/catch_test_macros.hpp>

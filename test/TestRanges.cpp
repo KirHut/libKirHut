@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** invalid.cpp
+** TestRanges.cpp
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -17,29 +17,17 @@
 ** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
 ** <https://opensource.org/license/bsd-3-clause>.
 ***********************************************************************************************************************/
-#include "kh/invalid.hpp"
+#include "kh/ranges.hpp"
 
-#include "kh/errors.hpp"
+#include <catch2/catch_test_macros.hpp>
+// clazy:excludeall=non-pod-global-static
 
-namespace KirHut
+using namespace KirHut;
+
+TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges]")
 {
-
-void Detail::throwNoValidData(Invalid const &inv)
-{
-    throw NoValidData(inv.info());
+    std::vector<int> nums{ 1, 2, 3, 4, 5 };
+    auto [f, b] = R::getIters(nums);
+    REQUIRE(f == nums.begin());
+    REQUIRE(b == nums.end());
 }
-
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<WhyInvalid>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<MessageViewWhy<char>>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string>;
-template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string_view>;
-
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::SoftwareError>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::AlreadyInitialized>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::BadEnvironment>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::IllegalArgument>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataUninitialized>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataRemoved>;
-template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::InvalidState>;
-
-} // namespace KirHut

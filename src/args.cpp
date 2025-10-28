@@ -24,12 +24,11 @@
 #endif
 
 #include "kh/errors.hpp"
-#include "kh/ranges.hpp"
 
 #include <algorithm>
 
-using namespace KirHut;
-using namespace KirHut::CLI;
+namespace KirHut::CLI
+{
 
 string readOptionString(string_view toTest)
 {
@@ -200,11 +199,18 @@ inline Maybe<Option::Match> singleMatchesOptionImpl(Option const &op, string_vie
     return maybeNot;
 }
 
-Option::Option(Detail::OptionString optionNames, bool takesArgument) :
+Option::Option(Detail::OptionString optionNames, bool takesArgument) noexcept :
     opNames(optionNames.data),
     isFlag(not takesArgument)
 {
     // No further implementation.
+}
+
+Option::Option([[maybe_unused]] RuntimeFlag rt, string_view optionNames, bool takesArgument) :
+    opNames(optionNames),
+    isFlag(not takesArgument)
+{
+    Detail::validateOptionString(optionNames);
 }
 
 bool Option::operator==(const Option &other) const noexcept
@@ -608,3 +614,29 @@ const Command &Parser::activeCommand() const noexcept
 {
     return im->active.value();
 }
+
+void Detail::throwIllegalCharacter(char whichOne)
+{
+    throw IllegalArgument("An illegal character was passed to the Option constructor: {}\nThese are the legal "
+                          "characters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_",
+                          whichOne);
+}
+
+void Detail::throwNoValidToken(string_view str)
+{
+    throw IllegalArgument(
+        "There must be at least one valid token in an Option string. This was the option string passed:\n\"{}\"",
+        str);
+}
+
+void Detail::throwNoPlusMinusBegin(char whichOne)
+{
+    throw IllegalArgument("An option cannot begin with the '{}' character.", whichOne);
+}
+
+void Detail::throwNotJustDigits(string_view opStr)
+{
+    throw IllegalArgument("An option cannot only consist of digits. \"{}\"", opStr);
+}
+
+} // namespace KirHut::CLI

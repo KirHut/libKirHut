@@ -4,6 +4,7 @@
 ## Copyright © KirHut Software Company
 
 set(libKirHut_EXTERN_HEADERS
+    BS_thread_pool.hpp
     mio.hpp
     Md51.hpp
     Md51_loc.hpp
@@ -16,7 +17,7 @@ set(libKirHut_EXTERN_SOURCES
     Md51.cpp
 )
 
-add_library(libKirHutExternal STATIC ${libKirHut_EXTERN_HEADERS} ${libKirHut_EXTERN_SOURCES})
+add_library(libKirHutExternal OBJECT ${libKirHut_EXTERN_HEADERS} ${libKirHut_EXTERN_SOURCES})
 add_library(KirHut::libKirHutExternal ALIAS libKirHutExternal)
 
 target_include_directories(libKirHutExternal PUBLIC "include")

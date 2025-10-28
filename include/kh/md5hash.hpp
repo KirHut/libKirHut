@@ -19,12 +19,28 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#if KH_PRIV_DOCS or KH_MD5_SUPPORT
+#if defined(KH_INCLUDE_MD5HASH) or defined(KH_PRIV_DOCS)
 # include "kh/base.hpp"
+#endif
 
 namespace KirHut
 {
 
+/*!
+ * Indication boolean for when std::filesystem can be found under KirHut::FS in libKirHut.
+ *
+ * When you need to check if this library includes std::filesystem under KirHut::FS in an if constexpr expression rather
+ * than the preprocessor, you can use this to check.
+ *
+ * \hideinitializer
+ */
+[[maybe_unused]] constexpr bool hasFS = false
+#if defined(KH_INCLUDE_MD5HASH)
+                                        or true
+#endif
+    ;
+
+#if defined(KH_INCLUDE_MD5HASH) or defined(KH_PRIV_DOCS)
 /*!
  * The total size in bytes of the returned value from getMd5().
  *
@@ -422,5 +438,6 @@ void getMd5(span<T const, E> data, span<B, S> output) noexcept
     Md5Hash(data).getMd5(output);
 }
 
+#endif // defined(KH_INCLUDE_MD5HASH) or defined(KH_PRIV_DOCS)
+
 } // namespace KirHut
-#endif // KH_PRIV_DOCS or KH_MD5_SUPPORT

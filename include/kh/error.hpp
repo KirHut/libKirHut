@@ -28,34 +28,42 @@
  * processing some kind of request. The type is deliberately meant to be lightweight so it can be returned from a method
  * or function without worrying about copying too much data, as an Invalid object is as small as 4 bytes on most
  * platforms. However, there are conditions where a lightweight type is insufficient for describing what has happened,
- * and this is almost always the case when an unrecoverable error has occurred.
+ * and this is much more frequently the case when an unrecoverable error has occurred. C++ exceptions are great for
+ * two things, and one of them is emitting when an unrecoverable error has occurred and providing a detialed message of
+ * what that problem was.
  *
  * The kh/errors.hpp header has a set of default Error types that can be used, and are used throughout the library.
- * Please consult the documentation on that header for more information regarding these types.
+ * Please consult the documentation on that header for more information regarding these types. This header is used for
+ * creating custom Error types, or more specifically, for using an Error that is not one of the default Errors in the
+ * errors.hpp header, or when the WhyInvalid tag is insufficient to distinguish this type of Error from the parent type.
+ * Simply put, this is pretty unlikely, but still possible. You may also need to override the why(), info() or what()
+ * methods in a subclass.
  *
- * If you wish to throw an Error
+ * For most cases, when there just isn't a default Error typedef for the WhyInvalid you want, you just do this:
  *
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * struct KH_EXPORT SomeExceptionName : public Exception
- * {
- *     using Exception::Exception;
- * }
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * ~~~
+ * using TemporaryCrashingError = KirHut::Error<KirHut::WhyInvalid::TemporaryError>;
+ * ~~~
  *
- * This is the standard method of using KirHut exceptions, as it is a very simple syntax that allows using the C++ type
- * system to catch specific exceptions and also the more general KirHut::Exception object.
+ * This is the standard method of using KirHut Errors, as it is a very simple syntax that allows using the C++ type
+ * system to catch specific Errors and also the more general GenericError object.
  *
- * Exeptions should be used sparingly and only in conditions that should cause the application to exit. These should be
- * used as a substitute for asserts (and one of these exceptions is thrown by KH_ASSERT), and thrown when the
- * application has been provided conditions it can no longer run under.
+ * Errors should be used sparingly and only in conditions that should cause the application to exit. The main() method
+ * of an application should attempt to catch all KirHut::Errors, and log accordingly. The GenericError type is provided
+ * to make this easy to do, while also allowing separate catch clauses for more specific Error types.
  */
 
 #include "kh/invalid.hpp"
 
 #include <cassert>
 
+#include "kh/priv/format.hpp"
+
 namespace KirHut
 {
+
+template <WhyInvalid why>
+struct Error;
 
 namespace Detail
 {
@@ -72,20 +80,22 @@ struct ErrorState final
 
     string info;
 
-    explicit ErrorState(string_view in) : info(in)
+    explicit inline ErrorState(string_view in) : info(in)
     {
         // No further implementation.
     }
 
-    explicit ErrorState(char const *in) : info(in)
+    explicit inline ErrorState(char const *in) : info(in)
     {
         // No further implementation.
     }
 
-    explicit ErrorState(string &&in) : info(std::move(in))
+    explicit constexpr ErrorState(string &&in) noexcept : info(std::move(in))
     {
         // No further implementation.
     }
+
+    constexpr bool operator==(ErrorState const &other) const noexcept = default;
 
     constexpr WhyInvalid getWhyInvalid() const noexcept
     {
@@ -98,12 +108,69 @@ struct ErrorState final
     }
 };
 
+template <typename T>
+constexpr bool isError = false;
+
+template <WhyInvalid why>
+constexpr bool isError<::KirHut::Error<why>> = true;
+
 } // namespace Detail
 
 /*!
- * The Exception class is a subclass of std::exception that prefers the use of C++17 std::string_view instead of
+ * A Generic "Error" type that all Error class objects subclass from.
+ *
+ * This allows access to the why(), info() and what() methods of Error objects using a generic parent type if you do not
+ * know what Error has been thrown. The Invalid type itself intentionally lacks a vtable, and virtual table function
+ * calls are far more useful with thrown exceptions than with returned Invalid types anyway. As such, this parent type
+ * is included separately for Errors so that Error objects can still benefit from virtual dispatch while not polluting
+ * the entire Invalid tree with it.
+ *
+ * This class is **not** intended to be subclassed by types other than the Error type. This is enforced with the
+ * constructor that must be initialized with a pointer to the subclass itself. The type of the subclass will be checked
+ * to ensure that it is an instance of the Error class.
+ */
+struct GenericError
+{
+    /*!
+     * Standard virtual destructor for objects that support destruction from the parent type.
+     */
+    virtual ~GenericError() = default;
+
+    /*!
+     * Returns the value of the underlying Error type.
+     * \return
+     */
+    virtual WhyInvalid why() const noexcept = 0;
+
+    /*!
+     * \brief info
+     * \return
+     */
+    virtual string_view info() const noexcept = 0;
+
+    /*!
+     * \brief what
+     * \return
+     */
+    virtual char const *what() const noexcept = 0;
+
+protected:
+    template <typename T>
+    constexpr GenericError([[maybe_unused]] T *child)
+    {
+        static_assert(Detail::isError<T>);
+    }
+
+    GenericError() = delete;
+};
+
+/*!
+ * The Error class is similar to std::exception except that prefers the use of C++17 std::string_view instead of
  * `const char *`.
  *
+ * This class is primarily meant to be used as a "throwable Invalid" type that is intentionally meant to signal that the
+ * application should likely close as a result of this throw. The other major purpose of C++ exceptions is met with the
+ * FlowEnder class (not yet implemented),
  * This class has two primary purposes: first make an exception class that allows the use of constant strings and
  * std::string_view for exception free Exception constructors, and second to have a class that allows construction of
  * copies of Exceptions with custom strings built at runtime without creation of additional copies of the underlying
@@ -132,10 +199,10 @@ struct ErrorState final
  * same UTF-8 string as info(), just as a `char` array instead of a std::string_view.
  */
 template <WhyInvalid reason>
-struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>
+struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public GenericError
 {
     /*!
-     * The non-copying string_view Exception constructor.
+     * The copying string_view Error constructor.
      *
      * This constructor requires that the string pointed at by \p info is null-terminated as the pointer returned by
      * what() is simply the data pointer of the \p info std::string_view. Use the copying string_view constructor if
@@ -162,7 +229,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>
      *
      * \param info A std::string_view to the data returned by info() and what().
      */
-    inline explicit Error(string_view info = string_view()) : Parent(info)
+    inline explicit Error(string_view info = string_view()) : Parent(info), GenericError(this)
     {
         // No further implementation.
     }
@@ -186,10 +253,6 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>
      * need to compute the length at runtime.
      *
      * The WhyInvalid reason returned by this Exception will be WhyInvalid::UnknownReason.
-     *
-     * \warning The \p info data block MUST not be deallocated or modified for the entire lifetime of the Exception
-     * object, and any copies of the Exception object! If you cannot provide this, use the copying StringView
-     * constructor! If this is not done, the behavior is undefined!
      *
      * \param info A constant char pointer to the data that will be returned by info() and what().
      */
@@ -215,9 +278,53 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>
      * \param info A string_view to the data returned by info() and what().
      * \throws bad_alloc May be thrown if \p copy is true and allocating the underlying memory failed.
      */
-    inline Error(string &&info) noexcept : Parent(std::move(info))
+    inline Error(string &&info) noexcept : Parent(std::move(info)), GenericError(this)
     {
         // No further implementation.
+    }
+
+    /*!
+     * \brief Error
+     * \param str
+     * \param firstArg
+     * \param args
+     */
+    template <typename Arg_T, typename... Arg_Ts>
+    inline Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args) :
+        Error(Flags::runtime, str.get(), FMT::make_format_args(firstArg, args...))
+    {
+        // No further implementation.
+    }
+
+    /*!
+     * \brief Error
+     * \param rt
+     * \param format
+     * \param args
+     */
+    inline Error([[maybe_unused]] RuntimeFlag rt, FMT::string_view format, FMT::format_args const &args) :
+        Parent(FMT::vformat(format, args)),
+        GenericError(this)
+    {
+        // No further implementation.
+    }
+
+    /*!
+     * \brief why
+     * \return
+     */
+    inline WhyInvalid why() const noexcept override
+    {
+        return Parent::why();
+    }
+
+    /*!
+     * \brief info
+     * \return
+     */
+    inline string_view info() const noexcept override
+    {
+        return Parent::info();
     }
 
     /*!
@@ -230,9 +337,9 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>
      *
      * \return The same string as info().
      */
-    inline char const *what() const noexcept
+    inline char const *what() const noexcept override
     {
-        return this->info().data();
+        return Parent::info().data();
     }
 
 private:

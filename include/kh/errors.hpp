@@ -100,7 +100,6 @@ using NoValidData = Error<WhyInvalid::DataRemoved>;
 using BadState = Error<WhyInvalid::InvalidState>;
 
 //! \cond
-
 // Poor Doxygen doesn't understand extern template instantiations with KH_EXPORT...
 extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::SoftwareError>;
 extern template struct KH_EXPLICIT_TEMPLATE_EXPORT Error<WhyInvalid::AlreadyInitialized>;

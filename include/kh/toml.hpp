@@ -19,7 +19,9 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#include "kh/base.hpp"
+#if defined(KH_INCLUDE_TOML) or defined(KH_PRIV_DOCS)
+# include "kh/base.hpp"
+#endif
 
 /*!
  * Namespace for reading and writing TOML files, usually for configuration.
@@ -28,5 +30,23 @@
  */
 namespace KirHut::TOML
 {
+
+/*!
+ * Indication boolean for when TOML support has been included in libKirHut.
+ *
+ * When you need to check if this library includes TOML support using an if constexpr expression rather than the
+ * preprocessor, you can use this to check if the library is built with TOML support.
+ *
+ * \hideinitializer
+ */
+[[maybe_unused]] constexpr bool hasTOML = false
+#if defined(KH_INCLUDE_TOML)
+                                          or true
+#endif
+    ;
+
+#if defined(KH_INCLUDE_TOML) or defined(KH_PRIV_DOCS)
+// My library calls would go in here when I get started.
+#endif
 
 } // namespace KirHut::TOML

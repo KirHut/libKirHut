@@ -22,56 +22,68 @@
 #if defined(_WIN32) and not defined(__cpp_lib_print)
 # include "nowide/iostream.hpp"
 auto &cout = nowide::cout;
+auto &cerr = nowide::cerr;
 #else
 # include <iostream>
 auto &cout = std::cout;
-#endif
-
-#if defined(KH_USES_FMT)
-# include "fmt/format.h"
+auto &cerr = std::cerr;
 #endif
 
 namespace KirHut::IO
 {
 
-void vprint(std::FILE *stream, string_view form, FMT::format_args args)
+void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args const &args)
 {
-#if defined(__cpp_lib_print)
-    vprint_unicode(stream, form, args);
+#if defined(KH_USES_FMT)
+    fmt::vprint(stream, form, args);
+#elif defined(__cpp_lib_print)
+    vprint_nonunicode(stream, form, args);
 #else
-    std::fputs(FMT::vformat(form, args).c_str(), stream);
+    std::fputs(std::vformat(form, args).c_str(), stream);
 #endif
 }
 
-void vprint(std::ostream &stream, string_view form, FMT::format_args args)
+void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args)
 {
-#if defined(__cpp_lib_print)
-    vprint_unicode(stream, form, args);
+#if defined(KH_USES_FMT)
+    fmt::vprint(stream, form, args);
+#elif defined(__cpp_lib_print)
+    vprint_nonunicode(stream, form, args);
 #else
-    stream << FMT::vformat(form, args);
+    stream << std::vformat(form, args);
 #endif
 }
 
-void vprint(string_view form, FMT::format_args args)
+void vprint(FMT::string_view form, FMT::format_args const &args)
 {
-    vprint(cout, form, args);
+    IO::vprint(cout, form, args);
 }
 
-void vprintln(std::FILE *stream, string_view form, FMT::format_args args)
+void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &args)
 {
-    vprint(stream, form, args);
+    IO::vprint(stream, form, args);
     std::fputc('\n', stream);
 }
 
-void vprintln(std::ostream &stream, string_view form, FMT::format_args args)
+void vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args)
 {
-    vprint(stream, form, args);
+    IO::vprint(stream, form, args);
     stream << '\n';
 }
 
-void vprintln(string_view form, FMT::format_args args)
+void vprintln(FMT::string_view form, FMT::format_args const &args)
 {
-    vprintln(cout, form, args);
+    IO::vprintln(cout, form, args);
+}
+
+void vreport(FMT::string_view form, FMT::format_args const &args)
+{
+    IO::vprint(cerr, form, args);
+}
+
+void vreportln(FMT::string_view form, FMT::format_args const &args)
+{
+    IO::vprintln(cerr, form, args);
 }
 
 } // namespace KirHut::IO
