@@ -80,12 +80,12 @@ struct ErrorState final
 
     string info;
 
-    explicit inline ErrorState(string_view in) : info(in)
+    explicit inline ErrorState(string_view in) KH_THROWS_BADALLOC : info(in)
     {
         // No further implementation.
     }
 
-    explicit inline ErrorState(char const *in) : info(in)
+    explicit inline ErrorState(char const *in) KH_THROWS_BADALLOC : info(in)
     {
         // No further implementation.
     }
@@ -134,7 +134,7 @@ struct GenericError
     /*!
      * Standard virtual destructor for objects that support destruction from the parent type.
      */
-    virtual ~GenericError() = default;
+    virtual ~GenericError() noexcept = default;
 
     /*!
      * Returns the value of the underlying Error type.
@@ -156,7 +156,7 @@ struct GenericError
 
 protected:
     template <typename T>
-    constexpr GenericError([[maybe_unused]] T *child)
+    constexpr GenericError([[maybe_unused]] T *child) noexcept
     {
         static_assert(Detail::isError<T>);
     }
@@ -170,33 +170,31 @@ protected:
  *
  * This class is primarily meant to be used as a "throwable Invalid" type that is intentionally meant to signal that the
  * application should likely close as a result of this throw. The other major purpose of C++ exceptions is met with the
- * FlowEnder class (not yet implemented),
- * This class has two primary purposes: first make an exception class that allows the use of constant strings and
- * std::string_view for exception free Exception constructors, and second to have a class that allows construction of
- * copies of Exceptions with custom strings built at runtime without creation of additional copies of the underlying
- * std::string or ever throwing an exception.
+ * FlowEnder class (not yet implemented), which is for establishing unhappy-path control flow in heavy processing that
+ * goes through a lot of functions (primarily parsing but for other purposes, as well). An Error is always a complex
+ * Invalid type because the underlying data always contains a std::string object of the message, which may include a
+ * stack trace of what occurred (if this library is built with C++23 and has access to std::stack_trace).
  *
- * Simply put, this class should never throw exceptions under any circumstances unless a subclass does so in its
- * constructor, with the exception of the copying StringView constructor. This includes bad_alloc, as this class does
- * not require memory allocations for any operation outside of the copying StringView constructor at all.
+ * This class generally requires the use of some kind of memory allocation during construction, which is a necessary
+ * consequence of using std::shared_ptr and std::string to store the internal data. As such, it is always possible to
+ * throw a std::bad_alloc during construction, but when throwing std::bad_alloc is unsupported, these methods are
+ * properly marked as noexcept in that case.
  *
- * The preferred way to use this class is to document that your function or method throws a subclass of this class, and
- * to create your subclass like so:
+ * The preferred way to use this class is to document that your function or method throws a typedef of this class, and
+ * to create your typedef like so:
  *
  * ~~~
- * struct MyException : public Exception
- * {
- *     using Exception::Exception;
- * }
+ * using ArenaTrashedError = KirHut::Error<KirHut::WhyInvalid::ArenaTrashed>;
  * ~~~
  *
- * This ensures that you have all of the constructors that Exception has, don't have to provide any additional
- * implementation whatsoever, and can take advantage of C++'s type system for catch statements.
+ * For most use cases, this should be fine. However, there are times when a WhyInvalid tag is insufficient for
+ * distinguishing your Error type. When that is the case, this type supports direct subtyping, so you can make further
+ * distinctions of this specific Error type from just any other tagged Error.
  *
  * This class prefers using info() to get the user returned exception info, and this method will always return the
  * complete string used to construct this class from it. The what() method is considered a legacy method that should
- * only be used by catch() blocks that catch std::exception instead of Exception. The what() method will return the
- * same UTF-8 string as info(), just as a `char` array instead of a std::string_view.
+ * only be used by catch() blocks that catch std::exception and Error. The what() method will return the same UTF-8
+ * string as info(), just as a `char` array instead of a std::string_view.
  */
 template <WhyInvalid reason>
 struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public GenericError
@@ -229,7 +227,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      *
      * \param info A std::string_view to the data returned by info() and what().
      */
-    inline explicit Error(string_view info = string_view()) : Parent(info), GenericError(this)
+    inline explicit Error(string_view info = string_view()) KH_THROWS_BADALLOC : Parent(info), GenericError(this)
     {
         // No further implementation.
     }
@@ -256,7 +254,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      *
      * \param info A constant char pointer to the data that will be returned by info() and what().
      */
-    inline explicit Error(char const *info) : Error(string_view{ info })
+    inline explicit Error(char const *info) KH_THROWS_BADALLOC : Error(string_view{ info })
     {
         // No further implementation.
     }
@@ -276,9 +274,9 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * The WhyInvalid reason returned by this Exception will be WhyInvalid::UnknownReason.
      *
      * \param info A string_view to the data returned by info() and what().
-     * \throws bad_alloc May be thrown if \p copy is true and allocating the underlying memory failed.
+     * \throws std::bad_alloc May be thrown if \p copy is true and allocating the underlying memory failed.
      */
-    inline Error(string &&info) noexcept : Parent(std::move(info)), GenericError(this)
+    inline Error(string &&info) KH_THROWS_BADALLOC : Parent(std::move(info)), GenericError(this)
     {
         // No further implementation.
     }

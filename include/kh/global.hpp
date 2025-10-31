@@ -473,6 +473,8 @@
  * This library supports building for both Qt and non-Qt based applications. Almost everything KirHut makes is a Qt
  * application, however there are exceptions and this library should support builds on non-Qt systems. The primary
  * exception to this is for embedded devices.
+ *
+ * As a consequence of building libKirHut with this flag, the #KH_NO_BADALLOC flag is overridden and defined as 1.
  */
 
 /*!
@@ -482,11 +484,11 @@
  *
  * This library supports modern C++23-style printing with both {fmt} and std::format, and wraps them in the
  * KirHut::print() functions. By default, libKirHut is always UTF-8 aware and all output operations that aren't raw IO
- * accept the output in UTF-8, even if the output is actually in a different character set. File IO is almost always
+ * accept the input as UTF-8, even if the output is actually in a different character set. File IO is almost always
  * considered raw binary in libKirHut, but text files are read as UTF-8 documents and output a replacement character for
  * every invalid sequence.
  *
- * The conversion from UTF-8 to the output format is performed by boost:nowide, which is used internally by this
+ * The conversion from UTF-8 to the output format is performed by boost::nowide, which is used internally by this
  * library on Windows. Otherwise, UTF-8 is just assumed as a universal standard.
  */
 
@@ -521,8 +523,10 @@
  * Preprocessor flag to build libKirHut without support for throwing any exceptions at all.
  *
  * This will cause all functions and methods to stop throwing exceptions, and they will usually instead either fallback
- * to an alternative or simply crash the application. Unlike with KH_NO_BADALLOC, this will **not** mark all functions
+ * to an alternative or simply crash the application. Unlike with #KH_NO_BADALLOC, this will **not** mark all functions
  * and methods in this library as noexcept!
+ *
+ * As a consequence of building libKirHut with this flag, the #KH_NO_BADALLOC flag is overridden and defined as 1.
  */
 
 /*!
@@ -555,6 +559,8 @@
  * The MD5 Hashing functionality of this library is extremely lightweight and there's little reason to want to remove
  * this, but there is also never any real reason you would use this outside of specifically needing to support legacy
  * hashing functions or if you want a kind-of-slow, insecure hashing function to uniquely identify some asset.
+ *
+ * As a consequence of building libKirHut with this flag, the #KH_MUST_HAVE_32_64 flag is overridden and defined as 1.
  */
 
 /*!
@@ -919,7 +925,7 @@
 static_assert(false, "Building for an unsupported Apple OS or OS version.");
 # endif
 # if not defined(KH_APPLE)
-#  define KH_APPLE KH_APPLE_DARWIN_KERNEL
+#  define KH_APPLE KH_KERNEL_VERSION
 # endif
 # if not TARGET_OS_IPHONE
 #  if defined(TARGET_OS_DRIVERKIT)
@@ -1081,7 +1087,7 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support SPARC architecture builds!");
 #endif
 
-#if not KH_SPARC64 and (defined(__sparc__) or defined(__sparc))
+#if not defined(KH_SPARC64) and (defined(__sparc__) or defined(__sparc))
 # define KH_SPARC32 1
 # define KH_32BIT 1
 static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support SPARC architecture builds!");
@@ -1103,6 +1109,7 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support
 static_assert(KH_OVERRIDE_PLATFORM_SAFETY, "libKirHut currently does not support RISC-V 128-bit builds!");
 #  endif
 # else
+// If we've overridden platform safety, just take a guess!
 #  define KH_RISCV32 1
 #  define KH_32BIT 1
 static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
@@ -1133,6 +1140,16 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_QT_VERSION 0
 #endif // KH_USES_QT
 
+#if defined(KH_INCLUDE_MD5HASH)
+# undef KH_MUST_HAVE_32_64
+# define KH_MUST_HAVE_32_64 1
+#endif
+
+#if defined(KH_NO_EXCEPTIONS)
+# undef KH_NO_BADALLOC
+# define KH_NO_BADALLOC 1
+#endif
+
 #if not defined(KH_DEBUG) and not defined(KH_RELEASE) and not defined(NDEBUG)
 # define KH_DEBUG 1
 #endif
@@ -1142,19 +1159,15 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 #endif
 
 #if defined(KH_MUST_HAVE_16_32_64)
-# undef KH_MUST_HAVE_16_32_64
 # undef KH_MUST_HAVE_32_64
 # undef KH_MUST_HAVE_16BIT_TYPES
-# define KH_MUST_HAVE_16_32_64 1
 # define KH_MUST_HAVE_32_64 1
 # define KH_MUST_HAVE_16BIT_TYPES 1
 #endif
 
 #if defined(KH_MUST_HAVE_32_64)
-# undef KH_MUST_HAVE_32_64
 # undef KH_MUST_HAVE_32BIT_TYPES
 # undef KH_MUST_HAVE_64BIT_TYPES
-# define KH_MUST_HAVE_32_64 1
 # define KH_MUST_HAVE_32BIT_TYPES 1
 # define KH_MUST_HAVE_64BIT_TYPES 1
 #endif
@@ -1168,6 +1181,80 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 #endif
 //! \endcond
 
+#if defined(KH_PRIV_DOCS)
+# define KH_WINDOWS
+# define KH_LINUX
+# define KH_MACOS
+# define KH_APPLE
+# define KH_ANDROID
+# define KH_WASM
+# define KH_BSD
+# define KH_IPHONE
+# define KH_DESKTOP
+# define KH_MOBILE
+# define KH_X64
+# define KH_X32
+# define KH_IA64
+# define KH_ARMv6
+# define KH_ARMv7
+# define KH_ARMv8
+# define KH_MIPS
+# define KH_POWER64
+# define KH_POWER32
+# define KH_SPARC64
+# define KH_SPARC32
+# define KH_ARM32
+# define KH_ARM64
+# define KH_X86
+# define KH_RISCV
+# define KH_RISCV32
+# define KH_RISCV64
+# define KH_RISCV128
+# define KH_32BIT
+# define KH_64BIT
+# define KH_COMPILED_WITH_GCC
+# define KH_COMPILED_WITH_MSVC
+# define KH_COMPILED_WITH_CLANG
+# define KH_COMPILED_WITH_APPLECLANG
+# define KH_COMPILED_WITH_ICX
+# define KH_COMPILED_WITH_NVHPC
+# define KH_COMPILED_WITH_IBMXL
+# define KH_COMPILED_WITH_ARMCLANG
+# define KH_COMPILED_WITH_CRAY
+# define KH_COMPILED_WITH_UNKNOWN
+# define KH_QT_VERSION
+# define KH_QT5_15
+# define KH_QT6_2
+# define KH_QT6_5
+# define KH_QT6_8
+# define KH_EXPORT
+# define KH_NO_EXPORT
+# define KH_DEPRECATED
+# define KH_DEPRECATED_EXPORT
+# define KH_DEPRECATED_NO_EXPORT
+# define KH_EXPLICIT_TEMPLATE_EXPORT
+# define KH_EXPLICIT_TEMPLATE_INSTANCE
+# define KH_CLANG_GCC_COMPATIBLE
+# define KH_USES_QT
+# define KH_USES_FMT
+# define KH_NO_BADALLOC
+# define KH_NO_EXCEPTIONS
+# define KH_INCLUDE_MD5HASH
+# define KH_INCLUDE_TOML
+# define KH_INCLUDE_ARG_PARSER
+# define KH_INCLUDE_FILESYSTEM
+# define KH_INCLUDE_TASK_SYSTEM
+# define KH_INCLUDE_TERMINAL_PRINT
+# define KH_OVERRIDE_PLATFORM_SAFETY
+# define KH_DEBUG
+# define KH_RELEASE
+# define KH_MUST_HAVE_16_32_64
+# define KH_MUST_HAVE_32_64
+# define KH_MUST_HAVE_64BIT_TYPES
+# define KH_MUST_HAVE_32BIT_TYPES
+# define KH_MUST_HAVE_16BIT_TYPES
+#endif
+
 /*!
  * \def KH_FORCEINLINE
  *
@@ -1180,13 +1267,11 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
  * level of the compiled code. On unsupported compilers, this directive expands to nothing.
  *
  * This is always defined after including this header.
- *
- * \hideinitializer
  */
 
-#if KH_COMPILED_WITH_MSVC
+#if defined(KH_COMPILED_WITH_MSVC)
 # define KH_FORCEINLINE __forceinline
-#elif KH_COMPILED_GCC_COMPATIBLE
+#elif defined(KH_COMPILED_GCC_COMPATIBLE)
 # define KH_FORCEINLINE __attribute__((always_inline))
 #else
 # define KH_FORCEINLINE
@@ -1203,14 +1288,27 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
  * contexts (for example, they may now be used in noexcept contexts).
  *
  * This is always defined after including this header.
+ */
+
+/*!
+ * \def KH_THROWS_BADALLOC_OR
  *
- * \hideinitializer
+ * Identical functionality to #KH_THROWS_BADALLOC, but also allows placing an expression in the noexcept clause.
+ *
+ * There are many cases, especially on hosted operating systems, where there is no useful way to handle or expect a
+ * failure to allocate memory. As such, it is sometimes useful to remove support for throwing std::bad_alloc exceptions
+ * as this does so as to provide optimization in some circumstances and to make the methods more useful in certain
+ * contexts (for example, they may now be used in noexcept contexts).
+ *
+ * This is always defined after including this header.
  */
 
 #if defined(KH_NO_BADALLOC)
 # define KH_THROWS_BADALLOC noexcept
+# define KH_THROWS_BADALLOC_OR(...) noexcept(__VA_ARGS__)
 #else
 # define KH_THROWS_BADALLOC
+# define KH_THROWS_BADALLOC_OR(...)
 #endif
 
 /*!
@@ -1224,10 +1322,8 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
  * multiple empty base classes, this is a necessity.
  *
  * This is always defined after including this header.
- *
- * \hideinitializer
  */
-#if KH_COMPILED_WITH_MSVC
+#if defined(KH_COMPILED_WITH_MSVC)
 # define KH_EBO_EMPTY_BASES __declspec(empty_bases)
 #else
 # define KH_EBO_EMPTY_BASES
@@ -1267,7 +1363,8 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
  * \hideinitializer
  */
 
-#if KH_COMPILED_WITH_MSVC and not defined(__clang__)
+// Check for __clang__ here as well to prevent clangd from complaining about msvc::flatten when compiling for MSVC.
+#if defined(KH_COMPILED_WITH_MSVC) and not defined(__clang__)
 # define KH_ATTR_FLATTEN msvc::flatten
 #else
 # define KH_ATTR_FLATTEN gnu::flatten
@@ -1277,7 +1374,7 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 #include <cstddef>
 #include <type_traits>
 
-#if KH_USE_128BIT_TYPES
+#if defined(KH_USE_128BIT_TYPES)
 # include <cmath>
 #endif
 
@@ -1839,77 +1936,3 @@ enum class WhyInvalid
 }
 
 } // namespace KirHut
-
-#if KH_PRIV_DOCS
-# define KH_WINDOWS
-# define KH_LINUX
-# define KH_MACOS
-# define KH_APPLE
-# define KH_ANDROID
-# define KH_WASM
-# define KH_BSD
-# define KH_IPHONE
-# define KH_DESKTOP
-# define KH_MOBILE
-# define KH_X64
-# define KH_X32
-# define KH_IA64
-# define KH_ARMv6
-# define KH_ARMv7
-# define KH_ARMv8
-# define KH_MIPS
-# define KH_POWER64
-# define KH_POWER32
-# define KH_SPARC64
-# define KH_SPARC32
-# define KH_ARM32
-# define KH_ARM64
-# define KH_X86
-# define KH_RISCV
-# define KH_RISCV32
-# define KH_RISCV64
-# define KH_RISCV128
-# define KH_32BIT
-# define KH_64BIT
-# define KH_COMPILED_WITH_GCC
-# define KH_COMPILED_WITH_MSVC
-# define KH_COMPILED_WITH_CLANG
-# define KH_COMPILED_WITH_APPLECLANG
-# define KH_COMPILED_WITH_ICX
-# define KH_COMPILED_WITH_NVHPC
-# define KH_COMPILED_WITH_IBMXL
-# define KH_COMPILED_WITH_ARMCLANG
-# define KH_COMPILED_WITH_CRAY
-# define KH_COMPILED_WITH_UNKNOWN
-# define KH_QT_VERSION
-# define KH_QT5_15
-# define KH_QT6_2
-# define KH_QT6_5
-# define KH_QT6_8
-# define KH_EXPORT
-# define KH_NO_EXPORT
-# define KH_DEPRECATED
-# define KH_DEPRECATED_EXPORT
-# define KH_DEPRECATED_NO_EXPORT
-# define KH_EXPLICIT_TEMPLATE_EXPORT
-# define KH_EXPLICIT_TEMPLATE_INSTANCE
-# define KH_CLANG_GCC_COMPATIBLE
-# define KH_USES_QT
-# define KH_USES_FMT
-# define KH_NO_BADALLOC
-# define KH_NO_EXCEPTIONS
-# define KH_INCLUDE_MD5HASH
-# define KH_INCLUDE_TOML
-# define KH_INCLUDE_ARG_PARSER
-# define KH_INCLUDE_FILESYSTEM
-# define KH_INCLUDE_TASK_SYSTEM
-# define KH_INCLUDE_TERMINAL_PRINT
-# define KH_OVERRIDE_PLATFORM_SAFETY
-# define KH_DEBUG
-# define KH_RELEASE
-# define KH_MUST_HAVE_16_32_64
-# define KH_MUST_HAVE_32_64
-# define KH_MUST_HAVE_64BIT_TYPES
-# define KH_MUST_HAVE_32BIT_TYPES
-# define KH_MUST_HAVE_16BIT_TYPES
-#endif

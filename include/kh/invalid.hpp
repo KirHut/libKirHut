@@ -475,6 +475,8 @@ concept QuickWhyType = ValidWhyType<T> and std::is_nothrow_move_constructible_v<
  * All of the methods of this class are marked as constexpr, so this class should be completely usable in a
  * constexpr context. This allows the creation of functions and methods marked constexpr that return a MaybeInv<T>
  * or Invalid and this would compile.
+ *
+ * \tparam Why_T
  */
 template <ValidWhyType Why_T>
 class BasicInvalid
@@ -504,10 +506,12 @@ public:
     /*!
      * \brief BasicInvalid
      * \param args The arguments to pass to the Why_T constructor to build this BasicInvalid object around.
+     * \throws std::bad_alloc
      */
     template <typename... Arg_Ts>
     inline explicit(sizeof...(Arg_Ts) < 2) BasicInvalid(Arg_Ts &&...args)
-        requires(std::is_constructible_v<Why_T, Arg_Ts...>)
+        KH_THROWS_BADALLOC_OR(std::is_nothrow_constructible_v<Why_T, Arg_Ts...>)
+            requires(std::is_constructible_v<Why_T, Arg_Ts...>)
         : data(make_shared<Why_T>(std::forward<Arg_Ts>(args)...))
     {
         // No further implementation.
@@ -529,7 +533,8 @@ public:
      * \param why A Why_T state (usually a WhyInvalid) of what caused the BasicInvalid to be raised or returned.
      * \throws any exception that is thrown by the copy constructor of Why_T (WhyInvalid has none).
      */
-    inline explicit BasicInvalid(Why_T const &why) requires(std::is_copy_constructible_v<Why_T>)
+    inline explicit BasicInvalid(Why_T const &why) KH_THROWS_BADALLOC_OR(std::is_nothrow_copy_constructible_v<Why_T>)
+        requires(std::is_copy_constructible_v<Why_T>)
         : data(make_shared<Why_T>(why))
     {
         // No further implementation.
@@ -545,7 +550,8 @@ public:
      *
      * \param why A Why_T state (usually a WhyInvalid) of what caused the BasicInvalid to be raised or returned.
      */
-    inline explicit BasicInvalid(Why_T &&why) requires(std::is_move_constructible_v<Why_T>)
+    inline explicit BasicInvalid(Why_T &&why) KH_THROWS_BADALLOC_OR(std::is_nothrow_move_constructible_v<Why_T>)
+        requires(std::is_move_constructible_v<Why_T>)
         : data(make_shared<Why_T>(std::move(why)))
     {
         // No further implementation.
@@ -772,7 +778,7 @@ protected:
     /*!
      * \copydoc whyData()
      */
-    [[nodiscard]] inline std::add_const_t<Why_T> &whyData() const noexcept
+    [[nodiscard]] constexpr std::add_const_t<Why_T> &whyData() const noexcept
     {
         return data;
     }
@@ -1294,7 +1300,7 @@ public:
     constexpr auto orElse(MaybeTransform<Invalid const &, Args &&...> auto &function, Args &&...args)
         const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Invalid const &, Args &&...>
     {
-        typedef decltype(function(*failure(), forward<Args>(args)...)) RetType;
+        using RetType = decltype(function(*failure(), forward<Args>(args)...));
         return !isValid() ? function(*failure(), forward<Args>(args)...) : RetType{ *this };
     }
 

@@ -169,7 +169,6 @@ void testCommandString(string_view commandString)
     }
 }
 
-// The next two are set as constexpr to allow for inlining.
 inline Maybe<Option::Match> singleMatchesFlagImpl(Option const &op, string_view toCheck) noexcept
 {
     size_t const start = toCheck.starts_with('-') ? 1 : 0;

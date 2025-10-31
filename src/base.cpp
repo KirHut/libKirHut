@@ -24,10 +24,6 @@
 #include <chrono>
 #include <cassert>
 
-#if KH_USES_QT
-# include <QString>
-#endif
-
 namespace KirHut
 {
 

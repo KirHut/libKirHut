@@ -261,13 +261,13 @@ struct KH_EXPORT Option final
      * This is the main constructor for the Option object, and generally this should be created in an OptionList with
      * a list initialization of bracketed constructor calls, like so:
      *
-     * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     * ~~~
      * std::vector<Command> myCommands;
      * myCommands.emplace_back("Command", OptionList {
      *     { "c config-file", true },
      *     { "f flag" }
      * });
-     * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     * ~~~
      *
      * This allows you to set up your commands very quickly and efficiently in the code.
      *

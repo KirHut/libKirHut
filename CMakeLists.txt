@@ -41,13 +41,23 @@ else()
     set(KH_LIB_BUILD_TESTS_DEFAULT OFF)
 endif()
 
-option(KH_MUST_HAVE_16_32_64 "Require that the platform has 16, 32, and 64 bit integers." OFF)
-option(KH_MUST_HAVE_32_64 "Require that the platform has 32 and 64 bit integers." ON)
+string(CONCAT KH_MUST_HAVE_16_32_64_STRING
+    "Require that the platform has 16, 32, and 64 bit integers "
+    "(implies KH_MUST_HAVE_32_64 and KH_MUST_HAVE_16BIT_TYPES)."
+)
+
+string(CONCAT KH_MUST_HAVE_32_64_STRING
+    "Require that the platform has 32 and 64 bit integers "
+    "(implies KH_MUST_HAVE_32BIT_TYPES and KH_MUST_HAVE_64BIT_TYPES)."
+)
+
+option(KH_MUST_HAVE_16_32_64 "${KH_MUST_HAVE_16_32_64_STRING}" OFF)
+option(KH_MUST_HAVE_32_64 "${KH_MUST_HAVE_32_64_STRING}" OFF)
 option(KH_MUST_HAVE_16BIT_TYPES "Require that the platform has 16 bit integers." OFF)
 option(KH_MUST_HAVE_32BIT_TYPES "Require that the platform has 32 bit integers." OFF)
 option(KH_MUST_HAVE_64BIT_TYPES "Require that the platform has 64 bit integers." OFF)
 
-option(KH_USES_QT "Build libKirHut with Qt extensions enabled (implies KH_NO_BADALLOC)." ON)
+option(KH_USES_QT "Build libKirHut with Qt extensions enabled (implies KH_NO_BADALLOC)." OFF)
 option(KH_USES_FMT "Build libKirHut with {fmt} dependency instead of std::format." ON)
 option(KH_LIB_BUILD_TESTS "Build the tests for this library." ${KH_LIB_BUILD_TESTS_DEFAULT})
 option(BUILD_SHARED_LIBS "Build this library (and its dependencies) as shared libraries." ON)
@@ -55,7 +65,7 @@ option(KH_NO_BADALLOC "Remove support for throwing or catching std::bad_alloc." 
 option(KH_NO_EXCEPTIONS "Removes exception support entirely, along with the Error type (implies KH_NO_BADALLOC)." OFF)
 option(KH_INCLUDE_ARG_PARSER "Include KirHut::CLI command line argument parsing functionality." ON)
 option(KH_INCLUDE_FILESYSTEM "Include std::filesystem under the KirHut::FS namespace." ON)
-option(KH_INCLUDE_MD5HASH "Build this library with MD5Hash support (implies KH_MUST_HAVE_32_64)." ${KH_MUST_HAVE_32_64})
+option(KH_INCLUDE_MD5HASH "Build this library with MD5Hash support (implies KH_MUST_HAVE_32_64)." ON)
 option(KH_INCLUDE_TASK_SYSTEM "Include controllable multithreaded task system." ON)
 option(KH_INCLUDE_TERMINAL_PRINT "Include UTF-8 C++23 style printing support in KirHut::IO." ON)
 option(KH_INCLUDE_TOML "Build this library with TOML parsing support." ON)

@@ -31,3 +31,40 @@ TEST_CASE("Check if Error type is constructible.", "[errors][Error]")
     REQUIRE(sucker.why() == WhyInvalid::SoftwareError);
     REQUIRE(std::strncmp(sucker.what(), suckerString.data(), suckerString.size()) == 0);
 }
+
+TEST_CASE("Check if Error type returns correct WhyInvalid types.", "[errors][Error]")
+{
+    KirHutSucksAtProgramming sucker("Test 1");
+    BullshitEnvironment bs("Test 2");
+    IllegalArgument illegal("Test 3");
+
+    REQUIRE(sucker.why() == WhyInvalid::SoftwareError);
+    REQUIRE(bs.why() == WhyInvalid::BadEnvironment);
+    REQUIRE(illegal.why() == WhyInvalid::IllegalArgument);
+}
+
+TEST_CASE("Check if Error type returns constructed string from .info()", "[errors][Error]")
+{
+    KirHutSucksAtProgramming sucker("Test 1");
+    BullshitEnvironment bs("Test 2");
+    IllegalArgument illegal("Test 3");
+
+    REQUIRE(sucker.info() == "Test 1");
+    REQUIRE(bs.info() == "Test 2");
+    REQUIRE(illegal.info() == "Test 3");
+}
+
+TEST_CASE("Check if Error type returns constructed string from .what()", "[errors][Error]")
+{
+    string_view suckerString  = "Test 1"sv;
+    string_view bsString      = "Test 2"sv;
+    string_view illegalString = "Test 3"sv;
+
+    KirHutSucksAtProgramming sucker(suckerString);
+    BullshitEnvironment bs(bsString);
+    IllegalArgument illegal(illegalString);
+
+    REQUIRE(std::strncmp(sucker.what(), suckerString.data(), suckerString.size()) == 0);
+    REQUIRE(std::strncmp(bs.what(), bsString.data(), bsString.size()) == 0);
+    REQUIRE(std::strncmp(illegal.what(), illegalString.data(), illegalString.size()) == 0);
+}

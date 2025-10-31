@@ -367,7 +367,7 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
 [[nodiscard]] constexpr auto uabs(std::signed_integral auto number) noexcept -> std::make_unsigned_t<decltype(number)>
 {
     using Ret_T = std::make_unsigned_t<decltype(number)>;
-    return number < 0 ? static_cast<Ret_T>(abs(number + 1)) + 1u : static_cast<Ret_T>(number);
+    return number < 0 ? static_cast<Ret_T>(KirHut::abs(number + 1)) + 1u : static_cast<Ret_T>(number);
 }
 
 /*!
@@ -395,7 +395,7 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
  * bits, it does not rotate them. Sometimes this is preferred over a rotation, when you want bits to fall off instead of
  * appearing in the lower bits.
  *
- * This function is constexpr like std::rotl() so that it may be used in precalculations at compile time.
+ * This function is constexpr like std::rotl() so that it may be used at compile time.
  *
  * \param mask The bitmask to apply the bit shift operation to.
  * \param location The number of bits to shift left (or right if negative).
@@ -672,6 +672,38 @@ struct EboChild final : public EBO
 /*!
  * \internal
  *
+ * \brief The EboFinalChild class
+ */
+template <typename EBO>
+struct EboFinalChild final
+{
+    int val = 0;
+    [[KH_ATTR_NO_UNIQUE_ADDRESS]] EBO ebo;
+};
+
+/*!
+ * \internal
+ *
+ * \brief emptyTest
+ * \return
+ */
+template <typename Class_T>
+consteval bool emptyTest()
+{
+    using Normalized_T = std::remove_cv_t<Class_T>;
+    if constexpr (std::is_final_v<Normalized_T>)
+    {
+        return sizeof(Detail::NoChild) == sizeof(Detail::EboFinalChild<Normalized_T>);
+    }
+    else
+    {
+        return sizeof(Detail::NoChild) == sizeof(Detail::EboChild<Normalized_T>);
+    }
+}
+
+/*!
+ * \internal
+ *
  * Actual implementation function for all the fromBigEndian/fromLittleEndian public functions.
  *
  * This function has two separate behavior branches for constant evaluation vs non-constant evaluation, so it must be
@@ -926,11 +958,10 @@ concept HasTypeOption = Detail::HasTypeOption<Var_T, Has_T> or (Detail::HasTypeO
  * the object.
  *
  * This basically allows easy identification of types that can have the Empty Base Optimization applied to them or used
- * in a [[KH_NO_UNIQUE_ADDRESS]] context.
+ * in a [[KH_ATTR_NO_UNIQUE_ADDRESS]] context.
  */
 template <typename Class_T>
-concept EmptyClass = not std::is_reference_v<Class_T> and sizeof(Class_T) == 1 and
-                     sizeof(Detail::NoChild) == sizeof(Detail::EboChild<std::remove_cv_t<Class_T>>);
+concept EmptyClass = not std::is_reference_v<Class_T> and sizeof(Class_T) == 1 and Detail::emptyTest<Class_T>();
 
 /*!
  * Concept representing a type Has_T that can be contained in a given Var_T (Var or std::variant).
@@ -1186,10 +1217,10 @@ template <typename T, size_t size>
  * The returned value isn't guaranteed to mean much more than that it will be greater than the values returned in
  * previous calls, and that it will continue to change through successive calls of the method on the same system. There
  * is little way to know what unit was actually returned. It *should* never loop, given how large u64 is, but even this
- * is something that this method cannot actually guarantee. This should be useful as input to a non-secure random number
- * seed.
+ * is something that this method cannot actually guarantee. This could be useful as input to a non-secure random number
+ * seed, or to provide rough time estimates for how long some event took to occur.
  *
- * All this method does is call `std::chrono::high_resolution_clock::now().time_since_epoch().count()`.
+ * All this method does is call `std::chrono::steady_clock::now()` and return `now.time_since_epoch().count()`.
  *
  * \return A number of "ticks" since the beginning of some system dependent time period.
  */

@@ -66,7 +66,7 @@ constexpr array<ue32, 64> X =
 static_assert(Platform::u3264Are3264Bits,
               "The libKirHut MD5 Hash implementation requires unsigned 32, and 64 bit integers.\n"
               "The target platform does not support the MD5 implementation, if your software does "
-              "not require MD5, simply remove the KH_MD5_SUPPORT definition in your build.");
+              "not require MD5, simply remove the KH_INCLUDE_MD5HASH definition in your build.");
 
 struct Md5Hash::Impl
 {
