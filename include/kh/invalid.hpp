@@ -770,17 +770,17 @@ protected:
      *
      * \return A reason why this Invalid object was created.
      */
-    [[nodiscard]] constexpr Why_T &whyData() noexcept
+    [[nodiscard]] constexpr Why_T *whyData() noexcept
     {
-        return data;
+        return &data;
     }
 
     /*!
      * \copydoc whyData()
      */
-    [[nodiscard]] constexpr std::add_const_t<Why_T> &whyData() const noexcept
+    [[nodiscard]] constexpr std::add_const_t<Why_T> *whyData() const noexcept
     {
-        return data;
+        return &data;
     }
 };
 

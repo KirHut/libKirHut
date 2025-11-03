@@ -35,17 +35,16 @@ constexpr double log10_2 = Detail::log10_2;
 template <std::floating_point Float_T>
 struct FloatTraits
 {
-    using UInt                        = UIntOf<Float_T>;
-    constexpr static int mantissaBits = std::numeric_limits<Float_T>::digits - 1;
-    constexpr static int exponentBits =
-        (sizeof(Float_T) * std::numeric_limits<unsigned char>::digits) - mantissaBits - 1;
+    using UInt                         = UIntOf<Float_T>;
+    constexpr static int mantissaBits  = Limits<Float_T>::digits - 1;
+    constexpr static int exponentBits  = (sizeof(Float_T) * Platform::bitsInByte) - mantissaBits - 1;
     constexpr static UInt exponentMask = ((static_cast<UInt>(1) << exponentBits) - 1) << mantissaBits;
     constexpr static UInt mantissaMask = (static_cast<UInt>(1) << mantissaBits) - 1;
     constexpr static int exponentBias  = std::numeric_limits<Float_T>::max_exponent - 1;
 };
 
 template <typename T>
-concept EightyBitFloat = std::floating_point<T> and std::numeric_limits<T>::digits == 64;
+concept EightyBitFloat = std::floating_point<T> and Limits<T>::digits == 64;
 
 /*!
  * \brief The FloatTraits class

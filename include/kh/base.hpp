@@ -690,14 +690,14 @@ struct EboFinalChild final
 template <typename Class_T>
 consteval bool emptyTest()
 {
-    using Normalized_T = std::remove_cv_t<Class_T>;
-    if constexpr (std::is_final_v<Normalized_T>)
+    using Normalized = std::remove_cv_t<Class_T>;
+    if constexpr (std::is_final_v<Normalized>)
     {
-        return sizeof(Detail::NoChild) == sizeof(Detail::EboFinalChild<Normalized_T>);
+        return sizeof(Detail::NoChild) == sizeof(Detail::EboFinalChild<Normalized>);
     }
     else
     {
-        return sizeof(Detail::NoChild) == sizeof(Detail::EboChild<Normalized_T>);
+        return sizeof(Detail::NoChild) == sizeof(Detail::EboChild<Normalized>);
     }
 }
 
@@ -710,15 +710,13 @@ consteval bool emptyTest()
  * tested under both conditions.
  *
  * \param source
+ * \tparam Num_T
+ * \tparam sourceEndianness
  * \return
  */
 template <Numeric Num_T, std::endian sourceEndianness>
 [[nodiscard]] constexpr Num_T fromEndian(ByteType auto const *source) noexcept
 {
-    // This assert should never happen because of the Numeric constraint, but here's a pedantic check anyway.
-    static_assert(sizeof(Num_T) == sizeof(ExactUIntOf<Num_T>),
-                  "The requested return type is of an invalid size for fromEndian.");
-
     if constexpr (sizeof(Num_T) == sizeof(byte))
     {
         return std::bit_cast<Num_T>(*source);
@@ -763,9 +761,6 @@ constexpr auto toEndian(Numeric auto value, ByteType auto *dest) noexcept -> dec
     static_assert(not std::is_const_v<Byte_T>, "toEndian needs a non-const array to write to.");
 
     constexpr auto returnTypeSize = sizeof(decltype(value));
-    // This assert should never happen because of the Numeric constraint, but here's a pedantic check anyway.
-    static_assert(returnTypeSize == sizeof(UInt<returnTypeSize>),
-                  "The requested type to convert is of an invalid size for toEndian.");
 
     if constexpr (returnTypeSize == sizeof(byte))
     {

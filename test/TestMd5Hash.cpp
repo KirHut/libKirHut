@@ -20,6 +20,7 @@
 #include "kh/md5hash.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_all.hpp>
 // clazy:excludeall=non-pod-global-static
 
 #include <algorithm>
@@ -136,27 +137,26 @@ TEST_CASE("Using The provideInput() Method to Input Data", "[md5hash]")
 {
     std::string blockMd5Str = "266c6efea54d63c04fb8083f40d441cc";
 
-    for (size_t divAmount = 1; divAmount < 33; ++divAmount)
+    size_t divAmount = GENERATE(range(1u, 33u));
+
+    Md5Hash hasher;
+
+    size_t amount    = SmallTestBlock.size() / divAmount;
+    size_t remainder = SmallTestBlock.size() % divAmount;
+
+    for (size_t i = 0; i < divAmount; ++i)
     {
-        Md5Hash hasher;
-
-        size_t amount    = SmallTestBlock.size() / divAmount;
-        size_t remainder = SmallTestBlock.size() % divAmount;
-
-        for (size_t i = 0; i < divAmount; ++i)
-        {
-            hasher.provideInput(amount, &SmallTestBlock[i * amount]);
-        }
-
-        if (remainder)
-        {
-            hasher.provideInput(remainder, &SmallTestBlock[SmallTestBlock.size() - remainder]);
-        }
-
-        Md5Sum sum = hasher.getMd5();
-
-        CHECK(blockMd5Str == getHex(span{ sum }));
+        hasher.provideInput(amount, &SmallTestBlock[i * amount]);
     }
+
+    if (remainder)
+    {
+        hasher.provideInput(remainder, &SmallTestBlock[SmallTestBlock.size() - remainder]);
+    }
+
+    Md5Sum sum = hasher.getMd5();
+
+    REQUIRE(blockMd5Str == getHex(span{ sum }));
 }
 
 TEST_CASE("Taking MD5 Result Using Spans", "[md5hash]")

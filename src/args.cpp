@@ -19,11 +19,18 @@
 ***********************************************************************************************************************/
 #include "kh/args.hpp"
 
-#if KH_WINDOWS
+#if defined(KH_WINDOWS)
 # include "nowide/args.hpp"
 #endif
 
 #include "kh/errors.hpp"
+
+#if defined(KH_NO_EXCEPTIONS)
+# if defined(KH_INCLUDE_TERMINAL_PRINT)
+#  include "kh/print.hpp"
+# endif
+# include <cstdlib>
+#endif
 
 #include <algorithm>
 
@@ -572,7 +579,7 @@ struct Parser::Impl
 
     Impl(int argc, char **argv) : test(argc, argv), numArgs(argc), args(argv), utf8Args(numArgs, args)
     {
-        // No implementation.
+        // No further implementation.
     }
 
     Impl(int argc, char **argv, char **envp) :
@@ -582,7 +589,7 @@ struct Parser::Impl
         env(envp),
         utf8Args(numArgs, args, env)
     {
-        // No implementation.
+        // No further implementation.
     }
 };
 
@@ -594,10 +601,11 @@ Parser::Parser(span<Command> commands, int argc, char **argv, char **envp) :
     im->parseArguments(commands);
 }
 
-Parser::~Parser() noexcept
-{
-    // No implementation.
-}
+Parser::Parser(Parser &&) noexcept = default;
+
+Parser::~Parser() noexcept = default;
+
+Parser &Parser::operator=(Parser &&) noexcept = default;
 
 bool Parser::success() const noexcept
 {
@@ -614,28 +622,44 @@ const Command &Parser::activeCommand() const noexcept
     return im->active.value();
 }
 
+template <WhyInvalid invValue, typename... Args>
+[[noreturn]] void throwOrExit(FMT::format_string<Args...> fmtStr, Args &&...args)
+{
+#if defined(KH_NO_EXCEPTIONS)
+# if defined(KH_INCLUDE_TERMINAL_PRINT)
+    vreport(fmtStr.get(), FMT::make_format_args(args...));
+# endif
+
+    std::quick_exit(exitCode(invValue));
+#endif
+
+    throw Error<invValue>(Flags::runtime, fmtStr.get(), FMT::make_format_args(args...));
+}
+
 void Detail::throwIllegalCharacter(char whichOne)
 {
-    throw IllegalArgument("An illegal character was passed to the Option constructor: {}\nThese are the legal "
-                          "characters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_",
-                          whichOne);
+    throwOrExit<WhyInvalid::IllegalArgument>(
+        "An illegal character was passed to the Option constructor: {}\nThese are the legal "
+        "characters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_",
+        whichOne);
 }
 
 void Detail::throwNoValidToken(string_view str)
 {
-    throw IllegalArgument(
+    throwOrExit<WhyInvalid::IllegalArgument>(
         "There must be at least one valid token in an Option string. This was the option string passed:\n\"{}\"",
         str);
 }
 
 void Detail::throwNoPlusMinusBegin(char whichOne)
 {
-    throw IllegalArgument("An option cannot begin with the '{}' character.", whichOne);
+    throwOrExit<WhyInvalid::IllegalArgument>("An option cannot begin with the '{}' character.", whichOne);
 }
 
 void Detail::throwNotJustDigits(string_view opStr)
 {
-    throw IllegalArgument("An option cannot only consist of digits. \"{}\"", opStr);
+    throwOrExit<WhyInvalid::IllegalArgument>("An option cannot only consist of digits. \"{}\" cannot be an option.",
+                                             opStr);
 }
 
 } // namespace KirHut::CLI

@@ -68,6 +68,8 @@ struct Error;
 namespace Detail
 {
 
+std::string tryGetStackTrace() KH_THROWS_BADALLOC;
+
 /*!
  * \internal
  *
@@ -78,19 +80,19 @@ struct ErrorState final
 {
     using CharType = char;
 
-    string info;
+    string info, trace;
 
-    explicit inline ErrorState(string_view in) KH_THROWS_BADALLOC : info(in)
+    explicit inline ErrorState(string_view in) KH_THROWS_BADALLOC : info(in), trace(Detail::tryGetStackTrace())
     {
         // No further implementation.
     }
 
-    explicit inline ErrorState(char const *in) KH_THROWS_BADALLOC : info(in)
+    explicit inline ErrorState(char const *in) KH_THROWS_BADALLOC : info(in), trace(Detail::tryGetStackTrace())
     {
         // No further implementation.
     }
 
-    explicit constexpr ErrorState(string &&in) noexcept : info(std::move(in))
+    explicit inline ErrorState(string &&in) noexcept : info(std::move(in)), trace(Detail::tryGetStackTrace())
     {
         // No further implementation.
     }
@@ -109,10 +111,13 @@ struct ErrorState final
 };
 
 template <typename T>
-constexpr bool isError = false;
+constexpr bool isErrorTest = false;
 
 template <WhyInvalid why>
-constexpr bool isError<::KirHut::Error<why>> = true;
+constexpr bool isErrorTest<::KirHut::Error<why>> = true;
+
+template <typename T>
+concept isError = isErrorTest<std::remove_cvref_t<T>>;
 
 } // namespace Detail
 
@@ -127,7 +132,8 @@ constexpr bool isError<::KirHut::Error<why>> = true;
  *
  * This class is **not** intended to be subclassed by types other than the Error type. This is enforced with the
  * constructor that must be initialized with a pointer to the subclass itself. The type of the subclass will be checked
- * to ensure that it is an instance of the Error class.
+ * to ensure that it is an instance of the Error class. This can obviously be gotten around by creating a dummy pointer
+ * to an Error that you pass to the constructor instead, but the library trusts you not to do that!
  */
 struct GenericError
 {
@@ -147,6 +153,12 @@ struct GenericError
      * \return
      */
     virtual string_view info() const noexcept = 0;
+
+    /*!
+     * \brief stackTrace
+     * \return
+     */
+    virtual string_view stackTrace() const noexcept = 0;
 
     /*!
      * \brief what
@@ -211,21 +223,21 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * This is mostly useful for passing in a constant string, like the example below:
      *
      * ~~~
-     * Exception ex2("The function return value was invalid."sv);
+     * Error<WhyInvalid::IncorrectInput> ex2("The function return value was invalid."sv);
      * ~~~
      *
      * The C++ standard requires that the above strings are null-terminated, including the one that is wrapped by the
      * `sv` operator. The `sv` operator can be made slightly more efficient by a compiler as the compiler can save the
-     * string_view as a constant value and does not need to compute the length at runtime.
+     * string_view as a constant value and does not need to compute the length at runtime. This is usually done by the
+     * compiler automatically, but using the `sv` operator makes it clearer and more certain.
      *
-     * The WhyInvalid reason returned by this Exception will be WhyInvalid::UnknownReason. By default, the info string
-     * is empty. This is not a very good default and should be changed!
-     *
-     * \warning The \p info data block MUST not be deallocated or modified for the entire lifetime of the Exception
-     * object, and any copies of the Exception object! If you cannot provide this, use the copying string_view
-     * constructor! If this is not done, the behavior is undefined!
+     * Unlike the std::string move constructor, this constructor allows allocating all the necessary memory for the
+     * Error, along with its stack trace, in a single memory allocation. This also aids with cache locality, but when
+     * you are talking about throwing Error exceptions, these small efficiencies are drops in the cost bucket.
      *
      * \param info A std::string_view to the data returned by info() and what().
+     * \throws std::bad_alloc May be thrown if allocation for the underlying message, std::shared_ptr, or stack trace
+     * fails.
      */
     inline explicit Error(string_view info = string_view()) KH_THROWS_BADALLOC : Parent(info), GenericError(this)
     {
@@ -233,26 +245,26 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
     }
 
     /*!
-     * The non-copying `const char` Exception constructor.
+     * The copying `const char` Error constructor.
      *
      * This constructor accepts a constant char array as an argument, then simply wraps that string in a string_view
-     * and passes it to the non-copying string_view constructor. As such, this constructor is effectively identical to
-     * the non-copying string_view constructor, and for all intents and purposes, may be treated as that constructor in
-     * all other relevant documentation. This constructor fixes the ambiguity between the non-copying string_view
-     * constructor and the String rvalue reference constructor when using a `const char` array as input.
+     * and passes it to the copying string_view constructor. As such, this constructor is effectively identical to the
+     * copying string_view constructor. This constructor fixes the ambiguity between the copying string_view constructor
+     * and the std::string move constructor when using a `const char` array as input.
      *
      * This is mostly useful for passing in a constant string, like the examples below:
      * ~~~
-     * Exception ex("The argument passed was invalid.");
+     * Error<WhyInvalid::IllegalArgument> ex("The argument passed was invalid.");
      * ~~~
      *
      * The C++ standard requires that the above strings are null-terminated. The `sv` operator can potentially be made
      * slightly more efficient by a compiler as the compiler can save the string_view as a constant value and does not
-     * need to compute the length at runtime.
-     *
-     * The WhyInvalid reason returned by this Exception will be WhyInvalid::UnknownReason.
+     * need to compute the length at runtime. This is usually done by the compiler automatically, but using the `sv`
+     * operator makes it clearer and more certain.
      *
      * \param info A constant char pointer to the data that will be returned by info() and what().
+     * \throws std::bad_alloc May be thrown if allocation for the underlying message, std::shared_ptr, or stack trace
+     * fails.
      */
     inline explicit Error(char const *info) KH_THROWS_BADALLOC : Error(string_view{ info })
     {
@@ -260,7 +272,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
     }
 
     /*!
-     * The copying StringView Exception constructor.
+     * The std::string move Error constructor.
      *
      * Generally speaking, unless you pass true to \p copy, this constructor should not be used. You should use the
      * noexcept constructor, however this constructor does support being called with false in the case that you need to
@@ -271,10 +283,8 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * copy boolean to indicate if this Exception object should copy the passed string_view, which is a requirement if
      * you cannot determine if \p info is null-terminated.
      *
-     * The WhyInvalid reason returned by this Exception will be WhyInvalid::UnknownReason.
-     *
      * \param info A string_view to the data returned by info() and what().
-     * \throws std::bad_alloc May be thrown if \p copy is true and allocating the underlying memory failed.
+     * \throws std::bad_alloc May be thrown if allocation for the underlying std::shared_ptr or stack trace fails.
      */
     inline Error(string &&info) KH_THROWS_BADALLOC : Parent(std::move(info)), GenericError(this)
     {
@@ -288,7 +298,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \param args
      */
     template <typename Arg_T, typename... Arg_Ts>
-    inline Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args) :
+    inline Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args) KH_THROWS_BADALLOC :
         Error(Flags::runtime, str.get(), FMT::make_format_args(firstArg, args...))
     {
         // No further implementation.
@@ -323,6 +333,15 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
     inline string_view info() const noexcept override
     {
         return Parent::info();
+    }
+
+    /*!
+     * \brief stackTrace
+     * \return
+     */
+    inline string_view stackTrace() const noexcept override
+    {
+        return Parent::whyData()->trace;
     }
 
     /*!

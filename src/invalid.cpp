@@ -21,8 +21,44 @@
 
 #include "kh/errors.hpp"
 
+#if not defined(KH_NO_EXCEPTIONS) and defined(__cpp_lib_stacktrace)
+# include <stacktrace>
+# include <sstream>
+# include <algorithm>
+#endif
+
 namespace KirHut
 {
+
+string Detail::tryGetStackTrace() KH_THROWS_BADALLOC
+{
+#if defined(__cpp_lib_stacktrace)
+    try
+    {
+        // std::stacktrace throws **implementation defined** exceptions, so I have no idea what the hell this can throw!
+        std::stringstream ret;
+        if (std::stacktrace current = std::stacktrace::current(); not current.empty())
+        {
+            auto outFunc = [&ret](std::stacktrace_entry const &ste) { ret << ste << '\n'; };
+            std::for_each(current.begin(), current.end() - 1, outFunc);
+        }
+
+        return std::move(ret).str();
+    }
+# if not defined(KH_NO_BADALLOC)
+    catch (std::bad_alloc &ba)
+    {
+        throw;
+    }
+# endif
+    catch (...)
+    {
+        // Give up and just use the fallback return nothing.
+    }
+#endif
+
+    return {};
+}
 
 void Detail::throwNoValidData(Invalid const &inv)
 {
@@ -34,6 +70,7 @@ template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<MessageViewWhy<char>>;
 template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string>;
 template class KH_EXPLICIT_TEMPLATE_INSTANCE BasicInvalid<string_view>;
 
+#if not defined(KH_NO_EXCEPTIONS)
 template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::SoftwareError>;
 template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::AlreadyInitialized>;
 template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::BadEnvironment>;
@@ -41,5 +78,6 @@ template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::IllegalArgument>
 template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataUninitialized>;
 template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::DataRemoved>;
 template struct KH_EXPLICIT_TEMPLATE_INSTANCE Error<WhyInvalid::InvalidState>;
+#endif
 
 } // namespace KirHut

@@ -154,21 +154,30 @@ TEST_CASE("The asBytes() and asWritableBytes() functions", "[base][utility][asBy
     REQUIRE(R::equal(compareTo, writableTestVal2));
 }
 
+template <typename Num_T>
+concept CanAbs = requires(Num_T num) { KirHut::abs(num); };
+
 TEMPLATE_TEST_CASE("abs() handles all signed types correctly", "[base][utility][abs]", i8, i16, i32, i64, iWidest)
 {
-    using T               = TestType;
-    constexpr auto minVal = Limits<T>::min();
+    using Int_T           = TestType;
+    constexpr auto minVal = Limits<Int_T>::min();
+
+    SECTION("Verify return type is unchanged")
+    {
+        STATIC_REQUIRE(std::is_same_v<decltype(KirHut::abs(static_cast<Int_T>(0))), Int_T>);
+        STATIC_REQUIRE_FALSE(CanAbs<std::make_unsigned_t<Int_T>>);
+    }
 
     SECTION("Positive numbers remain unchanged")
     {
-        STATIC_REQUIRE(KirHut::abs(static_cast<T>(0)) == static_cast<T>(0));
-        STATIC_REQUIRE(KirHut::abs(static_cast<T>(42)) == static_cast<T>(42));
+        STATIC_REQUIRE(KirHut::abs(static_cast<Int_T>(0)) == static_cast<Int_T>(0));
+        STATIC_REQUIRE(KirHut::abs(static_cast<Int_T>(42)) == static_cast<Int_T>(42));
     }
 
     SECTION("Negative numbers are negated")
     {
-        STATIC_REQUIRE(KirHut::abs(static_cast<T>(-1)) == static_cast<T>(1));
-        STATIC_REQUIRE(KirHut::abs(static_cast<T>(-42)) == static_cast<T>(42));
+        STATIC_REQUIRE(KirHut::abs(static_cast<Int_T>(-1)) == static_cast<Int_T>(1));
+        STATIC_REQUIRE(KirHut::abs(static_cast<Int_T>(-42)) == static_cast<Int_T>(42));
     }
 
     SECTION("Minimum value remains unchanged (no overflow)")
@@ -180,7 +189,7 @@ TEMPLATE_TEST_CASE("abs() handles all signed types correctly", "[base][utility][
     {
         for (int i = -8; i <= 8; ++i)
         {
-            T const value = static_cast<T>(i);
+            Int_T const value = static_cast<Int_T>(i);
             REQUIRE(abs(value) == (value < 0 ? -value : value));
         }
     }
@@ -194,48 +203,35 @@ TEMPLATE_TEST_CASE("uabs() returns correct unsigned absolute value for signed ty
                    i64,
                    iWidest)
 {
-    using T               = TestType;
-    using U               = std::make_unsigned_t<T>;
-    constexpr auto minVal = Limits<T>::min();
-    constexpr auto maxVal = Limits<T>::max();
+    using Int_T           = TestType;
+    using UInt_T          = std::make_unsigned_t<Int_T>;
+    constexpr auto minVal = Limits<Int_T>::min();
+    constexpr auto maxVal = Limits<Int_T>::max();
 
-    SECTION("Type traits")
+    SECTION("Verify return type is unsigned equivalent")
     {
-        STATIC_REQUIRE(std::is_same_v<decltype(uabs(static_cast<T>(0))), U>);
+        STATIC_REQUIRE(std::is_same_v<decltype(uabs(static_cast<Int_T>(0))), UInt_T>);
     }
 
     SECTION("Positive values are unchanged and correctly cast")
     {
-        STATIC_REQUIRE(uabs(static_cast<T>(0)) == static_cast<U>(0));
-        STATIC_REQUIRE(uabs(static_cast<T>(42)) == static_cast<U>(42));
-        STATIC_REQUIRE(uabs(maxVal) == static_cast<U>(maxVal));
+        STATIC_REQUIRE(uabs(static_cast<Int_T>(0)) == 0u);
+        STATIC_REQUIRE(uabs(static_cast<Int_T>(42)) == 42u);
+        STATIC_REQUIRE(uabs(maxVal) == static_cast<UInt_T>(maxVal));
     }
 
     SECTION("Negative values are converted correctly")
     {
-        STATIC_REQUIRE(uabs(static_cast<T>(-1)) == static_cast<U>(1));
-        STATIC_REQUIRE(uabs(static_cast<T>(-42)) == static_cast<U>(42));
+        STATIC_REQUIRE(uabs(static_cast<Int_T>(-1)) == 1u);
+        STATIC_REQUIRE(uabs(static_cast<Int_T>(-42)) == 42u);
+        STATIC_REQUIRE(uabs(minVal) == static_cast<UInt_T>(maxVal) + 1u);
     }
 
-    SECTION("Minimum representable signed value converts to correct magnitude")
+    SECTION("Random value testing")
     {
-        // The magnitude is (abs(min) == max + 1) due to two’s complement representation
-        constexpr U expected = static_cast<U>(maxVal) + 1u;
-        STATIC_REQUIRE(uabs(minVal) == expected);
-    }
-
-    SECTION("Range sanity check")
-    {
-        for (int i = -64; i <= 64; ++i)
-        {
-            T const val = static_cast<T>(i);
-            U expected  = static_cast<U>(i < 0 ? -static_cast<long long>(i) : i);
-            if (val == minVal)
-            {
-                expected = static_cast<U>(maxVal) + 1u;
-            }
-            REQUIRE(uabs(val) == expected);
-        }
+        Int_T i         = GENERATE(take(100, random(minVal, maxVal)));
+        UInt_T expected = i == minVal ? static_cast<UInt_T>(maxVal) + 1u : static_cast<UInt_T>(i < 0 ? -i : i);
+        REQUIRE(uabs(i) == expected);
     }
 }
 
@@ -247,17 +243,34 @@ TEMPLATE_TEST_CASE("uabs() returns the input unchanged for unsigned types",
                    u64,
                    uWidest)
 {
-    using T = TestType;
+    using UInt_T          = TestType;
+    constexpr UInt_T zero = 0;
 
     SECTION("Return type is the same")
     {
-        STATIC_REQUIRE(std::is_same_v<decltype(uabs(static_cast<T>(0))), T>);
+        STATIC_REQUIRE(std::is_same_v<decltype(uabs(zero)), UInt_T>);
     }
 
-    SECTION("Values are unchanged")
+    SECTION("Check values are unchanged in constexpr context")
     {
-        constexpr auto values = array{ static_cast<T>(0), static_cast<T>(1), static_cast<T>(42), Limits<T>::max() };
-        STATIC_REQUIRE(R::all_of(values, [](auto v) constexpr { return uabs(v) == v; }));
+        // clang-format off
+        constexpr array<UInt_T, 100> data {
+            0,   1,   2,   3,   4,   5,   6,   7,   8,   9,   11,  13,  17,  19,  20,  25,  30,  35,  40,  41,
+            42,  44,  46,  48,  50,  51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  62,  64,  66,  68,  70,
+            77,  88,  99,  100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 111, 113, 117, 119, 121, 123, 125,
+            128, 129, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 201, 202, 203,
+            204, 205, 206, 207, 208, 209, 211, 213, 217, 219, 221, 225, 229, 232, 235, 238, 240, 242, 245,
+            Limits<UInt_T>::max()
+        };
+        // clang-format on
+
+        STATIC_REQUIRE(R::all_of(data, [](auto v) constexpr { return uabs(v) == v; }));
+    }
+
+    SECTION("Random values are unchanged")
+    {
+        UInt_T i = GENERATE(take(100, random(zero, Limits<UInt_T>::max())));
+        REQUIRE(uabs(i) == i);
     }
 }
 

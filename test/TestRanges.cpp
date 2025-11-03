@@ -22,12 +22,125 @@
 #include <catch2/catch_test_macros.hpp>
 // clazy:excludeall=non-pod-global-static
 
+#include "kh/base.hpp"
+
+#include <algorithm>
+
 using namespace KirHut;
 
-TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges]")
+TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges][utility]")
 {
     std::vector<int> nums{ 1, 2, 3, 4, 5 };
     auto [f, b] = R::getIters(nums);
     REQUIRE(f == nums.begin());
     REQUIRE(b == nums.end());
+}
+
+TEST_CASE("Separators basic behavior", "[ranges][Separators]")
+{
+    constexpr R::Separators<char> ws{ " \t\n\r" };
+    STATIC_REQUIRE(std::is_trivially_copyable_v<R::Separators<char>>);
+    STATIC_REQUIRE(std::is_nothrow_constructible_v<R::Separators<char>, string_view>);
+    STATIC_REQUIRE(std::string_view(ws) == " \t\n\r"sv);
+}
+
+TEST_CASE("WordView basic construction", "[ranges][WordView]")
+{
+    SECTION("Construct from string literal with default separators")
+    {
+        constexpr R::WordView wv("alpha beta gamma");
+        STATIC_REQUIRE(R::distance(wv) == 3);
+    }
+
+    SECTION("Construct from string and custom separators")
+    {
+        constexpr R::WordView csv("a,b,c", R::Separators{ "," });
+        STATIC_REQUIRE(std::ranges::distance(csv) == 3);
+    }
+
+    SECTION("Construct with empty separators (whole string is one word)")
+    {
+        R::WordView wv("no splits", R::Separators{ "" });
+        auto words = std::vector<std::string_view>(wv.begin(), wv.end());
+        REQUIRE(words.size() == 1);
+        REQUIRE(words[0] == "no splits");
+    }
+}
+
+TEST_CASE("WordView iteration correctness", "[ranges][WordView]")
+{
+    R::WordView wv("alpha beta  gamma\tdelta");
+    std::vector<std::string_view> expected{ "alpha", "beta", "gamma", "delta" };
+
+    std::vector<std::string_view> actual;
+    for (auto word : wv)
+    {
+        actual.push_back(word);
+    }
+
+    REQUIRE(actual == expected);
+}
+
+TEST_CASE("WordView handles multiple consecutive separators", "[ranges][WordView]")
+{
+    R::WordView wv("a,,b,,,c", R::Separators{ "," });
+    std::vector<std::string_view> words(wv.begin(), wv.end());
+    REQUIRE(words == std::vector<std::string_view>{ "a", "b", "c" });
+}
+
+TEST_CASE("WordView handles leading and trailing separators", "[ranges][WordView]")
+{
+    R::WordView wv("   spaced words   ");
+    std::vector<std::string_view> words(wv.begin(), wv.end());
+    REQUIRE(words == std::vector<std::string_view>{ "spaced", "words" });
+}
+
+TEST_CASE("WordView with alternate separator set", "[ranges][WordView]")
+{
+    R::WordView wv("x-y z", R::Separators{ "- " });
+    std::vector<std::string_view> words(wv.begin(), wv.end());
+    REQUIRE(words == std::vector<std::string_view>{ "x", "y", "z" });
+}
+
+TEST_CASE("WordView iterator operations", "[ranges][WordView][iterator]")
+{
+    R::WordView wv("one two three");
+    auto it = wv.begin();
+
+    REQUIRE(*it == "one");
+    ++it;
+    REQUIRE(*it == "two");
+
+    auto pre = ++it;
+    REQUIRE(*pre == "three");
+
+    auto post = it++;
+    REQUIRE(*post == "three");
+    REQUIRE(it == wv.end());
+}
+
+TEST_CASE("WordView equality comparisons", "[ranges][WordView]")
+{
+    std::string s = "a b c";
+    R::WordView wv1(s);
+    R::WordView wv2(s);
+    REQUIRE(wv1 == wv2);
+
+    R::WordView wv3(s, R::Separators{ "," });
+    REQUIRE_FALSE(wv1 == wv3);
+
+    std::string s2 = "a b c";
+    R::WordView wv4(s2);
+    // Although s2 and s have same content, they are at different addresses
+    REQUIRE_FALSE(wv1 == wv4);
+}
+
+TEST_CASE("WordView behaves as a forward range", "[WordView][range]")
+{
+    R::WordView wv("alpha beta gamma");
+    STATIC_REQUIRE(std::ranges::forward_range<R::WordView<char>>);
+    STATIC_REQUIRE(std::ranges::view<R::WordView<char>>);
+
+    auto count = R::count_if(wv, [](auto sv) { return sv.size() > 4; });
+    REQUIRE(count == 2);
 }

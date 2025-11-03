@@ -64,7 +64,7 @@ using AlreadyInitialized = Error<WhyInvalid::AlreadyInitialized>;
  * If you encounter this error while using a KirHut application, check what specific problem is happening to the
  * environment and try to correct it if you can. Otherwise, please report it to the KirHut Bug Reporting system!
  */
-using BullshitEnvironment = Error<WhyInvalid::BadEnvironment>;
+using EnvironmentProblem = Error<WhyInvalid::BadEnvironment>;
 
 /*!
  * Error thrown when an object received an argument that is illegal.

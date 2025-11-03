@@ -105,6 +105,21 @@ struct Separators final
     }
 
     /*!
+     * Construct a Separators from a given string of separator characters.
+     *
+     * This object does not copy the passed in character buffer, so you must ensure that the buffer provided to this
+     * object will be valid for the entire lifetime of the Separators object. The advantage of making no copies is this
+     * constructor is extremely fast and guaranteed to work.
+     *
+     * \param seps
+     */
+    explicit constexpr Separators(Char_T const *seps) noexcept : separators(seps)
+    {
+        // No further implementation.
+        // TODO: Implement some compile-time checking for seps if desired.
+    }
+
+    /*!
      * Implicit conversion from Separators<Char_T> to std::basic_string_view<Char_T>.
      *
      * This object is just a wrapper type that stores a string view of separator characters. This allows for easier
@@ -166,7 +181,7 @@ public:
      * This does not initialize the WordView object into any kind of useful state, other than one to be reassigned to
      * from another WordView. The returned iterators will always just be the default end iterator.
      */
-    constexpr WordView() : fullString(""), separators(" \t\r\n")
+    constexpr WordView() noexcept : WordView("")
     {
         // No further implementation.
     }
@@ -181,20 +196,14 @@ public:
      * does *not* have to match the full \p seps string.
      *
      * \param fullStr The string to tokenize. Must not be empty.
-     * \param seps A set of separator characters. Defaults to whitespace
-     *             (space, tab, carriage return, newline).
-     *
-     * \throws const char* if \p fullStr is empty.
+     * \param seps A set of separator characters. Defaults to whitespace (space, tab, carriage return, newline).
      */
-    constexpr explicit WordView(contiguous_range auto &&fullStr,
-                                Separators<Char_T> seps = Separators<Char_T>{ " \t\r\n" }) :
-        fullString{ R::data(fullStr), R::size(fullStr) },
+    constexpr explicit WordView(std::basic_string_view<Char_T> fullStr,
+                                Separators<Char_T> seps = Separators<Char_T>{ " \t\r\n" }) noexcept :
+        fullString(fullStr),
         separators(seps)
     {
-        if (fullStr.empty())
-        {
-            throw "WordView requires a contiguous range of data to split, and instead received an empty data set.";
-        }
+        // No further implementation.
     }
 
     /*!
@@ -202,8 +211,8 @@ public:
      * \param seps
      * \param fullStr
      */
-    constexpr WordView(Separators<Char_T> seps, contiguous_range auto &&fullStr) :
-        WordView(std::forward<std::remove_reference_t<decltype(fullStr)>>(fullStr), seps)
+    constexpr WordView(Separators<Char_T> seps, std::basic_string_view<Char_T> fullStr) noexcept :
+        WordView(fullStr, seps)
     {
         // No further implementation.
     }
@@ -255,9 +264,23 @@ public:
         // identical, so those WordView objects are considered equal. As such, we just check that all of the separators
         // found in this one, and vice versa.
 
-        return fullString.data() == other.fullString.data() and fullString.size() == other.fullString.size() and
-               all_of(other.separators, [this](Char_T c) { return separators.find(c) != npos; }) and
-               all_of(separators, [&other](Char_T c) { return other.separators.find(c) != npos; });
+        for (Char_T c : other.separators)
+        {
+            if (separators.find(c) == npos)
+            {
+                return false;
+            }
+        }
+
+        for (Char_T c : separators)
+        {
+            if (other.separators.find(c) == npos)
+            {
+                return false;
+            }
+        }
+
+        return fullString.data() == other.fullString.data() and fullString.size() == other.fullString.size();
     }
 
 private:

@@ -604,6 +604,14 @@ public:
      * this constructor. This allows the application to control how to handle failed parses rather than simply calling
      * std::terminate(), throwing an exception, or some other method of hard terminating the application.
      *
+     * This constructor does throw exceptions when it is provided an \p argc lower than 1, an \p argv that is a nullptr,
+     * or a \p commands span that is completely empty. All three of these conditions can be prevented with proper code,
+     * so it should be possible to use this constructor with only risk of throwing std::runtime_error on Windows and
+     * std::bad_alloc on all systems, unless std::bad_alloc is not supported.
+     *
+     * \note If exception support is removed, all of these throwing conditions will instead simply result in a call to
+     * std::quick_exit(), like all other throwing functions and methods.
+     *
      * \param argc The count of arguments as passed to the application through main(). Must be >= 1.
      * \param argv A valid pointer to the array of argument character data as passed to the application through main().
      * \param envp An optional pointer to an array of environment data as passed to the application through main().
@@ -624,7 +632,7 @@ public:
      *
      * Moving a Parser object is fine, but it cannot be copied.
      */
-    Parser(Parser &&) noexcept = default;
+    Parser(Parser &&) noexcept;
 
     /*!
      * Default move assignment operator.
@@ -635,7 +643,7 @@ public:
      *
      * \return A reference to the current Parser object being assigned to.
      */
-    Parser &operator=(Parser &&) noexcept = default;
+    Parser &operator=(Parser &&) noexcept;
 
     /*!
      * \pimpldestructor
@@ -649,8 +657,15 @@ public:
      * simply output a predesigned help text message and call std::terminate(), which this Argument parsing header
      * explicitly avoids. Instead, it is possible for a user to have specific language settings or other settings that
      * may influence the output, so if a parse fails, it should produce a message that is controlled by the application
-     * instead of by the header.
-     * \return
+     * instead of by the Parser itself.
+     *
+     * It is also possible to provide more intelligent help for given sets of parse failures, which is impossible for a
+     * basic Parser object to know the context of. If an application needs to take a number as an argument, it may have
+     * a specific help text for inadvertently passing a number as a flag (the user put '--500' instead of '-500'). This
+     * can be done with a fully open Parser, but not with one that has predetermined results for failing to parse the
+     * input arguments.
+     *
+     * \return If the passed arguments to the Parser constructor were successfully parsed to the given list of commands.
      */
     [[nodiscard]] bool success() const noexcept;
 
