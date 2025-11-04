@@ -292,23 +292,23 @@ private:
     constexpr static size_t npos = std::basic_string_view<Char_T>::npos;
 };
 
-/*!
- * WordView deduction guide.
- */
-template <contiguous_range Range_T>
-WordView(Range_T &&rng) -> WordView<std::remove_cv_t<range_value_t<Range_T>>>;
+template <typename T>
+concept StringLike = requires(T const &t) {
+    typename T::value_type;
+    std::basic_string_view<typename T::value_type>{ t };
+};
 
-/*!
- * WordView deduction guide.
- */
-template <typename Char_T>
-WordView(contiguous_range auto &&rng, Separators<Char_T> seps) -> WordView<Char_T>;
+template <StringLike String_T>
+WordView(String_T) -> WordView<typename String_T::value_type>;
 
-/*!
- * WordView deduction guide.
- */
+template <StringLike String_T>
+WordView(String_T, R::Separators<typename String_T::value_type>) -> WordView<typename String_T::value_type>;
+
 template <typename Char_T>
-WordView(Separators<Char_T> seps, contiguous_range auto &&rng) -> WordView<Char_T>;
+WordView(Char_T const *) -> WordView<Char_T>;
+
+template <typename Char_T>
+WordView(Char_T const *, R::Separators<Char_T>) -> WordView<Char_T>;
 
 /*!
  * Forward iterator over the tokens in a WordView.
@@ -554,26 +554,12 @@ struct WordsFn final
          * \internal
          *
          * \brief operator ()
-         * \param data
-         */
-        template <R::contiguous_range Range_T>
-        constexpr auto operator()(Range_T &&data) const noexcept -> decltype(R::WordView{ data })
-            requires std::same_as<Char_T, R::range_value_t<Range_T>>
-        {
-            return R::WordView{ data, separators };
-        }
-
-        /*!
-         * \internal
-         *
-         * \brief operator ()
          * \param s
          * \return
          */
-        constexpr auto operator()(Char_T const *s) const noexcept
-            -> R::WordView<Char_T> requires std::constructible_from<std::basic_string_view<Char_T>, Char_T const *>
+        constexpr R::WordView<Char_T> operator()(R::contiguous_range auto &&data) const noexcept
         {
-            return R::WordView{ std::basic_string_view<Char_T>(s), separators };
+            return R::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data), separators);
         }
 
         /*!
@@ -583,11 +569,9 @@ struct WordsFn final
          * \param data
          * \param wseps
          */
-        template <R::contiguous_range Range_T>
-        friend constexpr auto operator|(Range_T &&data, WithSeparators const &wseps) noexcept
-            requires std::same_as<Char_T, R::range_value_t<Range_T>>
+        friend constexpr auto operator|(R::contiguous_range auto &&data, WithSeparators const &wseps) noexcept
         {
-            return wseps(std::forward<Range_T>(data));
+            return wseps(std::forward<std::remove_reference_t<decltype(data)>>(data));
         }
     };
 
@@ -595,12 +579,12 @@ struct WordsFn final
      * \internal
      *
      * \brief operator ()
-     * \param data
+     * \param s
+     * \return
      */
-    template <R::contiguous_range Range_T>
-    constexpr auto operator()(Range_T &&data) const noexcept -> decltype(R::WordView{ data })
+    constexpr auto operator()(R::contiguous_range auto &&data) const noexcept
     {
-        return R::WordView{ data };
+        return R::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data));
     }
 
     /*!
@@ -611,10 +595,9 @@ struct WordsFn final
      * \return
      */
     template <typename Char_T>
-    constexpr auto operator()(Char_T const *s) const noexcept
-        -> R::WordView<Char_T> requires std::constructible_from<std::basic_string_view<Char_T>, Char_T const *>
+    constexpr R::WordView<Char_T> operator()(R::contiguous_range auto &&data, R::Separators<Char_T> seps) const noexcept
     {
-        return R::WordView{ std::basic_string_view<Char_T>(s) };
+        return R::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data), seps);
     }
 
     /*!
@@ -627,7 +610,7 @@ struct WordsFn final
     template <typename Char_T>
     constexpr WithSeparators<Char_T> operator()(R::Separators<Char_T> seps) const noexcept
     {
-        return WithSeparators{ seps };
+        return WithSeparators(seps);
     }
 
     /*!
@@ -637,10 +620,9 @@ struct WordsFn final
      * \param data
      * \param self
      */
-    template <R::contiguous_range Range_T>
-    friend constexpr auto operator|(Range_T &&data, WordsFn const &self) noexcept
+    friend constexpr auto operator|(R::contiguous_range auto &&data, WordsFn const &self) noexcept
     {
-        return self(std::forward<Range_T>(data));
+        return self(std::forward<std::remove_reference_t<decltype(data)>>(data));
     }
 };
 

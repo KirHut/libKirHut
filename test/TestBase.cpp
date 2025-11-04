@@ -227,11 +227,18 @@ TEMPLATE_TEST_CASE("uabs() returns correct unsigned absolute value for signed ty
         STATIC_REQUIRE(uabs(minVal) == static_cast<UInt_T>(maxVal) + 1u);
     }
 
-    SECTION("Random value testing")
+    if constexpr (sizeof(TestType) <= sizeof(i64))
     {
-        Int_T i         = GENERATE(take(100, random(minVal, maxVal)));
-        UInt_T expected = i == minVal ? static_cast<UInt_T>(maxVal) + 1u : static_cast<UInt_T>(i < 0 ? -i : i);
-        REQUIRE(uabs(i) == expected);
+        // The random() generator in Catch2 is broken and doesn't support 128 bit types for some bizarre reason. This
+        // if constexpr is here to simply prevent performing this test when the type is not supported by Catch2
+        // currently.
+
+        SECTION("Random value testing")
+        {
+            Int_T i         = GENERATE(take(100, random(minVal, maxVal)));
+            UInt_T expected = i == minVal ? static_cast<UInt_T>(maxVal) + 1u : static_cast<UInt_T>(i < 0 ? -i : i);
+            REQUIRE(uabs(i) == expected);
+        }
     }
 }
 
@@ -267,10 +274,17 @@ TEMPLATE_TEST_CASE("uabs() returns the input unchanged for unsigned types",
         STATIC_REQUIRE(R::all_of(data, [](auto v) constexpr { return uabs(v) == v; }));
     }
 
-    SECTION("Random values are unchanged")
+    if constexpr (sizeof(TestType) <= sizeof(u64))
     {
-        UInt_T i = GENERATE(take(100, random(zero, Limits<UInt_T>::max())));
-        REQUIRE(uabs(i) == i);
+        // The random() generator in Catch2 is broken and doesn't support 128 bit types for some bizarre reason. This
+        // if constexpr is here to simply prevent performing this test when the type is not supported by Catch2
+        // currently.
+
+        SECTION("Random values are unchanged")
+        {
+            UInt_T i = GENERATE(take(100, random(zero, Limits<UInt_T>::max())));
+            REQUIRE(uabs(i) == i);
+        }
     }
 }
 
