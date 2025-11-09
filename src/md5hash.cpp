@@ -213,13 +213,6 @@ Md5Hash::Md5Hash(size_t length, byte const *data) noexcept : Md5Hash()
     }
 }
 
-Md5Sum Md5Hash::getMd5() noexcept
-{
-    Md5Sum sum;
-    getMd5(sum.data());
-    return sum;
-}
-
 void Md5Hash::getMd5(byte *output) noexcept
 {
     if (output == nullptr)

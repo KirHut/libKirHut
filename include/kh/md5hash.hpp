@@ -27,16 +27,16 @@ namespace KirHut
 {
 
 /*!
- * Indication boolean for when std::filesystem can be found under KirHut::FS in libKirHut.
+ * Indication boolean for when the KirHut library supports MD5 Hashing.
  *
- * When you need to check if this library includes std::filesystem under KirHut::FS in an if constexpr expression rather
- * than the preprocessor, you can use this to check.
+ * When you need to check if this library includes the MD5Hash object under the KirHut namespace in an if constexpr
+ * expression rather than the preprocessor, you can use this to check.
  *
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool hasFS = false
+[[maybe_unused]] constexpr bool hasMd5 = false
 #if defined(KH_INCLUDE_MD5HASH)
-                                        or true
+                                         or true
 #endif
     ;
 
@@ -122,8 +122,9 @@ public:
      * \param length The length of the passed data byte array.
      * \param data A pointer to an array of any const data to be added as input to the this Md5Hash sum.
      */
-    Md5Hash(size_t length, auto const *data) noexcept :
-        Md5Hash(length * sizeof(decltype(*data)), std::bit_cast<byte const *>(data))
+    template <typename T>
+    inline Md5Hash(size_t length, T const *data) noexcept :
+        Md5Hash(length * sizeof(T), reinterpret_cast<byte const *>(data))
     {
         // No further implementation.
     }
@@ -137,7 +138,7 @@ public:
      * \param data A std::span<T,E> of the data to be added as input to the this Md5Hash sum.
      */
     template <typename T, size_t E>
-    explicit Md5Hash(span<T, E> data) noexcept : Md5Hash(data.size_bytes(), std::as_bytes(data).data())
+    inline explicit Md5Hash(span<T, E> data) noexcept : Md5Hash(data.size_bytes(), std::as_bytes(data).data())
     {
         // No further implementation.
     }
@@ -151,8 +152,8 @@ public:
      * \param data A std::basic_string_view<CharType> of the data to be added as input to the this Md5Hash sum.
      */
     template <typename CharType>
-    explicit Md5Hash(std::basic_string_view<CharType> data) noexcept :
-        Md5Hash(data.size() * sizeof(CharType), std::bit_cast<byte const *>(data.data()))
+    inline explicit Md5Hash(std::basic_string_view<CharType> data) noexcept :
+        Md5Hash(data.size() * sizeof(CharType), reinterpret_cast<byte const *>(data.data()))
     {
         // No further implementation.
     }
@@ -163,8 +164,8 @@ public:
      * If you do not know the total size of the file or source you are hashing, this allows you to get multiple blocks
      * of input that you process in series. This allows for arbitrarily long input.
      *
-     * If getMd5() has been called on this Md5Hash, then this method will do nothing at all. This method returns zero
-     * instead of \p length if that is the case.
+     * If getMd5(byte*) has been called on this Md5Hash, then this method will do nothing at all. This method returns
+     * zero instead of \p length if that is the case.
      *
      * \param length The length of the passed data byte array.
      * \param data A pointer to an array of `const std::byte` to be added as input to the this Md5Hash sum.
@@ -178,16 +179,16 @@ public:
      * If you do not know the total size of the file or source you are hashing, this allows you to get multiple blocks
      * of input that you process in series. This allows for arbitrarily long input.
      *
-     * If getMd5() has been called on this Md5Hash, then this method will do nothing at all. This method returns zero
-     * instead of \p length if that is the case.
+     * If getMd5(byte*) has been called on this Md5Hash, then this method will do nothing at all. This method returns
+     * zero instead of \p length if that is the case.
      *
      * \param length The length of the passed data byte array.
      * \param data A pointer to an array of any type to be added as input to the this Md5Hash sum.
      * \return The number of bytes processed. Should be equal to \p length, or 0 if Md5Hash::getMd5() has been called.
      */
-    size_t provideInput(size_t length, auto const *data) noexcept
+    inline size_t provideInput(size_t length, auto const *data) noexcept
     {
-        return provideInput(length * sizeof(decltype(*data)), std::bit_cast<byte const *>(data));
+        return provideInput(length * sizeof(decltype(*data)), reinterpret_cast<byte const *>(data));
     }
 
     /*!
@@ -196,15 +197,15 @@ public:
      * If you do not know the total size of the file or source you are hashing, this allows you to get multiple blocks
      * of input that you process in series. This allows for arbitrarily long input.
      *
-     * If getMd5() has been called on this Md5Hash, then this method will do nothing at all. This method returns zero
-     * instead of \p length if that is the case.
+     * If getMd5(byte*) has been called on this Md5Hash, then this method will do nothing at all. This method returns
+     * zero instead of \p length if that is the case.
      *
      * \param data A std::span<T> of the data to be added as input to the this Md5Hash sum.
      * \return The number of bytes processed. Should be equal to std::span::size_bytes(), or 0 if Md5Hash::getMd5() has
      * been called.
      */
     template <typename T, size_t E = std::dynamic_extent>
-    size_t provideInput(span<T, E> data) noexcept
+    inline size_t provideInput(span<T, E> data) noexcept
     {
         return provideInput(data.size_bytes(), std::as_bytes(data).data());
     }
@@ -216,16 +217,17 @@ public:
      * of input that you process in series. This allows for arbitrarily long input.
      *
      * If getMd5() has been called on this Md5Hash, then this method will do nothing at all. This method returns zero
-     * instead of \p length if that is the case.
+     * instead of the size of \p data in bytes if that is the case.
      *
+     * \tparam Char_T The character type of the passed-in string_view.
      * \param data A std::span<T> of the data to be added as input to the this Md5Hash sum.
-     * \return The number of bytes processed. Should be equal to std::span::size_bytes(), or 0 if Md5Hash::getMd5() has
-     * been called.
+     * \return The number of bytes processed. Should be equal to data.size() * sizeof(Char_T), or 0 if Md5Hash::getMd5()
+     * has been called.
      */
-    template <typename CharType>
-    size_t provideInput(std::basic_string_view<CharType> data) noexcept
+    template <typename Char_T>
+    inline size_t provideInput(std::basic_string_view<Char_T> data) noexcept
     {
-        return provideInput(data.size() * sizeof(CharType), std::bit_cast<byte const *>(data.data()));
+        return provideInput(data.size() * sizeof(Char_T), reinterpret_cast<byte const *>(data.data()));
     }
 
     /*!
@@ -236,9 +238,14 @@ public:
      * should never really be used const, as all methods can change the Md5Hash object's state, and if you need the hash
      * to be const you just pass a const Md5Sum instead.
      *
-     * \return A std::array of MD5SUM_RETURN_SIZE std::byte values. On 8-bit byte platforms, a total size of 16 bytes.
+     * \return A std::array of MD5SUM_RETURN_SIZE std::byte values. which should be a total size of 16 bytes.
      */
-    [[nodiscard]] Md5Sum getMd5() noexcept;
+    [[nodiscard]] inline Md5Sum getMd5() noexcept
+    {
+        Md5Sum sum;
+        getMd5(sum.data());
+        return sum;
+    }
 
     /*!
      * Finishes the hash sum computation if it hasn't been already and writes the complete MD5 sum to \p output.
@@ -248,8 +255,14 @@ public:
      * should never really be used const, as all methods can change the Md5Hash object's state, and if you need the hash
      * to be const you just pass a const Md5Sum instead.
      *
-     * The output array must point to a memory location with at least 16 bytes of available data. This method will not
-     * write any more than 16 bytes.
+     * Passing a null pointer to this method will result in the call finishing the hash sum computation but otherwise
+     * not writing the result to any buffer. This can be used to manually finish the computation without writing the
+     * result to any buffer.
+     *
+     * \warning Passing a pointer to a buffer of bytes that is smaller than 16 bytes in length, or is pointing to a
+     * buffer with a non-byte type object initialized within it results in undefined behavior. Under no circumstances
+     * should you pass a pointer to a buffer of less than 16 allocated bytes for the purpose of containing an MD5 hash
+     * sum.
      *
      * \param output A std::byte pointer to a location in memory at least 16 bytes long to write the completed hash sum.
      */
@@ -271,9 +284,41 @@ public:
      * \param output A std::span<T, E> of the block which to output the MD5 sum to, which must be at least 16 bytes.
      */
     template <ByteType T = byte, size_t E = std::dynamic_extent>
-    void getMd5(span<T, E> output) noexcept requires((not std::is_const_v<T>) and E >= MD5SUM_RETURN_SIZE)
+    inline void getMd5(span<T, E> output) noexcept(E != std::dynamic_extent)
+        requires(std::is_same_v<T, std::remove_cv_t<T>> and E >= MD5SUM_RETURN_SIZE)
     {
         if constexpr (E == std::dynamic_extent)
+        {
+            if (size_t smaller = output.size_bytes(); smaller < MD5SUM_RETURN_SIZE)
+            {
+                throwBadHashOutputSize(smaller);
+            }
+        }
+
+        getMd5(reinterpret_cast<byte *>(output.data()));
+    }
+
+    /*!
+     * Finishes the hash sum computation if it hasn't been already and writes the complete MD5 sum to fit in \p output.
+     *
+     * If the hash has already been finished this will simply return the computed result. Otherwise it will finish the
+     * Md5Hash computation which does change the object state, so this cannot be called on a const object. Md5Hash
+     * should never really be used const, as all methods can change the Md5Hash object's state, and if you need the hash
+     * to be const you just pass a const Md5Sum instead.
+     *
+     * This method takes a span, and will fail to compile when the span is less than MD5SUM_RETURN_SIZE bytes in length.
+     * If the span uses std::dynamic_extent, then it will provide either MD5SUM_RETURN_SIZE bytes if
+     * `output.size_bytes()` returns greater than MD5SUM_RETURN_SIZE, and will truncate the bytes up to that amount if
+     * it is less than MD5SUM_RETURN_SIZE. This is to ensure this method never throws exceptions.
+     *
+     * \param output A std::span<Byte_T, byteExt> of the block which to output the MD5 sum to, which must be at least 16
+     * bytes.
+     */
+    template <ByteType Byte_T = byte, size_t byteExt = std::dynamic_extent>
+    inline void fitMd5(span<Byte_T, byteExt> output) noexcept
+        requires(std::is_same_v<Byte_T, std::remove_cv_t<Byte_T>> and byteExt >= MD5SUM_RETURN_SIZE)
+    {
+        if constexpr (byteExt == std::dynamic_extent)
         {
             if (size_t smaller = output.size_bytes(); smaller < MD5SUM_RETURN_SIZE)
             {
@@ -287,12 +332,14 @@ public:
 
 private:
     struct Impl;
+
+    [[noreturn]] void throwBadHashOutputSize(size_t size);
 };
 
 /*!
- * A quick and simple MD5 hash implementation that works on an arbitrary set of constant bytes passed as data.
+ * A quick and simple MD5 hash implementation that works on an arbitrary set of constant bytes passed as \p data.
  *
- * This implementation does not throw exceptions and should always successfully return an array of byte data on all
+ * This implementation does not throw exceptions and should always successfully return an array of byte \p data on all
  * supported platforms. This is intended to be very reliable so that it can work in all circumstances. The function is
  * guaranteed to return an array equal to the data's MD5 hash. On 8-bit byte platforms, the number of chars returned is
  * 16.
@@ -302,11 +349,16 @@ private:
  * hash of a value that takes a number of bits that isn't a multiple of BYTE_BITS is impossible to generate with this
  * function.
  *
- * The data passed can be of arbitrary length, passed as the first argument. Since length is passed, data may contain
- * bytes with the value of 0 and the hash will still work correctly.
+ * The data passed can be of arbitrary length, passed as the first argument. Since \p length is passed separately, \p
+ * data may contain bytes with all bits set to 0 and the hash will still work correctly.
  *
  * This version of the function outputs the MD5 hash (as an array of 16 bytes, not hexadecimal) to the output char
  * array. If you do not have an array to write to, use the other function.
+ *
+ * \warning Passing a pointer to a buffer of bytes that is smaller than 16 bytes in length, or is pointing to a
+ * buffer with a non-byte type object initialized within it results in undefined behavior. Under no circumstances
+ * should you pass a pointer to a buffer of less than 16 allocated bytes for the purpose of containing an MD5 hash
+ * sum.
  *
  * \see KirHut::getMd5(size_t,auto*)
  * \param length A std::size_t of the data size. It should be in number of *elements*, not number of *bytes*!
@@ -314,7 +366,7 @@ private:
  * \param[out] output A pointer to a buffer location to write the hash to. Must be at least #MD5SUM_RETURN_SIZE bytes in
  * length.
  */
-void getMd5(size_t length, auto const *data, byte *output) noexcept
+inline void getMd5(size_t length, auto const *data, byte *output) noexcept
 {
     Md5Hash(length, data).getMd5(output);
 }
@@ -343,7 +395,7 @@ void getMd5(size_t length, auto const *data, byte *output) noexcept
  * \param data A pointer to any const data to return a hash sum of.
  * \return A std::array of #MD5SUM_RETURN_SIZE char values. On 8-bit byte platforms, a total size of 16 bytes.
  */
-[[nodiscard]] Md5Sum getMd5(size_t length, auto const *data) noexcept
+[[nodiscard]] inline Md5Sum getMd5(size_t length, auto const *data) noexcept
 {
     return Md5Hash(length, data).getMd5();
 }
@@ -367,13 +419,13 @@ void getMd5(size_t length, auto const *data, byte *output) noexcept
  * This version of the function outputs the MD5 hash (as an array of 16 bytes, not hexadecimal) to the output char
  * array. If you do not have an array to write to, use the other function.
  *
- * \see KirHut::getMd5(span<T,E>)
- * \param data A std::span<T,E> to return a hash sum of.
+ * \see KirHut::getMd5(span<T,tExt>)
+ * \param data A span of any type T to return a hash sum of.
  * \param[out] output A pointer to a buffer location to write the hash to. Must be at least #MD5SUM_RETURN_SIZE bytes in
  * length.
  */
-template <typename T, size_t E = std::dynamic_extent>
-void getMd5(span<T const, E> const data, byte *output) noexcept
+template <typename T, size_t tExt = std::dynamic_extent>
+inline void getMd5(span<T const, tExt> data, byte *output) noexcept
 {
     Md5Hash(data).getMd5(output);
 }
@@ -397,12 +449,12 @@ void getMd5(span<T const, E> const data, byte *output) noexcept
  * This version of the function returns an Md5Sum of the completed MD5 hash sum. If you want to write to a buffer, use
  * the other function.
  *
- * \see KirHut::getMd5(span<T,E>,byte*)
- * \param data A std::span<T,E> to return a hash sum of.
+ * \see KirHut::getMd5(span<T,tExt>,byte*)
+ * \param data A span of any type T to return a hash sum of.
  * \return A std::array of #MD5SUM_RETURN_SIZE char values. On 8-bit byte platforms, a total size of 16 bytes.
  */
-template <typename T, size_t E = std::dynamic_extent>
-[[nodiscard]] Md5Sum getMd5(span<T const, E> const data) noexcept
+template <typename T, size_t tExt = std::dynamic_extent>
+[[nodiscard]] inline Md5Sum getMd5(span<T const, tExt> data) noexcept
 {
     return Md5Hash(data).getMd5();
 }
@@ -410,10 +462,10 @@ template <typename T, size_t E = std::dynamic_extent>
 /*!
  * A quick and simple MD5 hash implementation that works on an arbitrary set of constant bytes passed as data.
  *
- * This implementation does not throw exceptions and should always successfully return an array of byte data on all
- * supported platforms. This is intended to be very reliable so that it can work in all circumstances. The function is
- * guaranteed to return an array equal to the data's MD5 hash. On 8-bit byte platforms, the number of chars returned is
- * 16.
+ * This implementation does not throw exceptions when provided a sufficiently large output buffer and should
+ * successfully write the resulting MD5 sum in the \p output buffer. This is intended to be very reliable so that it can
+ * work in all circumstances. The function is guaranteed to write an array equal to the data's MD5 hash. On 8-bit byte
+ * platforms, the number of bytes written is 16.
  *
  * While this implementation does its best to fully implement RFC1321, it is constrained in that this algorithm does NOT
  * accept any arbitrary number of bits, but rather the amount of data provided must be in bytes and therefore any MD5
@@ -424,16 +476,22 @@ template <typename T, size_t E = std::dynamic_extent>
  * bytes with the value of 0 and the hash will still work correctly.
  *
  * This version of the function outputs the MD5 hash (as an array of 16 bytes, not hexadecimal) to the output char
- * array. If you do not have an array to write to, use the other function.
+ * array. If you do not have an array to write to, use a version of getMd5() that returns an Md5Sum object.
  *
- * \see KirHut::Md5Hash::getMd5(span<T,E>)
+ * \see KirHut::Md5Hash::getMd5(span<T,tExt>)
+ * \tparam T Any input data type used as input through \p data.
+ * \tparam Byte_T The byte type that will be written to for \p output.
+ * \tparam tExt The compile-time size of \p data, usually std::dynamic_extent.
+ * \tparam byteExt The compile-time size of the \p output buffer, usually std::dynamic_extent, but this function is
+ * guaranteed not to throw exceptions if it is not.
  * \param data A std::span<T,E> to return a hash sum of.
  * \param[out] output A std::span to a buffer location to write the hash to. Should be at least #MD5SUM_RETURN_SIZE
  * bytes in length.
+ * \throws IllegalArgument If the size of the \p output buffer is less than #MD5SUM_RETURN_SIZE bytes.
  */
-template <typename T, ByteType B = byte, size_t E = std::dynamic_extent, size_t S = std::dynamic_extent>
-void getMd5(span<T const, E> data, span<B, S> output) noexcept
-    requires((not std::is_const_v<B>) and E >= MD5SUM_RETURN_SIZE)
+template <typename T, ByteType Byte_T = byte, size_t tExt = std::dynamic_extent, size_t byteExt = std::dynamic_extent>
+inline void getMd5(span<T const, tExt> data, span<Byte_T, byteExt> output) noexcept(byteExt != std::dynamic_extent)
+    requires(std::is_same_v<Byte_T, std::remove_cv_t<Byte_T>> and byteExt >= MD5SUM_RETURN_SIZE)
 {
     Md5Hash(data).getMd5(output);
 }

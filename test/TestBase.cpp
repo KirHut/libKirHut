@@ -562,6 +562,7 @@ TEST_CASE("InstanceOf concept constraints", "[base][concepts]")
         STATIC_REQUIRE_FALSE(InstanceOf<std::vector<int> volatile, std::list>);
         STATIC_REQUIRE_FALSE(InstanceOf<std::map<int, int> &, std::set>);
     }
+
     // The following line fails to compile:
     // STATIC_REQUIRE(InstanceOf<std::array<int, 4>, std::array>);
 }
@@ -665,7 +666,7 @@ TEST_CASE("ReadableSpanOf concept constraints", "[base][concepts]")
     }
 }
 
-TEST_CASE("ByteType concept constraints")
+TEST_CASE("ByteType concept constraints", "[base][concepts]")
 {
     SECTION("Accepts standard byte-like types")
     {
@@ -709,7 +710,7 @@ TEST_CASE("ByteType concept constraints")
     }
 }
 
-TEST_CASE("ByteSpan and ReadableByteSpan concept constraints")
+TEST_CASE("ByteSpan and ReadableByteSpan concept constraints", "[base][concepts]")
 {
     SECTION("Accepts spans of writable byte-like types")
     {
@@ -774,7 +775,74 @@ TEST_CASE("ByteSpan and ReadableByteSpan concept constraints")
     }
 }
 
-TEST_CASE("HasTypeOption concept correctness")
+TEST_CASE("StringLike concept constraints", "[base][concepts]")
+{
+    SECTION("Valid StringLike types")
+    {
+        STATIC_REQUIRE(StringLike<std::string>);
+        STATIC_REQUIRE(StringLike<std::u8string_view>);
+        STATIC_REQUIRE(StringLike<char *>);
+        STATIC_REQUIRE(StringLike<wchar_t const *>);
+        STATIC_REQUIRE(StringLike<char32_t *>);
+
+        struct CustomStringLike
+        {
+            using value_type = char;
+            operator std::basic_string_view<char>() const
+            {
+                return "hi";
+            }
+        };
+        STATIC_REQUIRE(StringLike<CustomStringLike>);
+    }
+
+    SECTION("Invalid StringLike types")
+    {
+        STATIC_REQUIRE_FALSE(StringLike<int>);
+        STATIC_REQUIRE_FALSE(StringLike<std::vector<int>>);
+        STATIC_REQUIRE_FALSE(StringLike<double>);
+        STATIC_REQUIRE_FALSE(StringLike<std::array<char, 5>>);
+    }
+}
+
+TEMPLATE_TEST_CASE("StringLikeTraits type detection",
+                   "[base][concepts][StringLikeType]",
+                   char,
+                   wchar_t,
+                   char8_t,
+                   char16_t,
+                   char32_t)
+{
+    using String     = std::basic_string<TestType>;
+    using StringView = std::basic_string_view<TestType>;
+    using CharPtr    = TestType *;
+
+    SECTION("string and string_view types")
+    {
+        STATIC_REQUIRE(std::is_same_v<StringLikeType<String>, TestType>);
+        STATIC_REQUIRE(std::is_same_v<StringLikeType<StringView>, TestType>);
+    }
+
+    SECTION("C-style strings")
+    {
+        STATIC_REQUIRE(std::is_same_v<StringLikeType<CharPtr>, TestType>);
+    }
+
+    SECTION("Custom string-like type")
+    {
+        struct MyString
+        {
+            using value_type = TestType;
+            operator std::basic_string_view<TestType>() const
+            {
+                return {};
+            }
+        };
+        STATIC_REQUIRE(std::is_same_v<StringLikeType<MyString>, TestType>);
+    }
+}
+
+TEST_CASE("HasTypeOption concept correctness", "[base][concepts][HasTypeOption]")
 {
     using V1 = std::variant<int, float, std::string>;
     using V2 = Var<int, double, char>;
@@ -831,7 +899,7 @@ TEST_CASE("HasTypeOption concept correctness")
     }
 }
 
-TEST_CASE("TypeOptionOf concept constraints")
+TEST_CASE("TypeOptionOf concept constraints", "[base][concepts][TypeOptionOf]")
 {
     using V1 = std::variant<int, float, std::string>;
     using V2 = Var<char, double, bool>;
@@ -877,7 +945,7 @@ TEST_CASE("TypeOptionOf concept constraints")
     }
 }
 
-TEST_CASE("EmptyClass concept constraints")
+TEST_CASE("EmptyClass concept constraints", "[base][concepts][EmptyClass]")
 {
     SECTION("Fundamental empty classes")
     {
@@ -926,7 +994,7 @@ TEST_CASE("EmptyClass concept constraints")
     }
 }
 
-TEST_CASE("varIndex function returns correct index for std::variant and Var")
+TEST_CASE("varIndex function returns correct index for std::variant and Var", "[base][utility][varIndex]")
 {
     using V1 = std::variant<int, float, std::string>;
     using V2 = Var<char, double, bool>;

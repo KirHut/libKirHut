@@ -21,7 +21,7 @@
 
 #include <ranges> // IWYU pragma: export
 
-#include "kh/global.hpp"
+#include "kh/base.hpp"
 
 /*!
  * \file ranges.hpp
@@ -292,23 +292,11 @@ private:
     constexpr static size_t npos = std::basic_string_view<Char_T>::npos;
 };
 
-template <typename T>
-concept StringLike = requires(T const &t) {
-    typename T::value_type;
-    std::basic_string_view<typename T::value_type>{ t };
-};
+template <StringLike String_T>
+WordView(String_T) -> WordView<StringLikeType<String_T>>;
 
 template <StringLike String_T>
-WordView(String_T) -> WordView<typename String_T::value_type>;
-
-template <StringLike String_T>
-WordView(String_T, R::Separators<typename String_T::value_type>) -> WordView<typename String_T::value_type>;
-
-template <typename Char_T>
-WordView(Char_T const *) -> WordView<Char_T>;
-
-template <typename Char_T>
-WordView(Char_T const *, R::Separators<Char_T>) -> WordView<Char_T>;
+WordView(String_T, R::Separators<StringLikeType<String_T>>) -> WordView<StringLikeType<String_T>>;
 
 /*!
  * Forward iterator over the tokens in a WordView.

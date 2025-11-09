@@ -938,6 +938,74 @@ template <typename Span_T>
 concept ReadableByteSpan = ReadableSpanOf<Span_T, char, byte, unsigned char, std::byte>;
 
 /*!
+ * Concept to identify "character" types, as specified by the C++ standard.
+ *
+ * There are five character types in C++: `char`, `wchar_t`, `char8_t`, `char16_t`, and `char32_t`. The `signed char`
+ * and `unsigned char` types are actually integer types instead of character types, and are distinct from `char`. This
+ * concept is useful when you are trying to ensure you get something that is specifically a character.
+ */
+template <typename Char_T>
+concept CharType = OneOf<std::remove_cv_t<Char_T>, char, wchar_t, char8_t, char16_t, char32_t>;
+
+/*!
+ * Concept to identify a type that can be converted to some kind of standard string_view type.
+ *
+ * There are a lot of times when this concept is extremely helpful to get certain things to build, namely when you are
+ * taking a std::basic_string_view template as an argument and you want to accept types like char const * and
+ * std::string without having an explicit constructor.
+ */
+template <typename String_T>
+concept StringLike = ConvertsTo<String_T,
+                                std::string_view,
+                                std::wstring_view,
+                                std::u8string_view,
+                                std::u16string_view,
+                                std::u32string_view>;
+
+namespace Detail
+{
+
+/*!
+ * \internal
+ *
+ * \brief The StringLikeTraits class
+ */
+template <StringLike String_T>
+struct StringLikeTraits
+{
+    /*!
+     * \internal
+     */
+    using type = typename String_T::value_type;
+};
+
+/*!
+ * \internal
+ *
+ * \brief The StringLikeTraits class
+ */
+template <CharType Char_T>
+struct StringLikeTraits<Char_T *>
+{
+    /*!
+     * \internal
+     */
+    using type = std::remove_cv_t<Char_T>;
+};
+
+} // namespace Detail
+
+/*!
+ * Template alias of the character type used in a type that matches the StringLike concept.
+ *
+ * This extracts the type correctly from both string-like objects (with a value_type type alias member) and from
+ * character arrays equally well. This allows for you to extract the character type data in your concepts or deduction
+ * guides easily.
+ */
+template <StringLike String_T>
+using StringLikeType = typename Detail::StringLikeTraits<String_T>::type;
+
+/*!
  * Concept that identifies some Var or std::variant object that contains one of the given HasTypes.
  *
  * This matches with types of std::variant (or the Var alias) that contain a given HasType as one of its type options.

@@ -19,7 +19,7 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#include "kh/platform.hpp"
+#include "kh/base.hpp"
 
 namespace KirHut
 {
@@ -119,7 +119,7 @@ class BasicPackedTuple
         return byteAmount / sizeof(Block_T) + (byteAmount % sizeof(Block_T) ? 1 : 0);
     }();
 
-    std::array<Block_T, blocksNeeded> data;
+    std::array<Block_T, blocksNeeded> data{};
 
     template <size_t index, BitFieldType CurField_T, BitFieldType... RestField_Ts>
     struct _FieldTraits;
@@ -191,7 +191,7 @@ public:
         Block_T &block = data.at(fieldInfo.blockIndex);
         if constexpr (std::same_as<decltype(newVal), bool>)
         {
-            constexpr Block_T newBitMask = ~(1 << fieldInfo.front);
+            constexpr Block_T newBitMask = ~(static_cast<Block_T>(1) << fieldInfo.front);
 
             Block_T newBit = static_cast<Block_T>(newVal) << fieldInfo.front;
             block          = (block & newBitMask) | newBit;
@@ -216,17 +216,19 @@ private:
     {
         constexpr size_t loc       = FieldTraits<index>::bitLocation();
         constexpr size_t endLoc    = loc + FieldTraits<index>::bits();
-        constexpr size_t maskShift = sizeof(Block_T) * Platform::bitsInByte - FieldTraits<index>::bits();
+        constexpr size_t maskShift = blockBits() - FieldTraits<index>::bits();
+        constexpr size_t blockLoc  = loc % blockBits();
 
-        constexpr auto temp = static_cast<int>(loc % blockBits() + FieldTraits<index>::bits()) -
+        constexpr auto temp = static_cast<int>(blockLoc + FieldTraits<index>::bits()) -
                               static_cast<int>(sizeof(Block_T) * Platform::bitsInByte);
         constexpr size_t backMaskWidth = temp < 0 ? 0 : temp;
 
-        return { loc / blockBits(),
-                 loc % blockBits(),
-                 endLoc % blockBits(),
-                 std::numeric_limits<Block_T>::max() >> maskShift << (loc % blockBits()),
-                 backMaskWidth ? std::numeric_limits<Block_T>::max() >> (blockBits() - backMaskWidth) : 0 };
+        return { .blockIndex = loc / blockBits(),
+                 .front      = blockLoc,
+                 .back       = endLoc % blockBits(),
+                 .frontMask  = static_cast<Block_T>(Limits<Block_T>::max() >> maskShift << blockLoc),
+                 .backMask   = static_cast<Block_T>(
+                     backMaskWidth ? Limits<Block_T>::max() >> (blockBits() - backMaskWidth) : 0) };
     }
 
     template <size_t index, BitFieldType CurField_T, BitFieldType... RestField_Ts>
@@ -256,7 +258,8 @@ private:
             // canFit has to be a BS template to satisfy MSVC otherwise it tries to instantiate make_unsigned_t<bool>.
             if constexpr (not std::same_as<decltype(toTest), bool>)
             {
-                auto bitsToTest = std::bit_cast<std::make_unsigned_t<type>>(toTest < 0 ? ~toTest : toTest);
+                auto bitsToTest =
+                    std::bit_cast<std::make_unsigned_t<type>>(static_cast<type>(toTest < 0 ? ~toTest : toTest));
                 return std::bit_width(bitsToTest) <= digits();
             }
 

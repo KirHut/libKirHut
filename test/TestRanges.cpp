@@ -183,7 +183,7 @@ TEST_CASE("words CPO pipe form handles leading/trailing separators", "[ranges][w
     REQUIRE(result == std::vector<std::string_view>{ "one", "two", "three" });
 }
 
-TEST_CASE("words CPO equivalence to direct WordView construction", "[words][equivalence]")
+TEST_CASE("words CPO equivalence to direct WordView construction", "[ranges][WordView][words]")
 {
     std::string s  = "a b c";
     auto wv_direct = R::WordView(s);
@@ -196,14 +196,14 @@ TEST_CASE("words CPO equivalence to direct WordView construction", "[words][equi
     REQUIRE(wv_direct == wv_cpo);
 }
 
-TEST_CASE("words CPO constexpr usability", "[words][constexpr]")
+TEST_CASE("words CPO constexpr usability", "[ranges][words]")
 {
     constexpr auto vw    = V::words("one two");
     constexpr auto first = *vw.begin();
     STATIC_REQUIRE(first == "one");
 }
 
-TEST_CASE("words CPO with no separators produces whole string", "[words][edge]")
+TEST_CASE("words CPO with no separators produces whole string", "[ranges][words]")
 {
     auto vw = V::words("nosplit", R::Separators{ "" });
     std::vector<std::string_view> result(vw.begin(), vw.end());

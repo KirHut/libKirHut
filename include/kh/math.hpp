@@ -111,4 +111,12 @@ constexpr Float_T frexp(Float_T x, int &exp) noexcept
     return std::bit_cast<Float_T>(bits);
 }
 
+template <std::floating_point Float_T>
+constexpr std::pair<Float_T, int> frexp(Float_T x) noexcept
+{
+    int exp            = 0;
+    Float_T normalized = frexp(x, exp);
+    return { normalized, exp };
+}
+
 } // namespace KirHut

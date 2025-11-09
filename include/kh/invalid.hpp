@@ -1030,7 +1030,7 @@ public:
      * \param inv Invalid lvalue object to copy from for the MaybeInv's internal Invalid object.
      * \throws std::bad_alloc If allocating the new Invalid object fails.
      */
-    constexpr explicit MaybeInv(Invalid const &inv) : data(inv)
+    constexpr explicit MaybeInv(Invalid_T const &inv) : data(inv)
     {
         // No further implementation.
     }
@@ -1045,7 +1045,7 @@ public:
      *
      * \param inv An Invalid object rvalue reference to return from a function or method returning MaybeInv.
      */
-    constexpr MaybeInv(Invalid &&inv) noexcept : data(std::move(inv))
+    constexpr MaybeInv(Invalid_T &&inv) noexcept : data(std::move(inv))
     {
         // No further implementation.
     }
