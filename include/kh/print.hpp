@@ -23,6 +23,7 @@
 
 # include <ostream>
 
+# include "kh/global.hpp"
 # include "kh/priv/format.hpp"
 
 # if defined(KH_USES_FMT)
@@ -59,7 +60,6 @@ namespace KirHut::IO
 #endif
     ;
 
-#if defined(KH_INCLUDE_TERMINAL_PRINT) or defined(KH_PRIV_DOCS)
 /*!
  * \brief vprint
  *
@@ -83,24 +83,28 @@ namespace KirHut::IO
  * \param form
  * \param args
  * \throws FMT::format_error If there is an error with the format string passed as \p form or its \p args.
- * \throws
+ * \throws std::system_error If writing to the underlying stream fails and this library is C++23 or later enabled.
+ * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
  */
-void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args const &args);
+KH_EXPORT void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args const &args);
 
 /*!
  * \brief vprint
  * \param stream
  * \param form
  * \param args
+ * \throws FMT::format_error If there is an error with the format string passed as \p form or its \p args.
+ * \throws std::ios_base::failure If the \p stream throws this exception due to a text insertion.
+ * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
  */
-void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
+KH_EXPORT void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
 
 /*!
  * \brief vprint
  * \param form
  * \param args
  */
-void vprint(FMT::string_view form, FMT::format_args const &args);
+KH_EXPORT void vprint(FMT::string_view form, FMT::format_args const &args);
 
 /*!
  * \brief vprintln
@@ -108,7 +112,7 @@ void vprint(FMT::string_view form, FMT::format_args const &args);
  * \param form
  * \param args
  */
-void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &args);
+KH_EXPORT void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &args);
 
 /*!
  * \brief vprintln
@@ -116,15 +120,30 @@ void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &
  * \param form
  * \param args
  */
-void vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
+KH_EXPORT void vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
 
 /*!
  * \brief vprintln
  * \param form
  * \param args
  */
-void vprintln(FMT::string_view form, FMT::format_args const &args);
+KH_EXPORT void vprintln(FMT::string_view form, FMT::format_args const &args);
 
+/*!
+ * \brief vprint
+ * \param form
+ * \param args
+ */
+KH_EXPORT void vreport(FMT::string_view form, FMT::format_args const &args);
+
+/*!
+ * \brief vprintln
+ * \param form
+ * \param args
+ */
+KH_EXPORT void vreportln(FMT::string_view form, FMT::format_args const &args);
+
+#if defined(KH_INCLUDE_TERMINAL_PRINT) or defined(KH_PRIV_DOCS)
 /*!
  * \brief print
  * \param stream
@@ -137,7 +156,7 @@ void print(FILE *stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&..
 # if defined(KH_USES_FMT) or defined(__cpp_lib_print)
     FMT::print(stream, formatString, std::forward<Arg_Ts>(args)...);
 # else
-    vprint(stream, formatString.get(), std::make_format_args(std::forward<Arg_Ts>(args)...));
+    IO::vprint(stream, formatString.get(), std::make_format_args(std::forward<Arg_Ts>(args)...));
 # endif
 }
 
@@ -153,7 +172,7 @@ void print(std::ostream &stream, FMT::format_string<Arg_Ts...> formatString, Arg
 # if defined(KH_USES_FMT) or defined(__cpp_lib_print)
     FMT::print(stream, formatString, std::forward<Arg_Ts>(args)...);
 # else
-    vprint(stream, formatString.get(), std::make_format_args(args...));
+    IO::vprint(stream, formatString.get(), std::make_format_args(args...));
 # endif
 }
 
@@ -167,7 +186,7 @@ void print(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
     // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
     // to print must go through vprint(). This still benefits from compile time format checking.
-    vprint(formatString.get(), FMT::make_format_args(args...));
+    IO::vprint(formatString.get(), FMT::make_format_args(args...));
 }
 
 /*!
@@ -182,7 +201,7 @@ void println(FILE *stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&
 # if defined(KH_USES_FMT) or defined(__cpp_lib_print)
     FMT::println(stream, formatString, std::forward<Arg_Ts>(args)...);
 # else
-    vprintln(stream, formatString.get(), std::make_format_args(args...));
+    IO::vprintln(stream, formatString.get(), std::make_format_args(args...));
 # endif
 }
 
@@ -198,7 +217,7 @@ void println(std::ostream &stream, FMT::format_string<Arg_Ts...> formatString, A
 # if defined(KH_USES_FMT) or defined(__cpp_lib_print)
     FMT::println(stream, formatString, std::forward<Arg_Ts>(args)...);
 # else
-    vprintln(stream, formatString.get(), std::make_format_args(args...));
+    IO::vprintln(stream, formatString.get(), std::make_format_args(args...));
 # endif
 }
 
@@ -212,22 +231,8 @@ void println(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
     // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
     // to println must go through vprintln(). This still benefits from compile time format checking.
-    vprintln(formatString.get(), FMT::make_format_args(args...));
+    IO::vprintln(formatString.get(), FMT::make_format_args(args...));
 }
-
-/*!
- * \brief vprint
- * \param form
- * \param args
- */
-void vreport(FMT::string_view form, FMT::format_args args);
-
-/*!
- * \brief vprintln
- * \param form
- * \param args
- */
-void vreportln(FMT::string_view form, FMT::format_args args);
 
 /*!
  * \brief print
@@ -239,7 +244,7 @@ void report(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
     // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
     // to print must go through vprint(). This still benefits from compile time format checking.
-    vreport(formatString.get(), FMT::make_format_args(args...));
+    IO::vreport(formatString.get(), FMT::make_format_args(args...));
 }
 
 /*!
@@ -252,9 +257,57 @@ void reportln(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
     // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
     // to println must go through vprintln(). This still benefits from compile time format checking.
-    vreportln(formatString.get(), FMT::make_format_args(args...));
+    IO::vreportln(formatString.get(), FMT::make_format_args(args...));
 }
 
+#else
+template <typename... Arg_Ts>
+void print(FILE *stream, auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
+
+template <typename... Arg_Ts>
+void print(std::ostream &stream, auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
+
+template <typename... Arg_Ts>
+void print(auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
+
+template <typename... Arg_Ts>
+void println(FILE *stream, auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
+
+template <typename... Arg_Ts>
+void println(std::ostream &stream, auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
+
+template <typename... Arg_Ts>
+void println(auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
+
+template <typename... Arg_Ts>
+void report(auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
+
+template <typename... Arg_Ts>
+void reportln(auto formatString, Arg_Ts &&...args)
+{
+    // No further implementation.
+}
 #endif
 
 } // namespace KirHut::IO

@@ -1119,6 +1119,7 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 
 #if defined(KH_USES_QT)
 # include <QtGlobal>
+# include <QtTypes>
 # if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0) and QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
 #  define KH_QT5_15 1
 #  define KH_QT_VERSION 1
@@ -1391,26 +1392,49 @@ using std::size_t;
  *
  * This type is guaranteed to be at least 8 bits, and for all current supported platforms, is precisely 8 bits.
  */
-using i8 = std::int_least8_t;
+using i8 =
+#if defined(KH_USES_QT)
+    qint8;
+#else
+    std::int_least8_t;
+#endif
 
 /*!
  * The standard 16 bit signed integer type.
  *
  * This type is guaranteed to be at least 16 bits.
  */
-using i16 = std::int_least16_t;
+using i16 =
+#if defined(KH_USES_QT)
+    qint16;
+#else
+    std::int_least16_t;
+#endif
+
 /*!
  * The standard 32 bit signed integer type.
  *
  * This type is guaranteed to be at least 32 bits, and for all current supported platforms, is precisely 32 bits.
  */
-using i32 = std::int_least32_t;
+using i32 =
+#if defined(KH_USES_QT)
+    qint32;
+#else
+    std::int_least32_t;
+#endif
+
 /*!
  * The standard 64 bit signed integer type.
  *
  * This type is guaranteed to be at least 64 bits, and for all current supported platforms, is precisely 64 bits.
  */
-using i64 = std::int_least64_t;
+using i64 =
+#if defined(KH_USES_QT)
+    qint64;
+#else
+    std::int_least64_t;
+#endif
+
 /*!
  * A 128-bit integer type available on GCC and Clang only.
  *
@@ -1426,7 +1450,12 @@ using i64 = std::int_least64_t;
  * for the "widest" type on the platform.
  */
 #if KH_PRIV_DOCS or KH_USE_128BIT_TYPES
-using i128 = __int128_t;
+using i128 =
+# if defined(KH_USES_QT) and defined(QT_SUPPORTS_INT128)
+    qint128;
+# else
+    __int128_t;
+# endif
 #else
 using i128 = i64;
 #endif
@@ -1446,25 +1475,49 @@ using iWidest = i128;
  *
  * This type is guaranteed to be at least 8 bits, and for all current supported platforms, is precisely 8 bits.
  */
-using u8 = std::uint_least8_t;
+using u8 =
+#if defined(KH_USES_QT)
+    quint8;
+#else
+    std::uint_least8_t;
+#endif
+
 /*!
  * The standard 16 bit unsigned integer type.
  *
  * This type is guaranteed to be at least 16 bits.
  */
-using u16 = std::uint_least16_t;
+using u16 =
+#if defined(KH_USES_QT)
+    quint16;
+#else
+    std::uint_least16_t;
+#endif
+
 /*!
  * The standard 32 bit unsigned integer type.
  *
  * This type is guaranteed to be at least 32 bits, and for all current supported platforms, is precisely 32 bits.
  */
-using u32 = std::uint_least32_t;
+using u32 =
+#if defined(KH_USES_QT)
+    quint32;
+#else
+    std::uint_least32_t;
+#endif
+
 /*!
  * The standard 64 bit unsigned integer type.
  *
  * This type is guaranteed to be at least 64 bits, and for all current supported platforms, is precisely 64 bits.
  */
-using u64 = std::uint_least64_t;
+using u64 =
+#if defined(KH_USES_QT)
+    quint64;
+#else
+    std::uint_least64_t;
+#endif
+
 /*!
  * A 128-bit integer type available on GCC and Clang.
  *
@@ -1480,7 +1533,12 @@ using u64 = std::uint_least64_t;
  * for the "widest" type on the platform.
  */
 #if KH_PRIV_DOCS or KH_USE_128BIT_TYPES
-using u128 = __uint128_t;
+using u128 =
+# if defined(KH_USES_QT) and defined(QT_SUPPORTS_INT128)
+    quint128;
+# else
+    unsigned __int128_t;
+# endif
 #else
 using u128 = u64;
 #endif

@@ -17,7 +17,7 @@ if(POLICY CMP0141)
 endif()
 
 project(libKirHut
-    VERSION 0.1.2
+    VERSION 0.2.0
     LANGUAGES CXX
     DESCRIPTION "The KirHut Software Company General C++ Development Library"
 )

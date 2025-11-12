@@ -19,10 +19,136 @@
 ***********************************************************************************************************************/
 #include "kh/print.hpp"
 
+#include "kh/base.hpp"
+
+#include <cstdio>
+
 #include <catch2/catch_test_macros.hpp>
 // clazy:excludeall=non-pod-global-static
 
-TEST_CASE("No real test.", "[print]")
+using namespace KirHut;
+
+constexpr auto tempDeleter = [](std::FILE *fp) {
+    if (fp)
+    {
+        std::fclose(fp);
+    }
+};
+
+using TempFile = std::unique_ptr<std::FILE, decltype(tempDeleter)>;
+
+inline TempFile mkTempFile()
 {
-    REQUIRE(true);
+    std::FILE *tmpFilePtr = nullptr;
+#if defined(KH_COMPILED_WITH_MSVC)
+    if (tmpfile_s(&tmpFilePtr) == 0 and tmpFilePtr)
+#else
+    if (tmpFilePtr = std::tmpfile(); tmpFilePtr)
+#endif
+    {
+        return TempFile{ tmpFilePtr };
+    }
+
+    throw std::runtime_error("Couldn't create temporary file.");
+}
+
+TEST_CASE("IO::vprint() writes to ostream", "[print][io_vprint]")
+{
+    std::ostringstream oss;
+    auto args = FMT::make_format_args("World");
+    IO::vprint(oss, "Hello, {}!", args);
+    REQUIRE(oss.str() == "Hello, World!");
+}
+
+TEST_CASE("IO::print() writes to ostream", "[print][io_print]")
+{
+    std::ostringstream oss;
+    string_view world = "World"sv;
+    IO::print(oss, "Hello, {}!", world);
+    REQUIRE(oss.str() == "Hello, World!");
+}
+
+TEST_CASE("IO::vprintln() appends newline to ostream", "[print][io_vprintln]")
+{
+    std::ostringstream oss;
+    auto num  = 42;
+    auto args = FMT::make_format_args(num);
+    IO::vprintln(oss, "Answer: {}", args);
+    REQUIRE(oss.str() == "Answer: 42\n");
+}
+
+TEST_CASE("IO::println() appends newline to ostream", "[print][io_println]")
+{
+    std::ostringstream oss;
+    auto num = 42;
+    IO::println(oss, "Answer: {}", num);
+    REQUIRE(oss.str() == "Answer: 42\n");
+}
+
+TEST_CASE("IO::vprint() writes to FILE*", "[print][io_vprint]")
+{
+    TempFile tmp = mkTempFile();
+    auto num     = 3.14;
+    auto args    = FMT::make_format_args(num);
+    IO::vprint(tmp.get(), "Pi={}", args);
+    std::fflush(tmp.get());
+
+    std::rewind(tmp.get());
+    std::string result;
+    char buf[128];
+    while (std::fgets(buf, sizeof buf, tmp.get()))
+    {
+        result += buf;
+    }
+    REQUIRE(result == "Pi=3.14");
+}
+
+TEST_CASE("IO::print() writes to FILE*", "[print][io_print]")
+{
+    TempFile tmp = mkTempFile();
+    auto num     = 3.14;
+    IO::print(tmp.get(), "Pi={}", num);
+    std::fflush(tmp.get());
+
+    std::rewind(tmp.get());
+    std::string result;
+    char buf[128];
+    while (std::fgets(buf, sizeof buf, tmp.get()))
+    {
+        result += buf;
+    }
+    REQUIRE(result == "Pi=3.14");
+}
+
+TEST_CASE("IO::vprintln() appends newline to FILE*", "[print][io_vprintln]")
+{
+    TempFile tmp = mkTempFile();
+    auto args    = FMT::make_format_args("Test");
+    IO::vprintln(tmp.get(), "{}", args);
+    std::fflush(tmp.get());
+    std::rewind(tmp.get());
+    char buf[16];
+    std::fgets(buf, sizeof buf, tmp.get());
+    REQUIRE(std::string(buf) == "Test\n");
+}
+
+TEST_CASE("IO::println() appends newline to FILE*", "[print][io_println]")
+{
+    TempFile tmp = mkTempFile();
+    auto args    = "Test"sv;
+    IO::println(tmp.get(), "{}", args);
+    std::fflush(tmp.get());
+    std::rewind(tmp.get());
+    char buf[16];
+    std::fgets(buf, sizeof buf, tmp.get());
+    REQUIRE(std::string(buf) == "Test\n");
+}
+
+TEST_CASE("UTF-8 text is printed intact", "[print][io_print]")
+{
+    std::ostringstream oss;
+    IO::print(oss, "{}", "🌍");
+    auto out = oss.str();
+    REQUIRE(out == "🌍");
+    REQUIRE(out.size() == 4);
 }

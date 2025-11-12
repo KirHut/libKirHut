@@ -415,6 +415,21 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
  * Constant expression byte swapping function that should always do the most efficient thing.
  *
  * The byteSwap function in libKirHut is meant to work like std::byteswap in C++23 for applications still only using
+ * C++20. Unlike all of the other byteSwap functions, since there is no "swap" functionality for a single byte integer,
+ * this does nothing at all and simply returns the value passed as \p bytes.
+ *
+ * \param bytes An unsigned 8 bit integer you want to have the bytes swapped in.
+ * \return The same 8 bit integer passed as \p bytes, entirely unchanged.
+ */
+[[nodiscard]] constexpr u8 byteSwap(u8 bytes)
+{
+    return bytes;
+}
+
+/*!
+ * Constant expression byte swapping function that should always do the most efficient thing.
+ *
+ * The byteSwap function in libKirHut is meant to work like std::byteswap in C++23 for applications still only using
  * C++20. When this library is compiled by a C++23 or newer compiler, this function is just a wrapper for std::byteswap.
  * Otherwise, it uses one of the builtin byte swap functions in your according compiler, or if it lacks a builtin, it
  * uses a fallback implementation that is constexpr safe. The fallback implementation is deliberately designed to allow
@@ -1061,6 +1076,10 @@ template <typename Var_T>
  * static_assert(std::is_same_v<decltype(result), i32>);
  * ~~~
  *
+ * If this function is provided a nullptr for \p source, the returned value will be 0 of whichever type you have
+ * designated this function to return. If a non-nullptr is provided as \p source, it must point to valid memory for this
+ * application.
+ *
  * \warning It is undefined behavior to provide a pointer to a byte buffer that is not at least sizeof(T) bytes large.
  * This will cause a read to occur in invalid memory and so you should always check that there are sufficient bytes in
  * the buffer area for conversion.
@@ -1071,7 +1090,7 @@ template <typename Var_T>
 template <Numeric T>
 [[nodiscard]] constexpr T fromBigEndian(ByteType auto const *source) noexcept
 {
-    return Detail::fromEndian<T, std::endian::big>(source);
+    return source ? Detail::fromEndian<T, std::endian::big>(source) : T{};
 }
 
 /*!
@@ -1094,11 +1113,11 @@ template <Numeric T>
  * \param source A span to a buffer of bytes at least sizeof(T) large.
  * \return The requested Numeric T type.
  */
-template <Numeric T, ByteType Byte_T, size_t size>
-[[nodiscard]] constexpr T fromBigEndian(span<Byte_T const, size> source) noexcept(size != std::dynamic_extent)
-    requires(size >= sizeof(T))
+template <Numeric T, ByteType Byte_T, size_t fixedSize>
+[[nodiscard]] constexpr T fromBigEndian(span<Byte_T const, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
+    requires(fixedSize >= sizeof(T))
 {
-    if constexpr (size == std::dynamic_extent)
+    if constexpr (fixedSize == std::dynamic_extent)
     {
         if (source.size() < sizeof(T))
         {
@@ -1150,6 +1169,11 @@ template <Numeric T, ByteType Byte_T, size_t fixedSize>
     return Detail::fromEndian<T, std::endian::little>(source.data());
 }
 
+/*!
+ * \brief fromLittleEndian
+ * \param source
+ * \return
+ */
 template <Numeric T, ByteType Byte_T, size_t fixedSize>
 [[nodiscard]] constexpr T fromLittleEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
     requires(fixedSize >= sizeof(T))
@@ -1194,13 +1218,13 @@ template <Numeric Num_T>
  */
 template <ByteType Byte_T, size_t fixedSize>
 constexpr void toBigEndian(Numeric auto value, span<Byte_T, fixedSize> dest) noexcept(fixedSize != std::dynamic_extent)
-    requires(fixedSize >= sizeof(decltype(value)))
+    requires(fixedSize >= sizeof(value))
 {
     static_assert(not std::is_const_v<Byte_T>, "toBigEndian needs a non-const span to write to.");
 
     if constexpr (fixedSize == std::dynamic_extent)
     {
-        if (dest.size() < sizeof(decltype(value)))
+        if (dest.size() < sizeof(value))
         {
             Detail::throwTooSmallSpan("Destination span is too small for toBigEndian.");
         }

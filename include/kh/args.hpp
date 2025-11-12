@@ -78,34 +78,54 @@ namespace Detail
  * in the Option type constructor. All of these throw methods throw the same thing: IllegalArgument. The only real
  * distinction is the message the user receives when it is thrown.
  */
-[[noreturn]] KH_EXPORT void throwIllegalCharacter(char whichOne);
+[[noreturn]] KH_EXPORT void throwIllegalOptionCharacter(char whichOne);
 
 /*!
  * \internal
  *
  * Throws an exception for having no valid tokens available in the validateOptionString() function.
  *
- * \copydetails KirHut::Detail::throwIllegalCharacter()
+ * \copydetails KirHut::Detail::throwIllegalOptionCharacter()
  */
-[[noreturn]] KH_EXPORT void throwNoValidToken(string_view opStr);
+[[noreturn]] KH_EXPORT void throwNoValidOptionToken(string_view opStr);
 
 /*!
  * \internal
  *
  * Throws an exception for a token starting with + or - in the validateOptionString() function.
  *
- * \copydetails KirHut::Detail::throwIllegalCharacter()
+ * \copydetails KirHut::Detail::throwIllegalOptionCharacter()
  */
-[[noreturn]] KH_EXPORT void throwNoPlusMinusBegin(char whichOne);
+[[noreturn]] KH_EXPORT void throwNoPlusMinusBeginOption(char whichOne);
 
 /*!
  * \internal
  *
  * Throws an exception for having a token made of just digits in the validateOptionString() function.
  *
- * \copydetails KirHut::Detail::throwIllegalCharacter()
+ * \copydetails KirHut::Detail::throwIllegalOptionCharacter()
  */
-[[noreturn]] KH_EXPORT void throwNotJustDigits(string_view opStr);
+[[noreturn]] KH_EXPORT void throwNotJustDigitsOption(string_view opStr);
+
+/*!
+ * \internal
+ *
+ * Throws an exception for having an illegal character in the validateCommandString() function.
+ *
+ * \copydetails KirHut::Detail::throwIllegalOptionCharacter()
+ *
+ */
+[[noreturn]] KH_EXPORT void throwIllegalCommandCharacter(char whichOne);
+
+/*!
+ * \internal
+ *
+ * Throws an exception for having an illegal character in the validateCommandString() function.
+ *
+ * \copydetails KirHut::Detail::throwIllegalOptionCharacter()
+ *
+ */
+[[noreturn]] KH_EXPORT void throwIllegalBeginningCommandCharacter(char whichOne);
 
 /*!
  * \internal
@@ -113,27 +133,27 @@ namespace Detail
  * \brief validateOptionString
  * \param str
  */
-constexpr void validateOptionString(string_view str)
+constexpr void validateOptionString(string_view optionString)
 {
     constexpr auto isDigit    = [](char c) -> bool { return c >= '0' and c <= '9'; };
     constexpr auto legalChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -_"sv;
 
-    if (auto pos = str.find_first_not_of(legalChars); pos != string_view::npos)
+    if (auto pos = optionString.find_first_not_of(legalChars); pos != string_view::npos)
     {
-        throwIllegalCharacter(str[pos]);
+        throwIllegalOptionCharacter(optionString[pos]);
     }
 
     bool ran = false;
-    for (string_view word : V::words(str))
+    for (string_view word : V::words(optionString))
     {
         if (word.front() == '-' or word.front() == '+')
         {
-            throwNoPlusMinusBegin(word.front());
+            throwNoPlusMinusBeginOption(word.front());
         }
 
         if (R::all_of(word, isDigit))
         {
-            throwNotJustDigits(word);
+            throwNotJustDigitsOption(word);
         }
 
         ran = true;
@@ -141,7 +161,38 @@ constexpr void validateOptionString(string_view str)
 
     if (not ran)
     {
-        throwNoValidToken(str);
+        throwNoValidOptionToken(optionString);
+    }
+}
+
+/*!
+ * \internal
+ *
+ * \brief validateCommandString
+ * \param commandString
+ */
+constexpr void validateCommandString(string_view commandString)
+{
+    constexpr auto illegalChars         = "=/;,'\"\\\t\n "sv;
+    constexpr auto illegalStartingChars = "-0123456789"sv;
+
+    if (commandString.empty())
+    {
+        // An empty command string is legitimate in the case of not using a command string at all.
+        return;
+    }
+
+    if (R::any_of(illegalStartingChars, [&](char illegal) { return commandString.front() == illegal; }))
+    {
+        throwIllegalBeginningCommandCharacter(commandString.front());
+    }
+
+    for (char check : commandString)
+    {
+        if (size_t loc = illegalChars.find(check); loc != string_view::npos)
+        {
+            throwIllegalCommandCharacter(illegalChars[loc]);
+        }
     }
 }
 
@@ -169,6 +220,33 @@ struct OptionString final
     consteval OptionString(S str) : data(str)
     {
         validateOptionString(data);
+    }
+};
+
+/*!
+ * \internal
+ *
+ * \brief The CommandString class
+ */
+struct CommandString final
+{
+    /*!
+     * \internal
+     *
+     * \brief data
+     */
+    string_view data;
+
+    /*!
+     * \internal
+     *
+     * \brief CommandString
+     * \param str
+     */
+    template <std::convertible_to<string_view> S>
+    consteval CommandString(S str) : data(str)
+    {
+        validateCommandString(data);
     }
 };
 

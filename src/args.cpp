@@ -37,75 +37,6 @@
 namespace KirHut::CLI
 {
 
-string readOptionString(string_view toTest)
-{
-    // This tester uses spaces to delimit each possible option.
-    std::vector<string_view> tokens;
-    constexpr string_view illegalSingleChars = "-0123456789";
-    constexpr string_view illegalAnyChars    = "=/;,'\"\\\t\n";
-
-    size_t first = 0, last = 0;
-
-    if (toTest.size() < 1)
-    {
-        throw IllegalArgument("There must be at least one character in an Option constructor's string.");
-    }
-
-    while ((first = toTest.find_first_not_of(' ', last)) != string::npos)
-    {
-        last = toTest.find(' ', first);
-        tokens.push_back(toTest.substr(first, last - first));
-    }
-
-    if (tokens.size() == 0)
-    {
-        throw IllegalArgument("An option string must consist of more than just space characters.");
-    }
-
-    string retVal;
-
-    for (string_view token : tokens)
-    {
-        if (token.size() == 1 && illegalSingleChars.find(token[0]) != string::npos)
-        {
-            string message = "The character ";
-            message += token[0];
-            message += " is an illegal character to use for a single character Option.";
-            throw IllegalArgument(std::move(message));
-        }
-        else if (token.starts_with('-'))
-        {
-            throw IllegalArgument("An option cannot begin with the dash \"-\" character.");
-        }
-        else if (size_t loc; std::any_of(illegalAnyChars.begin(), illegalAnyChars.end(), [&](char illegal) {
-                     return (loc = token.find(illegal)) != string::npos;
-                 }))
-        {
-            string message = "The ";
-            if (token[loc] == '\n' || token[loc] == '\t')
-            {
-                message += token[loc] == '\n' ? "endline" : "tab";
-            }
-            else
-            {
-                message += token[loc];
-            }
-
-            message += " character is illegal to use in an Option string.";
-            throw IllegalArgument(std::move(message));
-        }
-
-        if (!retVal.empty())
-        {
-            retVal.push_back(' ');
-        }
-
-        retVal.append(token);
-    }
-
-    return retVal;
-}
-
 string_view readNextOptionValue(string_view optionString, size_t &loc) noexcept
 {
     if (loc >= optionString.size())
@@ -290,7 +221,7 @@ Maybe<Option::Match> Option::matches(string_view toCheck) const noexcept
 
 Command::Command(string_view commandName) : commandString(commandName)
 {
-    testCommandString(commandName);
+    Detail::validateCommandString(commandName);
 }
 
 Command::Command(string_view commandName, OptionList &&ops) : Command(commandName)
@@ -636,7 +567,7 @@ template <WhyInvalid invValue, typename... Args>
     throw Error<invValue>(Flags::runtime, fmtStr.get(), FMT::make_format_args(args...));
 }
 
-void Detail::throwIllegalCharacter(char whichOne)
+void Detail::throwIllegalOptionCharacter(char whichOne)
 {
     throwOrExit<WhyInvalid::IllegalArgument>(
         "An illegal character was passed to the Option constructor: {}\nThese are the legal "
@@ -644,19 +575,40 @@ void Detail::throwIllegalCharacter(char whichOne)
         whichOne);
 }
 
-void Detail::throwNoValidToken(string_view str)
+void Detail::throwIllegalCommandCharacter(char whichOne)
+{
+    string_view illegalChar{ &whichOne, 1 };
+
+    switch (whichOne)
+    {
+    case ' ': illegalChar = "space"; break;
+    case '\t': illegalChar = "tab"; break;
+    case '\n': illegalChar = "newline"; break;
+    }
+
+    throwOrExit<WhyInvalid::IllegalArgument>("The {} character is illegal to use in a Command name.", illegalChar);
+}
+
+void Detail::throwIllegalBeginningCommandCharacter(char whichOne)
+{
+    throwOrExit<WhyInvalid::IllegalArgument>(
+        "The {} character cannot be used as the first character in a Command name.",
+        whichOne);
+}
+
+void Detail::throwNoValidOptionToken(string_view str)
 {
     throwOrExit<WhyInvalid::IllegalArgument>(
         "There must be at least one valid token in an Option string. This was the option string passed:\n\"{}\"",
         str);
 }
 
-void Detail::throwNoPlusMinusBegin(char whichOne)
+void Detail::throwNoPlusMinusBeginOption(char whichOne)
 {
     throwOrExit<WhyInvalid::IllegalArgument>("An option cannot begin with the '{}' character.", whichOne);
 }
 
-void Detail::throwNotJustDigits(string_view opStr)
+void Detail::throwNotJustDigitsOption(string_view opStr)
 {
     throwOrExit<WhyInvalid::IllegalArgument>("An option cannot only consist of digits. \"{}\" cannot be an option.",
                                              opStr);

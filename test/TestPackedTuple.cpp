@@ -37,6 +37,27 @@ constexpr bool constexpr_roundtrip()
            not p.template get<3>();
 }
 
+TEST_CASE("Basic constant sanity checks for BitFields", "[packedtuple][BitField]")
+{
+    SECTION("BF:Bool sanity checks")
+    {
+        STATIC_REQUIRE(BF::Bool::bits() == 1);
+        STATIC_REQUIRE(BF::Bool::digits() == 1);
+        STATIC_REQUIRE(BF::Bool::min() == false);
+        STATIC_REQUIRE(BF::Bool::max() == true);
+        STATIC_REQUIRE(std::same_as<bool, BF::Bool::Int>);
+    }
+
+    STATIC_REQUIRE(BF::U8<8>::bits() == 8);
+    STATIC_REQUIRE(BF::U8<8>::digits() == 8);
+    STATIC_REQUIRE(BF::U8<8>::min() == 0);
+    STATIC_REQUIRE(BF::U8<8>::max() == 255);
+    STATIC_REQUIRE(BF::U8<7>::bits() == 7);
+    STATIC_REQUIRE(BF::U8<7>::digits() == 7);
+    STATIC_REQUIRE(BF::U8<7>::min() == 0);
+    STATIC_REQUIRE(BF::U8<7>::max() == 127);
+}
+
 TEST_CASE("Basic single-block packing/unpacking", "[packedtuple][PackedTuple]")
 {
     using PT = PackedTuple<BF::Bool, BF::I32<10>, BF::U32<6>>;
@@ -71,9 +92,9 @@ TEST_CASE("Cross-block packing/unpacking unsigned", "[packedtuple][PackedTuple32
     REQUIRE(pack.get<1>() == 512);
 }
 
-TEST_CASE("Cross-block packing/unpacking signed", "[packedtuple][PackedTuple]")
+TEST_CASE("Cross-block packing/unpacking signed", "[packedtuple][PackedTuple32]")
 {
-    using PT = PackedTuple<BF::I32<29>, BF::I32<9>>;
+    using PT = PackedTuple32<BF::I32<29>, BF::I32<9>>;
 
     PT pack;
     pack.set<0>(-123'456);
@@ -88,20 +109,23 @@ TEST_CASE("Cross-block packing/unpacking signed", "[packedtuple][PackedTuple]")
     REQUIRE(pack.get<1>() == 123);
 }
 
-TEST_CASE("Boolean packing in multi-field tuple", "[packedtuple][PackedTuple]")
+TEST_CASE("Boolean packing in multi-field tuple", "[packedtuple][PackedTuple8]")
 {
-    using PT = PackedTuple<BF::Bool, BF::Bool, BF::Bool, BF::U32<4>>;
+    using PT = PackedTuple8<BF::Bool, BF::Bool, BF::Bool, BF::Bool, BF::U8<4>>;
 
     PT pack;
     pack.set<0>(true);
     pack.set<1>(false);
     pack.set<2>(true);
-    pack.set<3>(9U);
+    pack.set<3>(false);
+    pack.set<4>(9U);
 
-    REQUIRE(pack.get<0>() == true);
-    REQUIRE(pack.get<1>() == false);
-    REQUIRE(pack.get<2>() == true);
-    REQUIRE(pack.get<3>() == 9U);
+    REQUIRE(pack.get<0>());
+    REQUIRE_FALSE(pack.get<1>());
+    REQUIRE(pack.get<2>());
+    REQUIRE_FALSE(pack.get<3>());
+    REQUIRE(pack.get<4>() == 9U);
+    STATIC_REQUIRE(sizeof(PT) == sizeof(u8));
 }
 
 TEST_CASE("Round-trip integrity across complex layout", "[packedtuple][PackedTuple32]")
@@ -130,7 +154,7 @@ TEST_CASE("PackedTuple works in constexpr contexts", "[packedtuple][PackedTuple]
 {
     using PT = PackedTuple<BF::Bool, BF::I32<12>, BF::I32<8>, BF::U32<6>>;
 
-    STATIC_REQUIRE(constexpr_roundtrip<PT>()); // PackedTuple should work in constexpr
+    STATIC_REQUIRE(constexpr_roundtrip<PT>());
 
     constexpr PT p = [] {
         PT temp;
@@ -147,21 +171,18 @@ TEST_CASE("PackedTuple works in constexpr contexts", "[packedtuple][PackedTuple]
     STATIC_REQUIRE(p.get<3>() == 63);
 }
 
-TEMPLATE_TEST_CASE("PackedTuple cross-block and signed behavior is correct", "[PackedTuple]", u8, u16, u32, u64)
+TEMPLATE_TEST_CASE("PackedTuple cross-block and signed behavior is correct",
+                   "[packedtuple][BasicPackedTuple]",
+                   u8,
+                   u16,
+                   u32,
+                   u64)
 {
     using Block = TestType;
-    using namespace BF;
 
-    // Each field must be representable in the chosen block type
     if constexpr (sizeof(Block) >= 1)
     {
-        using T = BasicPackedTuple<Block,
-                                   U8<3>, // fits in 8-bit
-                                   I8<4>, // signed 4-bit field
-                                   U8<5>, // may cross boundary if block < 8 bits
-                                   Bool, // single-bit field
-                                   U8<7> // forces cross-block if block < 8 bits
-                                   >;
+        using T = BasicPackedTuple<Block, BF::U8<3>, BF::I8<4>, BF::U8<5>, BF::Bool, BF::U8<7>>;
 
         T tup{};
         tup.template set<0>(5);
@@ -179,7 +200,7 @@ TEMPLATE_TEST_CASE("PackedTuple cross-block and signed behavior is correct", "[P
 
     if constexpr (sizeof(Block) >= 4)
     {
-        using T = BasicPackedTuple<Block, Bool, I32<19>, I32<22>, Bool, Bool, U32<20>>;
+        using T = BasicPackedTuple<Block, BF::Bool, BF::I32<19>, BF::I32<22>, BF::Bool, BF::Bool, BF::U32<20>>;
 
         T tup{};
         tup.template set<0>(true);
