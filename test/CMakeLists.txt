@@ -37,7 +37,6 @@ set(TESTS_TO_EXECUTE
     Base
     Global
     Invalid
-    Math
     PackedTuple
     Platform
     Ranges
@@ -80,11 +79,14 @@ target_link_libraries(KHTestBed
         Catch2::Catch2WithMain
 )
 
+# catch_discover_tests doesn't automatically know where Qt libraries are, and conventionally, Qt uses CMAKE_PREFIX_PATH
+# to inform the CMake file where Qt's libraries are found. This conveys that information to catch_discover_tests().
 if(CMAKE_PREFIX_PATH)
     set(KH_QT_DL_PATHS "${CMAKE_PREFIX_PATH}/bin")
 else()
     set(KH_QT_DL_PATHS)
 endif()
+
 catch_discover_tests(KHTestBed
     DL_PATHS
         ${PROJECT_BINARY_DIR}

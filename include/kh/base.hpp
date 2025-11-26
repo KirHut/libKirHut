@@ -110,16 +110,16 @@ using namespace std::literals::string_view_literals;
  *
  * The smart pointer names are a bit long, so this makes it easier to type out and have in method signatures.
  */
-template <typename T, typename Deleter_T = std::default_delete<T>>
-using UPtr = std::unique_ptr<T, Deleter_T>;
+template <typename Object_T, typename Deleter_T = std::default_delete<Object_T>>
+using UPtr = std::unique_ptr<Object_T, Deleter_T>;
 
 /*!
  * Alias name for std::shared_ptr.
  *
- * \copydetails KirHut::UPtr<T,Deleter>
+ * \copydetails KirHut::UPtr<Object_T,Deleter_T>
  */
-template <typename T>
-using SPtr = std::shared_ptr<T>;
+template <typename Object_T>
+using SPtr = std::shared_ptr<Object_T>;
 
 /*!
  * Alias name for std::variant.
@@ -152,7 +152,7 @@ using StringViews = span<string_view const> const;
 [[maybe_unused]] constexpr auto maybeNot = std::nullopt;
 
 /*!
- * Single value enumeration type for allowing copying overloads.
+ * Single value enumeration type for copying constructor or method overloads.
  *
  * If you need to have two separate method or constructor overloads that are meant to either take a reference to one of
  * the passed argument types or alternatively copy the argument, this type can be used as an argument type for the
@@ -167,7 +167,9 @@ enum class CopyFlag
 };
 
 /*!
- * \brief The RuntimeFlag enum
+ * Single value enumeration type for signifying that something should be done at runtime instead of compile-time.
+ *
+ *
  */
 enum class RuntimeFlag
 {
@@ -186,9 +188,9 @@ using EmplaceFlag = std::in_place_t;
 /*!
  * Alias name for the std::in_place_type_t type.
  *
- * This allows using a more natural type name for passing the make flag than "std::in_place_type_t". A "type make flag"
- * is really just std::in_place_type<T>, which is a simple one-byte type that just provides an easy way to select a
- * particular template method or function override, just like std::in_place_type_t does.
+ * This allows using a more natural type name for passing the make flag than "std::in_place_type_t". A "typed emplace
+ * flag" is really just std::in_place_type<T>, which is a simple one-byte type that just provides an easy way to select
+ * a particular template method or function override, just like std::in_place_type_t does.
  */
 template <typename T>
 using TypedEmplaceFlag = std::in_place_type_t<T>;
@@ -297,10 +299,20 @@ inline span<byte, sizeof(T)> asWritableBytes(T &object) noexcept
  *
  * This matches with any type that returns true from std::is_arithmetic_v<T>, with the exception of the bool type, as
  * bools are not considered "numbers" for these purposes. Bool types tend to be special cases in a lot of contexts so it
- * is better to remove them.
+ * is frequently better to remove them.
  */
 template <typename T>
 concept Numeric = std::is_arithmetic_v<T> and not std::is_same_v<T, bool>;
+
+/*!
+ * Concept representing an "integer" type, which means a signed or unsigned integer that is not a bool.
+ *
+ * This matches with any type that returns true from std::is_integral_v<T>, with the exception of the bool type, as
+ * bools are not considered "integers" for these purposes. Bool types tend to be special cases in a lot of contexts so
+ * it is frequently better to remove them.
+ */
+template <typename T>
+concept Integral = std::is_integral_v<T> and not std::is_same_v<T, bool>;
 
 /*!
  * Concept to identify if a type is one of a set of distinct types.
@@ -310,8 +322,8 @@ concept Numeric = std::is_arithmetic_v<T> and not std::is_same_v<T, bool>;
  * can easily define other concepts in terms of this concept. You can also check the return types of expressions to
  * ensure that they return one of a distinct set of types.
  */
-template <typename Tested_T, typename First_T, typename... Rest_Ts>
-concept OneOf = std::same_as<Tested_T, First_T> or (std::same_as<Tested_T, Rest_Ts> or ...);
+template <typename Tested_T, typename Accepted_T, typename... Accepted_Ts>
+concept OneOf = std::same_as<Tested_T, Accepted_T> or (std::same_as<Tested_T, Accepted_Ts> or ...);
 
 /*!
  * Concept to identify the different types that may bypass strict aliasing rules in C++.
@@ -332,6 +344,10 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
  * case. In short, this means if \p number is Limits<decltype(number)>::min(), it will not convert to the positive
  * value, but only in that case.
  *
+ * You should prefer the uabs() function over this one in the majority of cases, since you likely do not need a signed
+ * integer anyway. If you must use a signed integer or your calculation simply expects everything to remain signed, and
+ * you know will never have or can handle Limits<decltype(number)>::min(), this function remains available.
+ *
  * This version of abs should not accept passing an unsigned integer type as \p number at all, unlike the std::abs()
  * function overloads, which will perform integer promotions in that case. The failure to compile behavior of this
  * template function is considered desireable and is retained.
@@ -339,9 +355,12 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
  * \param number A signed integer to get the absolute value of (or to return as-is if this is impossible).
  * \return The absolute value of \p number, unless this is impossible to represent, then \p number.
  */
-[[nodiscard]] constexpr auto abs(std::signed_integral auto number) noexcept -> decltype(number)
+template <std::signed_integral Int_T>
+[[nodiscard]] constexpr Int_T abs(Int_T number) noexcept
 {
-    return number < 0 and number != Limits<decltype(number)>::min() ? -number : number;
+    using UInt_T         = std::make_unsigned_t<Int_T>;
+    UInt_T const negBits = ~std::bit_cast<UInt_T>(number) + 1u;
+    return number < 0 ? std::bit_cast<Int_T>(negBits) : number;
 }
 
 /*!
@@ -366,8 +385,10 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
  */
 [[nodiscard]] constexpr auto uabs(std::signed_integral auto number) noexcept -> std::make_unsigned_t<decltype(number)>
 {
-    using Ret_T = std::make_unsigned_t<decltype(number)>;
-    return number < 0 ? static_cast<Ret_T>(KirHut::abs(number + 1)) + 1u : static_cast<Ret_T>(number);
+    using UInt_T               = std::make_unsigned_t<decltype(number)>;
+    UInt_T const uCastedNumber = std::bit_cast<UInt_T>(number);
+    UInt_T const negAbs        = ~uCastedNumber + 1u;
+    return number < 0 ? negAbs : uCastedNumber;
 }
 
 /*!
@@ -378,16 +399,33 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
     return number;
 }
 
+template <Integral Int_T>
+[[nodiscard]] constexpr Int_T shiftMask(size_t shiftedBytes) noexcept
+{
+    if (shiftedBytes == 0)
+    {
+        return 0;
+    }
+
+    auto width = std::bit_width(std::bit_ceil(shiftedBytes)) + 2;
+    if (Limits<Int_T>::digits >= width)
+    {
+        return Limits<Int_T>::max();
+    }
+
+    return Limits<Int_T>::max() >> (Limits<Int_T>::digits - width);
+}
+
 /*!
- * Perform a bit shift of a given mask to a given bit location, but without UB risk.
+ * Perform a bitwise logical left shift of a given integer, but without UB risk.
  *
  * In C and C++, if you perform a bitwise left shift to a bit location beyond the size in bits of the integer you are
- * modifying, or you use a negative value for the shift amount, the behavior is undefined. This is fine if you are very
- * conscious of what values are passed to the bit shift operators, but in most cases it can be much safer to use
- * something that has guaranteed defined behavior when a less-than expected value is passed. The maskAt function is just
- * such a function: If \p location is greater than the number of bits in \p mask, than the "bit shift operation" simply
- * results in 0. If \p location is negative, it shifts to the right instead and uses the same "zeroing" technique, but
- * otherwise behaves as a positive \p location.
+ * modifying the behavior is undefined. This is fine if you are very careful what values are passed to the bit shift
+ * operators, but in most cases it can be much safer to use something that has guaranteed defined behavior when a
+ * less-than expected value is passed. The shl function is just such a function: If \p amount is greater than the number
+ * of bits in \p value, than the "bit shift operation" simply results in 0. The \p amount is an unsigned integer, so
+ * signed integers will be automatically converted, including negative values, which will inevitably result in shl()
+ * returning 0.
  *
  * "Oh, so it's like a shitty std::rotl?"
  *
@@ -397,18 +435,43 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
  *
  * This function is constexpr like std::rotl() so that it may be used at compile time.
  *
- * \param mask The bitmask to apply the bit shift operation to.
- * \param location The number of bits to shift left (or right if negative).
- * \return The \p mask shifted to the desired \p location.
+ * \param value The signed or unsigned integer to apply the bit shift operation to.
+ * \param amount The number of bits to shift left.
+ * \return The \p value left-shifted by \p amount bits.
  */
-[[nodiscard]] constexpr auto maskAt(std::unsigned_integral auto mask, int location) noexcept -> decltype(mask)
+[[nodiscard]] constexpr auto shl(Integral auto value, unsigned int amount) noexcept -> decltype(value)
 {
-    if (auto shift = uabs(location); shift < sizeof(mask) * Platform::bitsInByte)
-    {
-        return location < 0 ? mask >> shift : mask << shift;
-    }
+    return amount < sizeof(value) * Platform::bitsInByte ? value << amount : 0;
+}
 
-    return 0;
+/*!
+ * Perform a bitwise arithmetic right shift of a given integer, but without UB risk.
+ *
+ * In C and C++, if you perform a bitwise right shift to a bit location beyond the size in bits of the integer you are
+ * modifying the behavior is undefined. This is fine if you are very careful what values are passed to the bit shift
+ * operators, but in most cases it can be much safer to use something that has guaranteed defined behavior when a
+ * less-than expected value is passed. The shr function is just such a function: If \p amount is greater than the number
+ * of bits in \p value, than the "bit shift operation" simply results in the same thing if two consecutive shifts were
+ * performed, so 0 for unsigned \p value and non-negative signed \p value, and -1 for negative signed \p value. The \p
+ * amount is an unsigned integer, so signed integers will be automatically converted, including negative values, which
+ * will inevitably result in shl() returning 0.
+ *
+ * "Oh, so it's like a shitty std::rotr?"
+ *
+ * Well, kind of, but no. The std::rotr() function *rotates* a set of bits, whereas this function **only shifts** the
+ * bits, it does not rotate them. Sometimes this is preferred over a rotation, when you want bits to fall off instead of
+ * appearing in the lower bits.
+ *
+ * This function is constexpr like std::rotr() so that it may be used at compile time.
+ *
+ * \param value The signed or unsigned integer to apply the bit shift operation to.
+ * \param amount The number of bits to shift right.
+ * \return The \p value right-shifted by \p amount bits.
+ */
+[[nodiscard]] constexpr auto shr(Integral auto value, unsigned int amount) noexcept -> decltype(value)
+{
+    auto const bottom = value < 0 ? -1 : 0;
+    return amount < sizeof(value) * Platform::bitsInByte ? value >> amount : bottom;
 }
 
 /*!
@@ -455,7 +518,7 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
     }
 
     constexpr int shiftAmount = Platform::bitsInByte;
-    return (bytes >> shiftAmount) | (bytes << shiftAmount);
+    return shl(bytes, shiftAmount) | shr(bytes, shiftAmount);
 }
 
 /*!
@@ -486,15 +549,15 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
 #endif
     }
 
-    constexpr int outerShift = Platform::bitsInByte * 3;
-    constexpr int innerShift = Platform::bitsInByte * 1;
-    constexpr u32 bitMask    = 0xFF;
+    constexpr unsigned int outerShift = Platform::bitsInByte * 3;
+    constexpr unsigned int innerShift = Platform::bitsInByte * 1;
+    constexpr u32 bitMask             = 0xFF;
 
     // clang-format off
-    return ((bytes & maskAt(bitMask, Platform::bitsInByte * 0)) << outerShift) |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 1)) << innerShift) |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 2)) >> innerShift) |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 3)) >> outerShift);
+    return shl(bytes & shl(bitMask, Platform::bitsInByte * 0), outerShift) |
+           shl(bytes & shl(bitMask, Platform::bitsInByte * 1), innerShift) |
+           shr(bytes & shl(bitMask, Platform::bitsInByte * 2), innerShift) |
+           shr(bytes & shl(bitMask, Platform::bitsInByte * 3), outerShift);
     // clang-format on
 }
 
@@ -526,21 +589,21 @@ concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, st
 #endif
     }
 
-    constexpr int outerShift    = Platform::bitsInByte * 7;
-    constexpr int midOuterShift = Platform::bitsInByte * 5;
-    constexpr int midInnerShift = Platform::bitsInByte * 3;
-    constexpr int innerShift    = Platform::bitsInByte * 1;
-    constexpr u64 bitMask       = 0xFF;
+    constexpr unsigned int outerShift    = Platform::bitsInByte * 7;
+    constexpr unsigned int midOuterShift = Platform::bitsInByte * 5;
+    constexpr unsigned int midInnerShift = Platform::bitsInByte * 3;
+    constexpr unsigned int innerShift    = Platform::bitsInByte * 1;
+    constexpr u64 bitMask                = 0xFF;
 
     // clang-format off
-    return ((bytes & maskAt(bitMask, Platform::bitsInByte * 0)) << outerShift)    |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 1)) << midOuterShift) |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 2)) << midInnerShift) |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 3)) << innerShift)    |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 4)) >> innerShift)    |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 5)) >> midInnerShift) |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 6)) >> midOuterShift) |
-           ((bytes & maskAt(bitMask, Platform::bitsInByte * 7)) >> outerShift);
+    return shl(bytes & shl(bitMask, Platform::bitsInByte * 0), outerShift)    |
+           shl(bytes & shl(bitMask, Platform::bitsInByte * 1), midOuterShift) |
+           shl(bytes & shl(bitMask, Platform::bitsInByte * 2), midInnerShift) |
+           shl(bytes & shl(bitMask, Platform::bitsInByte * 3), innerShift)    |
+           shr(bytes & shl(bitMask, Platform::bitsInByte * 4), innerShift)    |
+           shr(bytes & shl(bitMask, Platform::bitsInByte * 5), midInnerShift) |
+           shr(bytes & shl(bitMask, Platform::bitsInByte * 6), midOuterShift) |
+           shr(bytes & shl(bitMask, Platform::bitsInByte * 7), outerShift);
     // clang-format on
 }
 
@@ -1184,7 +1247,7 @@ template <Numeric T, ByteType Byte_T, size_t fixedSize>
 /*!
  * Accept a Numeric \p value of any kind, and write it to the provided \p dest byte buffer as a big endian value.
  *
- * \param value The numeric value (a signed or unsigned integer, or a floating point type) to write as big endian.
+ * \param value The Numeric value (a signed or unsigned integer, or a floating point type) to write as big endian.
  * \param dest The buffer to write the big endian data for \p value.
  * \return A pointer to the first byte in \p dest that was **not** written to as a result of this call.
  */

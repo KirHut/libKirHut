@@ -68,7 +68,7 @@ struct Error;
 namespace Detail
 {
 
-std::string tryGetStackTrace() KH_THROWS_BADALLOC;
+KH_EXPORT std::string tryGetStackTrace() KH_THROWS_BADALLOC;
 
 /*!
  * \internal

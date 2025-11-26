@@ -288,74 +288,83 @@ TEMPLATE_TEST_CASE("uabs() returns the input unchanged for unsigned types",
     }
 }
 
-template <std::unsigned_integral UInt_T>
-consteval UInt_T alternatingBits() noexcept
+template <Integral Int_T>
+consteval Int_T alternatingBits() noexcept
 {
-    std::array<unsigned char, sizeof(UInt_T)> byteArray{};
+    std::array<unsigned char, sizeof(Int_T)> byteArray{};
     R::fill(byteArray, 0x55);
-    return std::bit_cast<UInt_T>(byteArray);
+    return std::bit_cast<Int_T>(byteArray);
 }
 
-template <std::unsigned_integral auto uInt>
-constexpr bool shiftFunction(int pos)
+TEST_CASE("Basic shl() sanity checks (constexpr)", "[base][utility][shl][constexpr]")
 {
-    if (uabs(pos) >= sizeof(uInt) * Platform::bitsInByte)
-    {
-        // This sanity check prevents a warning.
-        return false;
-    }
-
-    return maskAt(uInt, pos) == static_cast<decltype(uInt)>(pos < 0 ? uInt >> uabs(pos) : uInt << pos);
+    STATIC_REQUIRE(shl(1u, 1) == 2u);
+    STATIC_REQUIRE(shl(1u, 5) == 32u);
+    STATIC_REQUIRE(shl(1, 3) == 8);
+    STATIC_REQUIRE(shl(-1, 1) == -2);
+    STATIC_REQUIRE(shl(-1, 5) == -32);
+    constexpr auto one = 1;
+    STATIC_REQUIRE(shl(one, Limits<decltype(one)>::digits) == Limits<decltype(one)>::min());
 }
 
-TEMPLATE_TEST_CASE("maskAt() behaves correctly for all supported types",
-                   "[base][utility][maskAt]",
-                   u8,
-                   u16,
-                   u32,
-                   u64,
-                   uWidest)
+TEMPLATE_TEST_CASE("Using shl() method in all conditions", "[base][utility][shl]", u8, i8, u16, i16, u32, i32, u64, i64)
 {
-    constexpr int bits         = Limits<TestType>::digits;
-    constexpr TestType full    = Limits<TestType>::max();
-    constexpr TestType altBits = alternatingBits<TestType>();
+    constexpr TestType zero = 0;
+    constexpr TestType test = alternatingBits<TestType>();
+    constexpr auto maxShift = static_cast<unsigned int>(sizeof(TestType) * Platform::bitsInByte);
 
-    TestType volatile vfull    = full;
-    TestType volatile vAltBits = altBits;
-
-    SECTION("Basic constexpr sanity checks")
+    SECTION("Test each shift position")
     {
-        STATIC_REQUIRE(maskAt(altBits, 0) == altBits);
-        STATIC_REQUIRE(maskAt(altBits, bits) == 0);
-        STATIC_REQUIRE(maskAt(altBits, bits + 1) == 0);
-        STATIC_REQUIRE(maskAt(altBits, -bits) == 0);
-        STATIC_REQUIRE(maskAt(altBits, -bits - 1) == 0);
-        STATIC_REQUIRE(maskAt(altBits, Limits<int>::max()) == 0);
-        STATIC_REQUIRE(maskAt(altBits, Limits<int>::min()) == 0);
+        unsigned int shift = GENERATE_COPY(range(0u, maxShift));
+        REQUIRE(shl(test, shift) == static_cast<TestType>(test << shift));
     }
 
-    SECTION("Basic runtime sanity checks")
+    SECTION("Ensure over shifts are zero")
     {
-        REQUIRE(maskAt(vfull, 0) == full);
-        REQUIRE(maskAt(vfull, bits) == 0);
-        REQUIRE(maskAt(vfull, bits + 1) == 0);
-        REQUIRE(maskAt(vfull, -bits) == 0);
-        REQUIRE(maskAt(vfull, -bits - 1) == 0);
-        REQUIRE(maskAt(vfull, Limits<int>::max()) == 0);
-        REQUIRE(maskAt(vfull, Limits<int>::min()) == 0);
+        unsigned int shift = GENERATE_COPY(take(100, random(maxShift, Limits<unsigned int>::max())));
+        REQUIRE(shl(test, shift) == zero);
+    }
+}
+
+TEST_CASE("Basic shr() sanity checks (constexpr)", "[base][utility][shr][constexpr]")
+{
+    STATIC_REQUIRE(shr(2u, 1) == 1u);
+    STATIC_REQUIRE(shr(32u, 5) == 1u);
+    STATIC_REQUIRE(shr(8, 3) == 1);
+    STATIC_REQUIRE(shr(-2, 1) == -1);
+    STATIC_REQUIRE(shr(-32, 5) == -1);
+    constexpr auto negOne = -1;
+    STATIC_REQUIRE(shr(Limits<decltype(negOne)>::min(), Limits<decltype(negOne)>::digits) == negOne);
+}
+
+TEMPLATE_TEST_CASE("Using shr() method in all conditions", "[base][utility][shr]", u8, i8, u16, i16, u32, i32, u64, i64)
+{
+    constexpr TestType zero = 0;
+    constexpr TestType test = alternatingBits<TestType>();
+    constexpr auto maxShift = static_cast<unsigned int>(sizeof(TestType) * Platform::bitsInByte);
+
+    SECTION("Test each shift position")
+    {
+        unsigned int shift = GENERATE_COPY(range(0u, maxShift));
+        REQUIRE(shr(test, shift) == static_cast<TestType>(test >> shift));
     }
 
-    SECTION("location in constexpr maskAt() is shifting correctly for positive and negative values")
+    SECTION("Ensure over shifts are zero")
     {
-        STATIC_REQUIRE(R::all_of(V::iota(-bits + 1, bits), shiftFunction<full>));
-        STATIC_REQUIRE(R::all_of(V::iota(-bits + 1, bits), shiftFunction<altBits>));
+        unsigned int shift = GENERATE_COPY(take(100, random(maxShift, Limits<unsigned int>::max())));
+        REQUIRE(shr(test, shift) == zero);
     }
 
-    SECTION("location in runtime maskAt() is shifting correctly for positive and negative values")
+    if constexpr (std::is_signed_v<TestType>)
     {
-        int pos = GENERATE(range(-bits + 1, bits + 0)); // It will not build without bits + 0 for some reason.
-        REQUIRE(maskAt(vfull, pos) == static_cast<TestType>(pos < 0 ? full >> uabs(pos) : full << pos));
-        REQUIRE(maskAt(vAltBits, pos) == static_cast<TestType>(pos < 0 ? altBits >> uabs(pos) : altBits << pos));
+        constexpr TestType negOne = -1;
+        constexpr TestType test2  = ~test; // alternatingBits never returns a negative value, so this will be.
+
+        SECTION("Ensure negative over shifts are -1")
+        {
+            unsigned int shift = GENERATE_COPY(take(100, random(maxShift, Limits<unsigned int>::max())));
+            REQUIRE(shr(test2, shift) == negOne);
+        }
     }
 }
 
@@ -788,7 +797,7 @@ TEST_CASE("StringLike concept constraints", "[base][concepts]")
         struct CustomStringLike
         {
             using value_type = char;
-            operator std::basic_string_view<char>() const
+            operator std::basic_string_view<value_type>() const
             {
                 return "hi";
             }

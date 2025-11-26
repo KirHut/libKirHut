@@ -17,28 +17,33 @@ if(POLICY CMP0141)
 endif()
 
 project(libKirHut
-    VERSION 0.2.0
+    VERSION 0.3.0
     LANGUAGES CXX
     DESCRIPTION "The KirHut Software Company General C++ Development Library"
 )
 
 include(CMakeDependentOption)
-include(FetchContent)
 include(GenerateExportHeader)
 include(cmake/kh_compiler_info.cmake)
 
 kh_find_compiler_info()
 
-if(KH_CLANG_GNUC_COMPATIBLE)
-    cmake_host_system_information(RESULT KH_SUPPORTS_128_TYPES QUERY IS_64BIT)
+if(KH_CLANG_GNUC_COMPATIBLE AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(KH_SUPPORTS_128_TYPES ON)
 else()
     set(KH_SUPPORTS_128_TYPES OFF)
 endif()
 
-if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    set(KH_LIB_BUILD_TESTS_DEFAULT ON)
+if(WIN32)
+    set(KH_CAN_TURN_OFF_FETCHCONTENT OFF)
 else()
-    set(KH_LIB_BUILD_TESTS_DEFAULT OFF)
+    set(KH_CAN_TURN_OFF_FETCHCONTENT ON)
+endif()
+
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    set(KH_BUILD_TESTS_DEFAULT ON)
+else()
+    set(KH_BUILD_TESTS_DEFAULT OFF)
 endif()
 
 string(CONCAT KH_MUST_HAVE_16_32_64_STRING
@@ -57,9 +62,9 @@ option(KH_MUST_HAVE_16BIT_TYPES "Require that the platform has 16 bit integers."
 option(KH_MUST_HAVE_32BIT_TYPES "Require that the platform has 32 bit integers." OFF)
 option(KH_MUST_HAVE_64BIT_TYPES "Require that the platform has 64 bit integers." OFF)
 
-option(KH_USES_QT "Build libKirHut with Qt extensions enabled (implies KH_NO_BADALLOC)." OFF)
+option(KH_USES_QT "Build libKirHut with Qt dependency (implies KH_NO_BADALLOC)." OFF)
 option(KH_USES_FMT "Build libKirHut with {fmt} dependency instead of std::format." ON)
-option(KH_LIB_BUILD_TESTS "Build the tests for this library." ${KH_LIB_BUILD_TESTS_DEFAULT})
+option(KH_BUILD_TESTS "Build the tests for this library." ${KH_BUILD_TESTS_DEFAULT})
 option(BUILD_SHARED_LIBS "Build this library (and its dependencies) as shared libraries." ON)
 option(KH_NO_BADALLOC "Remove support for throwing or catching std::bad_alloc." OFF)
 option(KH_NO_EXCEPTIONS "Removes exception support entirely, along with the Error type (implies KH_NO_BADALLOC)." OFF)
@@ -76,6 +81,12 @@ cmake_dependent_option(KH_USE_128BIT_TYPES
     KH_SUPPORTS_128_TYPES
     OFF
 )
+cmake_dependent_option(KH_ALLOW_FETCHCONTENT
+    "Allow this library to download dependencies using FetchContent."
+    ON
+    KH_CAN_TURN_OFF_FETCHCONTENT
+    ON
+)
 
 mark_as_advanced(
     KH_MUST_HAVE_16_32_64
@@ -83,7 +94,6 @@ mark_as_advanced(
     KH_MUST_HAVE_16BIT_TYPES
     KH_MUST_HAVE_32BIT_TYPES
     KH_MUST_HAVE_64BIT_TYPES
-    KH_LIB_BUILD_TESTS
     KH_NO_BADALLOC
     KH_NO_EXCEPTIONS
     KH_INCLUDE_ARG_PARSER
@@ -94,6 +104,10 @@ mark_as_advanced(
     KH_INCLUDE_TOML
     KH_OVERRIDE_PLATFORM_SAFETY
 )
+
+if(KH_ALLOW_FETCHCONTENT)
+    include(FetchContent)
+endif()
 
 find_package(Doxygen QUIET)
 if(Doxygen_FOUND)
@@ -142,21 +156,26 @@ if(WIN32)
 endif()
 
 if(KH_USES_FMT)
-    FetchContent_Declare(
-        fmt
-        GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-        GIT_TAG 40626af88bd7df9a5fb80be7b25ac85b122d6c21
-        FIND_PACKAGE_ARGS 11.2.0
-    )
+    find_package(fmt 10 CONFIG QUIET)
 
-    FetchContent_MakeAvailable(fmt)
-    target_compile_features(fmt PUBLIC cxx_std_20)
-    set_target_properties(fmt
-        PROPERTIES
-            ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-            LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-            RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-    )
+    if(NOT fmt_FOUND AND KH_ALLOW_FETCHCONTENT)
+        FetchContent_Declare(
+            fmt
+            GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+            GIT_TAG a0b8a92e3d1532361c2f7feb63babc5c18d00ef2
+        )
+
+        FetchContent_MakeAvailable(fmt)
+        target_compile_features(fmt PUBLIC cxx_std_20)
+        set_target_properties(fmt
+            PROPERTIES
+                ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+        )
+    else()
+        message(FATAL_ERROR "libKirHut depends on {fmt}, but it was not found.")
+    endif()
 endif()
 
 set(libKirHut_HEADERS
@@ -167,7 +186,6 @@ set(libKirHut_HEADERS
     filesystem.hpp
     global.hpp
     invalid.hpp
-    math.hpp
     md5hash.hpp
     packedtuple.hpp
     platform.hpp
@@ -234,6 +252,9 @@ set(libKirHut_COMPILE_DEFS
     $<$<BOOL:${KH_MUST_HAVE_64BIT_TYPES}>:KH_MUST_HAVE_64BIT_TYPES>
     $<$<BOOL:${KH_OVERRIDE_PLATFORM_SAFETY}>:KH_OVERRIDE_PLATFORM_SAFETY>
     $<$<BOOL:${KH_CLANG_GNUC_COMPATIBLE}>:KH_CLANG_GNUC_COMPATIBLE>
+    # This is necessary because this library supports building with fmtlib version 10, which still uses these deprecated
+    # array iterators. As such, this CMake just silences that warning since it is irrelevant in our use case.
+    $<$<BOOL:${KH_COMPILED_WITH_MSVC}>:_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING>
     ${KH_COMPILED_WITH_NAME}=${${KH_COMPILED_WITH_NAME}}
     $<$<BOOL:${KH_KERNEL_VERSION}>:KH_KERNEL_VERSION=${KH_KERNEL_VERSION}>
     KH_COMPILER_DISPLAY_STRING="${KH_COMPILER_DISPLAY_STRING}"
@@ -292,7 +313,7 @@ endif()
 # least C++20 support.
 target_compile_features(libKirHutInterface INTERFACE cxx_std_20)
 
-if(KH_LIB_BUILD_TESTS)
+if(KH_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 

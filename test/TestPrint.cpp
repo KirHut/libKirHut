@@ -128,7 +128,7 @@ TEST_CASE("IO::vprintln() appends newline to FILE*", "[print][io_vprintln]")
     std::fflush(tmp.get());
     std::rewind(tmp.get());
     char buf[16];
-    std::fgets(buf, sizeof buf, tmp.get());
+    REQUIRE(std::fgets(buf, sizeof buf, tmp.get()));
     REQUIRE(std::string(buf) == "Test\n");
 }
 
@@ -140,7 +140,7 @@ TEST_CASE("IO::println() appends newline to FILE*", "[print][io_println]")
     std::fflush(tmp.get());
     std::rewind(tmp.get());
     char buf[16];
-    std::fgets(buf, sizeof buf, tmp.get());
+    REQUIRE(std::fgets(buf, sizeof buf, tmp.get()));
     REQUIRE(std::string(buf) == "Test\n");
 }
 

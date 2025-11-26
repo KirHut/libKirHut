@@ -217,11 +217,14 @@ struct OptionString final
      * \param str
      */
     template <std::convertible_to<string_view> S>
-    consteval OptionString(S str) : data(str)
-    {
-        validateOptionString(data);
-    }
+    consteval OptionString(S str);
 };
+
+template <std::convertible_to<string_view> S>
+consteval OptionString::OptionString(S str) : data(str)
+{
+    validateOptionString(data);
+}
 
 /*!
  * \internal
@@ -244,11 +247,14 @@ struct CommandString final
      * \param str
      */
     template <std::convertible_to<string_view> S>
-    consteval CommandString(S str) : data(str)
-    {
-        validateCommandString(data);
-    }
+    consteval CommandString(S str);
 };
+
+template <std::convertible_to<string_view> S>
+consteval CommandString::CommandString(S str) : data(str)
+{
+    validateCommandString(data);
+}
 
 } // namespace Detail
 
@@ -435,10 +441,7 @@ struct KH_EXPORT Option final
          *
          * \return Whether or not this Match is expecting an additional parameter from the user.
          */
-        [[nodiscard]] constexpr bool requiresString() const noexcept
-        {
-            return parameterString.has_value() and parameterString->empty();
-        }
+        [[nodiscard]] constexpr bool requiresString() const noexcept;
     };
 
     /*!
@@ -462,6 +465,11 @@ struct KH_EXPORT Option final
      */
     [[nodiscard]] Maybe<Match> matches(string_view toCheck) const noexcept;
 };
+
+constexpr bool Option::Match::requiresString() const noexcept
+{
+    return parameterString.has_value() and parameterString->empty();
+}
 
 /*!
  * An alias for a std::vector of Option objects.

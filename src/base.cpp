@@ -56,7 +56,7 @@ static_assert(not Platform::BigEndian or not Platform::LittleEndian,
 
 // I know of no systems in modern use that do not use two's complement binary representations of integers, but if for
 // some bizarre reason this libary is built on one, it should be made clear this is not supported.
-static_assert(std::bit_cast<unsigned int>(0) == std::bit_cast<unsigned int>(-0),
+static_assert(0u == std::bit_cast<unsigned int>(-0),
               "libKirHut does not support compilation to one's complement or sign-magnitude platforms.");
 
 /*

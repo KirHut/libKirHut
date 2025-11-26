@@ -28,12 +28,20 @@
 
 using namespace KirHut;
 
-TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges][utility]")
+TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges][utility][getIters]")
 {
     std::vector<int> nums{ 1, 2, 3, 4, 5 };
     auto [f, b] = R::getIters(nums);
     REQUIRE(f == nums.begin());
     REQUIRE(b == nums.end());
+}
+
+TEST_CASE("The R::getIters() method and the IterPair object", "[ranges][utility][getIters][IterPair]")
+{
+    std::vector<int> nums{ 1, 2, 3, 4, 5 };
+    auto pair = R::getIters(nums);
+    REQUIRE(pair.begin == nums.begin());
+    REQUIRE(pair.end == nums.end());
 }
 
 TEST_CASE("Separators basic behavior", "[ranges][Separators]")

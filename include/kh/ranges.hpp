@@ -52,10 +52,22 @@ namespace R
 
 using namespace std::ranges;
 
+template <typename Begin_T, typename End_T>
+struct IterPair
+{
+    Begin_T begin;
+    End_T end;
+
+    IterPair(Begin_T &&b, End_T &&e) : begin(std::move(b)), end(std::move(e))
+    {
+        // No further implementation.
+    }
+};
+
 /*!
  * Simple Utility function that puts the std::ranges::begin() and std::ranges::end() iterators in a std::pair.
  *
- * The returned value is always a std::pair of std::ranges iterators. The intent is to assign the returned value to a
+ * The returned value is always an IterPair of std::ranges iterators. The intent is to assign the returned value to a
  * structured binding to make getting the begin and end iterators of a range very easy.
  *
  * ~~~
@@ -65,11 +77,11 @@ using namespace std::ranges;
  * Why doesn't this exist in the standard library? I haven't the faintest idea.
  *
  * \param r A std::ranges::range type to get the begin and end iterators from.
- * \return A std::pair of the std::range::begin() and std::range::end() iterators.
+ * \return An IterPair of the std::range::begin() and std::range::end() iterators.
  */
-[[nodiscard]] constexpr auto getIters(range auto &r) noexcept -> decltype(std::pair{ R::begin(r), R::end(r) })
+[[nodiscard]] constexpr auto getIters(range auto &r) noexcept -> decltype(IterPair{ R::begin(r), R::end(r) })
 {
-    return std::pair{ R::begin(r), R::end(r) };
+    return IterPair{ R::begin(r), R::end(r) };
 }
 
 /*!

@@ -28,6 +28,7 @@
 
 # if defined(KH_USES_FMT)
 #  include "fmt/ostream.h"
+#  include "fmt/color.h"
 # elif defined(__cpp_lib_print)
 #  include <print>
 # endif
@@ -66,15 +67,22 @@ namespace KirHut::IO
  * Formats \p form using the passed in \p args, and then outputs that result to the passed in \p stream. If \p stream is
  * a nullptr, then this method will actually do nothing at all (including perform the formatting). This means that if
  * \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an invalid format
- * string. Much like std::vprint_nonunicode in C++23, this method will throw FMT::format_error if the \p form or \p args
+ * string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the \p form or \p args
  * are invalid for each other, will throw std::system_error if there is a failure to write to the underlying stream, and
  * will throw std::bad_alloc when there is an allocation failure.
  *
- * This function will always output the characters directly as they are to the underlying \p stream. It will **not**
- * perform any UTF-8 to native output encoding conversion like vprint(string_view,FMT::format_args) does. This is
- * because the functions that output to a std::FILE or std::ostream are assumed to be output to a file or network
- * destination, which would find precise control of the output to be preferable to automatic character encoding
- * conversions that outputting to a terminal would find useful.
+ * This function will attempt to perform UTF-8 transcoding to the appropriate output format for the terminal. Namely,
+ * this method will detect if you pass in stdout or stderr as \p stream, and if you do, it will divert the text to an
+ * appropriate UTF-8 transcoding output file. Otherwise, it will simply write the output bytes directly to the given
+ * \p stream. The bytes may or may not be UTF-8 text, however that is generally assumed. This function makes no further
+ * attempts beyond directly checking if \p stream is stdout or stderr, since this method is assumed to be output to a
+ * file or network destination, and in those cases precise control of the output is preferable to automatic character
+ * encoding conversions.
+ *
+ * If this library is compiled with {fmt} support, this method will always call the
+ * fmt::vprint(std::FILE*,fmt::string_view,fmt::format_args) overload, otherwise it depends on if this library is
+ * compiled with C++23 support. If it is, it uses std::vprint_unicode(std::FILE*,std::string_view,std::format_args), or
+ * it will just use std::vformat(std::string_view,std::format_args) and fputs() the returned string to the \p stream.
  *
  * \warning The behavior of this method is undefined if the \p stream pointer is non-null and does not point to a valid
  * C output stream. A nullptr will do nothing, but this method cannot prevent passing invalid pointers as a std::FILE.
@@ -98,6 +106,15 @@ KH_EXPORT void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args
  * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
  */
 KH_EXPORT void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
+
+#if defined(KH_USES_FMT) or defined(KH_PRIV_DOCS)
+/*!
+ * \brief vprint
+ * \param form
+ * \param args
+ */
+KH_EXPORT void vprint(fmt::text_style style, fmt::string_view form, fmt::format_args const &args);
+#endif
 
 /*!
  * \brief vprint
@@ -175,6 +192,21 @@ void print(std::ostream &stream, FMT::format_string<Arg_Ts...> formatString, Arg
     IO::vprint(stream, formatString.get(), std::make_format_args(args...));
 # endif
 }
+
+# if defined(KH_USES_FMT) or defined(KH_PRIV_DOCS)
+/*!
+ * \brief print
+ * \param formatString
+ * \param args
+ */
+template <typename... Arg_Ts>
+void print(fmt::text_style style, fmt::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
+{
+    // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
+    // to print must go through vprint(). This still benefits from compile time format checking.
+    IO::vprint(style, formatString.get(), FMT::make_format_args(args...));
+}
+# endif
 
 /*!
  * \brief print

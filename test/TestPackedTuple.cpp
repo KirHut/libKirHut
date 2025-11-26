@@ -62,17 +62,41 @@ TEST_CASE("Basic single-block packing/unpacking", "[packedtuple][PackedTuple]")
 {
     using PT = PackedTuple<BF::Bool, BF::I32<10>, BF::U32<6>>;
 
-    PT pack;
-    pack.set<0>(true);
-    pack.set<1>(511);
-    pack.set<2>(63);
+    PT pack{ true, 511, 63 };
 
-    REQUIRE(pack.get<0>() == true);
+    REQUIRE(pack.get<0>());
     REQUIRE(pack.get<1>() == 511);
     REQUIRE(pack.get<2>() == 63);
 
     pack.set<1>(-1);
     REQUIRE(pack.get<1>() == -1);
+}
+
+TEST_CASE("PackedTuple constructor with braced initializer list", "[packedtuple][PackedTuple]")
+{
+    using PT = PackedTuple<BF::U32<10>, BF::Bool, BF::Bool, BF::I64<52>>;
+
+    PT data{ 512u, true, false, -375'000 };
+
+    REQUIRE(data.get<0>() == 512u);
+    REQUIRE(data.get<1>());
+    REQUIRE_FALSE(data.get<2>());
+    REQUIRE(data.get<3>() == -375'000);
+
+    STATIC_REQUIRE(sizeof(PT) == sizeof(u64));
+}
+
+TEST_CASE("PackedTuple constructor from std::tuple", "[packedtuple][PackedTuple]")
+{
+    using T = PackedTuple<BF::U32<10>, BF::Bool, BF::Bool, BF::I64<52>>;
+
+    auto tup = std::tuple{ 123u, false, true, -99'999LL };
+    T data{ tup };
+
+    REQUIRE(data.get<0>() == 123u);
+    REQUIRE_FALSE(data.get<1>());
+    REQUIRE(data.get<2>());
+    REQUIRE(data.get<3>() == -99'999LL);
 }
 
 TEST_CASE("Cross-block packing/unpacking unsigned", "[packedtuple][PackedTuple32]")
@@ -128,6 +152,20 @@ TEST_CASE("Boolean packing in multi-field tuple", "[packedtuple][PackedTuple8]")
     STATIC_REQUIRE(sizeof(PT) == sizeof(u8));
 }
 
+TEST_CASE("Boolean packing in multi-field tuple (constexpr)", "[constexpr][packedtuple][PackedTuple8]")
+{
+    using PT = PackedTuple8<BF::Bool, BF::Bool, BF::Bool, BF::Bool, BF::U8<4>>;
+
+    constexpr PT pack{ true, false, true, false, 9u };
+
+    STATIC_REQUIRE(pack.get<0>());
+    STATIC_REQUIRE_FALSE(pack.get<1>());
+    STATIC_REQUIRE(pack.get<2>());
+    STATIC_REQUIRE_FALSE(pack.get<3>());
+    STATIC_REQUIRE(pack.get<4>() == 9U);
+    STATIC_REQUIRE(sizeof(PT) == sizeof(u8));
+}
+
 TEST_CASE("Round-trip integrity across complex layout", "[packedtuple][PackedTuple32]")
 {
     using PT = PackedTuple32<BF::Bool, BF::I32<19>, BF::I32<22>, BF::Bool, BF::Bool, BF::U32<20>>;
@@ -156,14 +194,7 @@ TEST_CASE("PackedTuple works in constexpr contexts", "[packedtuple][PackedTuple]
 
     STATIC_REQUIRE(constexpr_roundtrip<PT>());
 
-    constexpr PT p = [] {
-        PT temp;
-        temp.set<0>(true);
-        temp.set<1>(2047);
-        temp.set<2>(-12);
-        temp.set<3>(63);
-        return temp;
-    }();
+    constexpr PT p{ true, 2047, -12, 63 };
 
     STATIC_REQUIRE(p.get<0>() == true);
     STATIC_REQUIRE(p.get<1>() == 2047);
@@ -180,23 +211,19 @@ TEMPLATE_TEST_CASE("PackedTuple cross-block and signed behavior is correct",
 {
     using Block = TestType;
 
-    if constexpr (sizeof(Block) >= 1)
-    {
-        using T = BasicPackedTuple<Block, BF::U8<3>, BF::I8<4>, BF::U8<5>, BF::Bool, BF::U8<7>>;
+    using T = BasicPackedTuple<Block, BF::U8<3>, BF::I8<4>, BF::U8<5>, BF::Bool, BF::U8<7>>;
+    T tup{};
+    tup.template set<0>(5);
+    tup.template set<1>(-3);
+    tup.template set<2>(17);
+    tup.template set<3>(true);
+    tup.template set<4>(92);
 
-        T tup{};
-        tup.template set<0>(5);
-        tup.template set<1>(-3);
-        tup.template set<2>(17);
-        tup.template set<3>(true);
-        tup.template set<4>(92);
-
-        REQUIRE(tup.template get<0>() == 5);
-        REQUIRE(tup.template get<1>() == -3);
-        REQUIRE(tup.template get<2>() == 17);
-        REQUIRE(tup.template get<3>());
-        REQUIRE(tup.template get<4>() == 92);
-    }
+    REQUIRE(tup.template get<0>() == 5);
+    REQUIRE(tup.template get<1>() == -3);
+    REQUIRE(tup.template get<2>() == 17);
+    REQUIRE(tup.template get<3>());
+    REQUIRE(tup.template get<4>() == 92);
 
     if constexpr (sizeof(Block) >= 4)
     {

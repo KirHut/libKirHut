@@ -24,11 +24,11 @@
 #endif
 
 /*!
- * Namespace for reading and writing TOML files, usually for configuration.
+ * Multithreading namespace under the KirHut namespace.
  *
- * Under construction
+ * This namespace encloses all of the multithreading functionality of libKirHut, including the Task system.
  */
-namespace KirHut::Task
+namespace KirHut::MT
 {
 
 /*!
@@ -49,4 +49,4 @@ namespace KirHut::Task
 // My library calls would go in here when I get started.
 #endif
 
-} // namespace KirHut::Task
+} // namespace KirHut::MT

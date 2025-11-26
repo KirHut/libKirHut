@@ -34,7 +34,7 @@
  * defined the others are by necessity not. A Windows PC is not a Linux PC.
  *
  * This file also provides base types that are used all over KirHut software applications. These types should be used in
- * *conjuntion with* rather than in *preference of* the standard types like `int` and `long`. The `int` type is
+ * *conjunction with* rather than in *preference of* the standard types like `int` and `long`. The `int` type is
  * perfectly fine for situations where the fastest value of at least 16 bits is needed, and so using e16 in those cases
  * wouldn't make sense, but use e16 if you want to prefer 16 bit values if it is equivalently efficient to a 32 bit one.
  *
@@ -44,10 +44,10 @@
  * \see TypeRequirements
  */
 
-// The standard headers are actually included **underneath** the definitions as a workaround for MinGW sucking so hard.
-// MinGW will define _WIN32_WINNT on its own if you #include <cstdint>, which it should never do and MSVC doesn't do
-// this at all. To allow this library to define the WINVER and _WIN32_WINNT values (if the builder hasn't set them
-// directly already), the includes are done after our preprocessor defines are completed.
+// The standard headers are actually included **underneath** the preprocessor definitions as a workaround for MinGW
+// sucking so hard. MinGW will define _WIN32_WINNT on its own if you #include <cstdint>, which it should never do and
+// MSVC doesn't do this at all. To allow this library to define the WINVER and _WIN32_WINNT values (if the builder
+// hasn't set them directly already), the standard includes are done after our preprocessor defines are completed.
 
 #include "kh/export.hpp" // IWYU pragma: export
 
@@ -1537,7 +1537,7 @@ using u128 =
 # if defined(KH_USES_QT) and defined(QT_SUPPORTS_INT128)
     quint128;
 # else
-    unsigned __int128_t;
+    __uint128_t;
 # endif
 #else
 using u128 = u64;
@@ -1908,7 +1908,7 @@ using ExactUIntOf = ExactUInt<sizeof(T)>;
 /*!
  * A size-based integer type alias.
  *
- * \copydetails ExactUInt<BYTES>
+ * \copydetails ExactUInt<bytes>
  */
 template <size_t bytes = sizeof(int)>
 using ExactInt = Integer<bytes, true, false, true>;

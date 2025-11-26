@@ -38,13 +38,13 @@ namespace KirHut
  * they are used to easily verify the PackedTuple should be no bigger than the expected number of bits.
  *
  * \tparam Int_T A std::integral type that the underlying \p bitSize bits will be used to represent.
- * \tparam bitSize The number of binary digits (or "bits") available to represent the given \p Int_T.
+ * \tparam bitSize The number of binary digits (or "bits") to represent the given \p Int_T, including the sign bit.
  */
 template <std::integral Int_T, size_t bitSize>
 struct BitField
 {
     /*!
-     * Typedef of the \p Int_T type in this template type.
+     * Typedef of the \p Int_T type template parameter of this class.
      */
     using Int = Int_T;
 
@@ -56,47 +56,36 @@ struct BitField
      *
      * \return The lowest value that can be contained in this BitField.
      */
-    consteval static Int_T min() noexcept
-    {
-        if constexpr (std::is_same_v<bool, Int_T> or std::is_unsigned_v<Int_T> or
-                      bitSize == sizeof(Int_T) * Platform::bitsInByte)
-        {
-            return Limits<Int_T>::min();
-        }
-        else
-        {
-            return static_cast<Int_T>(-1) & ~max();
-        }
-    }
+    consteval static Int min() noexcept;
 
     /*!
      * Highest integer value that can be placed into this BitField.
      *
      * \return The highest value that can be placed in this BitField.
      */
-    consteval static Int_T max() noexcept
-    {
-        if constexpr (std::is_same_v<bool, Int_T> or bitSize == sizeof(Int_T) * Platform::bitsInByte)
-        {
-            return Limits<Int_T>::max();
-        }
-        else
-        {
-            return (static_cast<Int_T>(1) << digits()) - 1;
-        }
-    }
+    consteval static Int max() noexcept;
 
     /*!
      * Returns the number of bits used as \p bitSize.
      *
      * This method simply returns \p bitSize.
      *
-     * \return The \p bitSize parameter of this template type.
+     * \return The \p bitSize non-type parameter of this template.
      */
-    consteval static size_t bits() noexcept
-    {
-        return bitSize;
-    }
+    consteval static size_t bits() noexcept;
+
+    /*!
+     * Returns a mask of all the valid bits for a given \p Int.
+     *
+     * You can apply the returned mask to a value and the result is guaranteed to not throw an exception from
+     * BasicPackedTuple::get(). So you can do this:
+     *
+     * ~~~
+     * using Field = BitField<int, 16>;
+     * auto mask = BitField<Field>::bitMask();
+     * PackedTuple<Field, Field> tup
+     */
+    consteval static Int bitMask() noexcept;
 
     /*!
      * Returns the number of digits available in this BitField.
@@ -105,14 +94,65 @@ struct BitField
      *
      * \return The number of integer digits used in the given BitField.
      */
-    consteval static size_t digits() noexcept
-    {
-        return bitSize - (std::is_signed_v<Int_T> ? 1 : 0);
-    }
+    consteval static size_t digits() noexcept;
 
-    static_assert(bitSize <= sizeof(Int_T) * Platform::bitsInByte, "The given bitSize is too large.");
-    static_assert(bitSize > (std::is_signed_v<Int_T> ? 1 : 0), "The given bitSize is too small.");
+    static_assert(not std::is_same_v<Int, bool> or bits() == 1);
+    static_assert(bits() <= sizeof(Int) * Platform::bitsInByte, "The given bitSize is too large.");
+    static_assert(bits() > (std::is_signed_v<Int> ? 1 : 0), "The given bitSize is too small.");
 };
+
+template <std::integral Int_T, size_t bitSize>
+consteval Int_T BitField<Int_T, bitSize>::min() noexcept
+{
+    if constexpr (std::is_same_v<bool, Int> or std::is_unsigned_v<Int> or bits() == sizeof(Int) * Platform::bitsInByte)
+    {
+        return Limits<Int>::min();
+    }
+    else
+    {
+        return static_cast<Int>(-1) & ~max();
+    }
+}
+
+template <std::integral Int_T, size_t bitSize>
+consteval Int_T BitField<Int_T, bitSize>::max() noexcept
+{
+    if constexpr (std::is_same_v<bool, Int> or bits() == sizeof(Int) * Platform::bitsInByte)
+    {
+        return Limits<Int>::max();
+    }
+    else
+    {
+        return (static_cast<Int>(1) << digits()) - 1;
+    }
+}
+
+template <std::integral Int_T, size_t bitSize>
+consteval size_t BitField<Int_T, bitSize>::bits() noexcept
+{
+    return bitSize;
+}
+
+template <std::integral Int_T, size_t bitSize>
+consteval Int_T BitField<Int_T, bitSize>::bitMask() noexcept
+{
+    if constexpr (std::is_same_v<bool, Int> or
+                  (std::is_unsigned_v<Int> and bits() == sizeof(Int) * Platform::bitsInByte))
+    {
+        return Limits<Int>::max();
+    }
+    else
+    {
+        auto shiftAmount = sizeof(Int) * Platform::bitsInByte - bits();
+        return Limits<Int>::max() >> shiftAmount | Limits<Int>::min();
+    }
+}
+
+template <std::integral Int_T, size_t bitSize>
+consteval size_t BitField<Int_T, bitSize>::digits() noexcept
+{
+    return bits() - (std::is_signed_v<Int> ? 1 : 0);
+}
 
 /*!
  * A namespace containing convenience typedefs for different BitField types.
@@ -222,6 +262,152 @@ concept BitFieldType = requires {
     { BitField_T::bits() } noexcept -> std::same_as<size_t>;
 } and BitField_T::bits() > 0 and std::is_integral_v<typename BitField_T::Int>;
 
+namespace Detail
+{
+
+/*!
+ * \internal
+ *
+ * \brief The FieldTraits class
+ */
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+struct FieldTraits
+{
+    using type =
+        std::conditional_t<index == 0, typename Field_T::Int, typename FieldTraits<index - 1, Field_Ts...>::type>;
+
+    consteval static size_t bitLocation() noexcept;
+
+    consteval static size_t bits() noexcept;
+
+    consteval static type max() noexcept;
+
+    consteval static type min() noexcept;
+
+    consteval static type bitMask() noexcept;
+
+    consteval static int digits() noexcept;
+
+    constexpr static bool canFit(std::same_as<type> auto toTest) noexcept;
+};
+
+template <size_t index, BitFieldType Field_T>
+struct FieldTraits<index, Field_T>
+{
+    using type = Field_T::Int;
+
+    consteval static size_t bitLocation() noexcept;
+
+    consteval static size_t bits() noexcept;
+
+    consteval static type max() noexcept;
+
+    consteval static type min() noexcept;
+
+    consteval static type bitMask() noexcept;
+
+    consteval static size_t digits() noexcept;
+
+    constexpr static bool canFit(std::same_as<type> auto toTest) noexcept
+    {
+        // canFit has to be a BS template to satisfy MSVC otherwise it tries to instantiate make_unsigned_t<bool>.
+        if constexpr (not std::same_as<decltype(toTest), bool>)
+        {
+            auto bitsToTest = std::bit_cast<std::make_unsigned_t<type>>(toTest < 0 ? ~toTest : toTest);
+            return std::bit_width(bitsToTest) <= digits();
+        }
+
+        return true;
+    }
+};
+
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval size_t FieldTraits<index, Field_T, Field_Ts...>::bitLocation() noexcept
+{
+    return index == 0 ? 0 : Field_T::bits() + FieldTraits<index - 1, Field_Ts...>::bitLocation();
+}
+
+template <size_t index, BitFieldType Field_T>
+consteval size_t FieldTraits<index, Field_T>::bitLocation() noexcept
+{
+    return 0;
+}
+
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval size_t FieldTraits<index, Field_T, Field_Ts...>::bits() noexcept
+{
+    return index == 0 ? Field_T::bits() : FieldTraits<index - 1, Field_Ts...>::bits();
+}
+
+template <size_t index, BitFieldType Field_T>
+consteval size_t FieldTraits<index, Field_T>::bits() noexcept
+{
+    return Field_T::bits();
+}
+
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval FieldTraits<index, Field_T, Field_Ts...>::type FieldTraits<index, Field_T, Field_Ts...>::max() noexcept
+{
+    return index == 0 ? Field_T::max() : FieldTraits<index - 1, Field_Ts...>::max();
+}
+
+template <size_t index, BitFieldType Field_T>
+consteval FieldTraits<index, Field_T>::type FieldTraits<index, Field_T>::max() noexcept
+{
+    return Field_T::max();
+}
+
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval FieldTraits<index, Field_T, Field_Ts...>::type FieldTraits<index, Field_T, Field_Ts...>::min() noexcept
+{
+    return index == 0 ? Field_T::min() : FieldTraits<index - 1, Field_Ts...>::min();
+}
+
+template <size_t index, BitFieldType Field_T>
+consteval FieldTraits<index, Field_T>::type FieldTraits<index, Field_T>::min() noexcept
+{
+    return Field_T::min();
+}
+
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval FieldTraits<index, Field_T, Field_Ts...>::type FieldTraits<index, Field_T, Field_Ts...>::bitMask() noexcept
+{
+    return index == 0 ? Field_T::bitMask() : FieldTraits<index - 1, Field_Ts...>::bitMask();
+}
+
+template <size_t index, BitFieldType Field_T>
+consteval FieldTraits<index, Field_T>::type FieldTraits<index, Field_T>::bitMask() noexcept
+{
+    return Field_T::bitMask();
+}
+
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval int FieldTraits<index, Field_T, Field_Ts...>::digits() noexcept
+{
+    return index == 0 ? Field_T::digits() : FieldTraits<index - 1, Field_Ts...>::digits();
+}
+
+template <size_t index, BitFieldType Field_T>
+consteval size_t FieldTraits<index, Field_T>::digits() noexcept
+{
+    return Field_T::digits();
+}
+
+template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
+constexpr bool FieldTraits<index, Field_T, Field_Ts...>::canFit(std::same_as<type> auto toTest) noexcept
+{
+    // canFit has to be a BS template to satisfy MSVC otherwise it tries to instantiate make_unsigned_t<bool>.
+    if constexpr (not std::same_as<decltype(toTest), bool>)
+    {
+        auto bitsToTest = std::bit_cast<std::make_unsigned_t<type>>(static_cast<type>(toTest < 0 ? ~toTest : toTest));
+        return std::bit_width(bitsToTest) <= digits();
+    }
+
+    return true;
+}
+
+} // namespace Detail
+
 /*!
  * \brief The BasicPackedTuple class
  */
@@ -235,10 +421,7 @@ class BasicPackedTuple
      *
      * This is initialized using a lambda, but this is all done at compile time so there should be zero runtime effect.
      */
-    constexpr static size_t blocksNeeded = []() consteval {
-        auto byteAmount = bytesNeededForBits(Field_T::bits() + (Field_Ts::bits() + ...));
-        return byteAmount / sizeof(Block_T) + (byteAmount % sizeof(Block_T) ? 1 : 0);
-    }();
+    consteval static size_t blocksNeeded() noexcept;
 
     /*!
      * \internal
@@ -248,7 +431,7 @@ class BasicPackedTuple
      * Here is where the data really lives! It should be initialized to all zeros upon construction of this class. This
      * is a requirement to avoid UB while using this class.
      */
-    std::array<Block_T, blocksNeeded> data{};
+    std::array<Block_T, blocksNeeded()> data{};
 
     template <size_t index, BitFieldType CurField_T, BitFieldType... RestField_Ts>
     struct _FieldTraits;
@@ -263,15 +446,26 @@ class BasicPackedTuple
     };
 
 public:
-    static_assert(not std::same_as<Block_T, bool>);
-    static_assert(sizeof(Block_T) >= sizeof(typename Field_T::Int) and
-                  ((sizeof(Block_T) >= sizeof(typename Field_Ts::Int)) and ...));
-
     template <size_t index>
-    using FieldTraits = _FieldTraits<index, Field_T, Field_Ts...>;
+    using FieldTraits = Detail::FieldTraits<index, Field_T, Field_Ts...>;
 
     template <size_t index>
     using FieldType = FieldTraits<index>::type;
+
+    using Block = Block_T;
+
+    constexpr BasicPackedTuple() noexcept = default;
+
+    constexpr BasicPackedTuple(typename Field_T::Int first, typename Field_Ts::Int... rest) :
+        BasicPackedTuple(std::tuple{ first, rest... })
+    {
+        // No further implementation.
+    }
+
+    constexpr BasicPackedTuple(std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &beginState)
+    {
+        tupleInit<0>(beginState);
+    }
 
     template <size_t index>
     requires(index <= sizeof...(Field_Ts))
@@ -339,6 +533,38 @@ public:
         }
     }
 
+    template <size_t index>
+    requires(index <= sizeof...(Field_Ts))
+    constexpr void setTruncate(FieldType<index> newVal) noexcept
+    {
+        set<index>(newVal & FieldTraits<index>::bitMask());
+    }
+
+    template <size_t index>
+    requires(index <= sizeof...(Field_Ts))
+    constexpr void setSaturate(FieldType<index> newVal) noexcept
+    {
+        if (newVal > FieldTraits<index>::max())
+        {
+            newVal = FieldTraits<index>::max();
+        }
+
+        // We do *not* put this in an else block to make this function branch free on x86 and ARM.
+        if constexpr (std::is_signed_v<FieldType<index>>)
+        {
+            if (newVal < FieldTraits<index>::min())
+            {
+                newVal = FieldTraits<index>::min();
+            }
+        }
+
+        set<index>(newVal);
+    }
+
+    static_assert(not std::same_as<Block, bool>);
+    static_assert(sizeof(Block) >= sizeof(typename Field_T::Int) and
+                  ((sizeof(Block) >= sizeof(typename Field_Ts::Int)) and ...));
+
 private:
     template <size_t index>
     consteval static FieldLocation getLocation() noexcept
@@ -360,74 +586,31 @@ private:
                      backMaskWidth ? Limits<Block_T>::max() >> (blockBits() - backMaskWidth) : 0) };
     }
 
-    template <size_t index, BitFieldType CurField_T, BitFieldType... RestField_Ts>
-    struct _FieldTraits
+    /*!
+     * \internal
+     *
+     * Initialize a BasicPackedTuple using a std::tuple.
+     *
+     * This allows for construction of a BasicPackedTuple using a set of values or a tuple assignment, rather than by
+     * repeatedly calling set() for each index. The caller of this function should always pass 0 as the index, and no
+     * other value, unless you want initialization to start after the first value in the tuple!
+     *
+     * \tparam index Should always be 0, since it is an implementation detail for recursive calls.
+     * \param initTuple
+     */
+    template <size_t index>
+    constexpr void tupleInit(std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &initTuple)
     {
-        using type = std::conditional_t<index == 0,
-                                        typename CurField_T::Int,
-                                        typename _FieldTraits<index - 1, RestField_Ts...>::type>;
-
-        consteval static size_t bitLocation() noexcept
+        if constexpr (index >= std::tuple_size_v<std::remove_cvref_t<decltype(initTuple)>>)
         {
-            return index == 0 ? 0 : CurField_T::bits() + _FieldTraits<index - 1, RestField_Ts...>::bitLocation();
+            return;
         }
-
-        consteval static size_t bits() noexcept
+        else
         {
-            return index == 0 ? CurField_T::bits() : _FieldTraits<index - 1, RestField_Ts...>::bits();
+            set<index>(std::get<index>(initTuple));
+            tupleInit<index + 1>(initTuple);
         }
-
-        consteval static int digits() noexcept
-        {
-            return index == 0 ? CurField_T::digits() : _FieldTraits<index - 1, RestField_Ts...>::digits();
-        }
-
-        constexpr static bool canFit(std::same_as<type> auto toTest) noexcept
-        {
-            // canFit has to be a BS template to satisfy MSVC otherwise it tries to instantiate make_unsigned_t<bool>.
-            if constexpr (not std::same_as<decltype(toTest), bool>)
-            {
-                auto bitsToTest =
-                    std::bit_cast<std::make_unsigned_t<type>>(static_cast<type>(toTest < 0 ? ~toTest : toTest));
-                return std::bit_width(bitsToTest) <= digits();
-            }
-
-            return true;
-        }
-    };
-
-    template <size_t index, BitFieldType CurField_T>
-    struct _FieldTraits<index, CurField_T>
-    {
-        using type = CurField_T::Int;
-
-        consteval static size_t bitLocation() noexcept
-        {
-            return 0;
-        }
-
-        consteval static size_t bits() noexcept
-        {
-            return CurField_T::bits();
-        }
-
-        consteval static size_t digits() noexcept
-        {
-            return CurField_T::digits();
-        }
-
-        constexpr static bool canFit(std::same_as<type> auto toTest) noexcept
-        {
-            // canFit has to be a BS template to satisfy MSVC otherwise it tries to instantiate make_unsigned_t<bool>.
-            if constexpr (not std::same_as<decltype(toTest), bool>)
-            {
-                auto bitsToTest = std::bit_cast<std::make_unsigned_t<type>>(toTest < 0 ? ~toTest : toTest);
-                return std::bit_width(bitsToTest) <= digits();
-            }
-
-            return true;
-        }
-    };
+    }
 
     /*!
      * \internal
@@ -440,6 +623,13 @@ private:
     {
         return sizeof(Block_T) * Platform::bitsInByte;
     }
+};
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval size_t BasicPackedTuple<Block_T, Field_T, Field_Ts...>::blocksNeeded() noexcept
+{
+    auto byteAmount = bytesNeededForBits(Field_T::bits() + (Field_Ts::bits() + ...));
+    return byteAmount / sizeof(Block_T) + (byteAmount % sizeof(Block_T) ? 1 : 0);
 };
 
 /*!
