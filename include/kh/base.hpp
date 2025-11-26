@@ -1125,14 +1125,14 @@ template <typename Var_T>
 }
 
 /*!
- * Read the data pointed at by \p source and return it as the given T integer type for the native platform.
+ * Read the data pointed at by \p source and return it as the given \p Num_T integer type for the native platform.
  *
  * This method should be used any time you need to read a big endian integer value from a source of bytes, such as from
  * an ethernet frame or a data file. On both big endian and little endian systems, this function will return the correct
  * value that is represented by the data pointed to by \p source, read as a big endian integer.
  *
  * Using this function is as simple as designating the desired Numeric return type, and then providing a pointer to a
- * buffer of bytes. The buffer of bytes will be interpreted as a big endian value of type T and returned to you.
+ * buffer of bytes. The buffer of bytes will be interpreted as a big endian value of type \p Num_T and returned to you.
  *
  * ~~~
  * auto result = fromBigEndian<i32>(buffer);
@@ -1147,18 +1147,19 @@ template <typename Var_T>
  * This will cause a read to occur in invalid memory and so you should always check that there are sufficient bytes in
  * the buffer area for conversion.
  *
+ * \tparam Num_T An integer or floating point type you wish to interpret the \p source as the big endian value of.
  * \param source A pointer to a buffer of bytes at least sizeof(T) large.
- * \return The requested Numeric T type.
+ * \return The bytes under \p source interpreted as a big endian \p Num_T type.
  */
-template <Numeric T>
-[[nodiscard]] constexpr T fromBigEndian(ByteType auto const *source) noexcept
+template <Numeric Num_T>
+[[nodiscard]] constexpr Num_T fromBigEndian(ByteType auto const *source) noexcept
 {
-    return source ? Detail::fromEndian<T, std::endian::big>(source) : T{};
+    return source ? Detail::fromEndian<Num_T, std::endian::big>(source) : Num_T{};
 }
 
 /*!
- * Read the data in the first sizeof(T) bytes contained in the \p source span and return it as the given T integer type
- * for the native platform.
+ * Read the data in the first sizeof(Num_T) bytes contained in the \p source span and return it as the given \p Num_T
+ * type.
  *
  * This method should be used any time you need to read a big endian integer value from a given \p source buffer. This
  * version of fromBigEndian should be favored over the pointer version as this version is guaranteed never to result in
@@ -1176,19 +1177,19 @@ template <Numeric T>
  * \param source A span to a buffer of bytes at least sizeof(T) large.
  * \return The requested Numeric T type.
  */
-template <Numeric T, ByteType Byte_T, size_t fixedSize>
-[[nodiscard]] constexpr T fromBigEndian(span<Byte_T const, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
-    requires(fixedSize >= sizeof(T))
+template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
+[[nodiscard]] constexpr Num_T fromBigEndian(span<Byte_T const, fixedSize> source)
+    noexcept(fixedSize != std::dynamic_extent) requires(fixedSize >= sizeof(Num_T))
 {
     if constexpr (fixedSize == std::dynamic_extent)
     {
-        if (source.size() < sizeof(T))
+        if (source.size() < sizeof(Num_T))
         {
             Detail::throwTooSmallSpan("Source span is too small.");
         }
     }
 
-    return Detail::fromEndian<T, std::endian::big>(source.data());
+    return Detail::fromEndian<Num_T, std::endian::big>(source.data());
 }
 
 /*!

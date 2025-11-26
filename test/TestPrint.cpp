@@ -23,33 +23,137 @@
 
 #include <cstdio>
 
+#if defined(KH_WINDOWS)
+# include <windows.h>
+# include <io.h>
+# include <fcntl.h>
+# include <fileapi.h>
+#endif
+
 #include <catch2/catch_test_macros.hpp>
 // clazy:excludeall=non-pod-global-static
 
 using namespace KirHut;
 
-constexpr auto tempDeleter = [](std::FILE *fp) {
-    if (fp)
-    {
-        std::fclose(fp);
-    }
+template <typename Holder_T>
+concept FilePtrHolder = requires(Holder_T const &holder) {
+    { holder.get() } -> std::same_as<std::FILE *>;
 };
 
-using TempFile = std::unique_ptr<std::FILE, decltype(tempDeleter)>;
-
-inline TempFile mkTempFile()
+class EphemeralFile
 {
-    std::FILE *tmpFilePtr = nullptr;
-#if defined(KH_COMPILED_WITH_MSVC)
-    if (tmpfile_s(&tmpFilePtr) == 0 and tmpFilePtr)
-#else
-    if (tmpFilePtr = std::tmpfile(); tmpFilePtr)
-#endif
+    std::FILE *filePtr = nullptr;
+
+public:
+    inline EphemeralFile();
+    inline EphemeralFile(EphemeralFile &&other) noexcept;
+    inline EphemeralFile &operator=(EphemeralFile &&other) noexcept;
+    inline ~EphemeralFile() noexcept;
+
+    EphemeralFile(EphemeralFile const &)            = delete;
+    EphemeralFile &operator=(EphemeralFile const &) = delete;
+
+    inline std::FILE *get() const noexcept;
+    inline std::FILE *release() noexcept;
+};
+
+EphemeralFile::EphemeralFile()
+{
+#if defined(KH_WINDOWS)
+    // Oh my God, fuck you Microsoft...
+    wchar_t tempPathBuffer[MAX_PATH];
+    DWORD pathLen =
+# if defined(KH_COMPILED_WITH_MSVC)
+        GetTempPath2W(MAX_PATH, tempPathBuffer);
+# else
+        GetTempPathW(MAX_PATH, tempPathBuffer);
+# endif
+
+    if (pathLen == 0 or pathLen > MAX_PATH)
     {
-        return TempFile{ tmpFilePtr };
+        throw std::runtime_error("Call to GetTempPathW failed.");
     }
 
-    throw std::runtime_error("Couldn't create temporary file.");
+    wchar_t tempNameBuffer[MAX_PATH];
+    if (not GetTempFileNameW(tempPathBuffer, L"kh", 0, tempNameBuffer))
+    {
+        throw std::runtime_error("Call to GetTempFileNameW failed.");
+    }
+
+    HANDLE tempHandle = CreateFileW(tempNameBuffer,
+                                    GENERIC_READ | GENERIC_WRITE,
+                                    0,
+                                    nullptr,
+                                    CREATE_ALWAYS,
+                                    FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
+                                    nullptr);
+
+    if (tempHandle == INVALID_HANDLE_VALUE)
+    {
+        DeleteFileW(tempNameBuffer);
+        throw std::runtime_error("Call to CreateFileW failed.");
+    }
+
+    if (int fd = _open_osfhandle(reinterpret_cast<std::intptr_t>(tempHandle), _O_RDWR | _O_BINARY); fd != -1)
+    {
+        if (filePtr = _fdopen(fd, "w+b"); not filePtr)
+        {
+            _close(fd);
+            throw std::runtime_error("Call to _fdopen() failed.");
+        }
+    }
+    else
+    {
+        DeleteFileW(tempNameBuffer);
+        throw std::runtime_error("Call to _open_osfhandle() failed.");
+    }
+#else
+    // On everything that isn't Windows, tmpfile() just works like you'd expect, so this just does that.
+    if (filePtr = std::tmpfile(); not filePtr)
+    {
+        throw std::runtime_error("Creating a temporary file failed.");
+    }
+#endif
+}
+
+EphemeralFile::EphemeralFile(EphemeralFile &&other) noexcept : filePtr(other.release())
+{
+    // No further implementation.
+}
+
+EphemeralFile &EphemeralFile::operator=(EphemeralFile &&other) noexcept
+{
+    if (this != &other)
+    {
+        if (filePtr)
+        {
+            std::fclose(filePtr);
+        }
+
+        filePtr = other.release();
+    }
+
+    return *this;
+}
+
+EphemeralFile::~EphemeralFile() noexcept
+{
+    if (filePtr)
+    {
+        std::fclose(filePtr);
+    }
+}
+
+std::FILE *EphemeralFile::get() const noexcept
+{
+    return filePtr;
+}
+
+std::FILE *EphemeralFile::release() noexcept
+{
+    std::FILE *toReturn = filePtr;
+    filePtr             = nullptr;
+    return toReturn;
 }
 
 TEST_CASE("IO::vprint() writes to ostream", "[print][io_vprint]")
@@ -87,7 +191,7 @@ TEST_CASE("IO::println() appends newline to ostream", "[print][io_println]")
 
 TEST_CASE("IO::vprint() writes to FILE*", "[print][io_vprint]")
 {
-    TempFile tmp = mkTempFile();
+    EphemeralFile tmp;
     auto num     = 3.14;
     auto args    = FMT::make_format_args(num);
     IO::vprint(tmp.get(), "Pi={}", args);
@@ -105,7 +209,7 @@ TEST_CASE("IO::vprint() writes to FILE*", "[print][io_vprint]")
 
 TEST_CASE("IO::print() writes to FILE*", "[print][io_print]")
 {
-    TempFile tmp = mkTempFile();
+    EphemeralFile tmp;
     auto num     = 3.14;
     IO::print(tmp.get(), "Pi={}", num);
     std::fflush(tmp.get());
@@ -122,7 +226,7 @@ TEST_CASE("IO::print() writes to FILE*", "[print][io_print]")
 
 TEST_CASE("IO::vprintln() appends newline to FILE*", "[print][io_vprintln]")
 {
-    TempFile tmp = mkTempFile();
+    EphemeralFile tmp;
     auto args    = FMT::make_format_args("Test");
     IO::vprintln(tmp.get(), "{}", args);
     std::fflush(tmp.get());
@@ -134,7 +238,7 @@ TEST_CASE("IO::vprintln() appends newline to FILE*", "[print][io_vprintln]")
 
 TEST_CASE("IO::println() appends newline to FILE*", "[print][io_println]")
 {
-    TempFile tmp = mkTempFile();
+    EphemeralFile tmp;
     auto args    = "Test"sv;
     IO::println(tmp.get(), "{}", args);
     std::fflush(tmp.get());

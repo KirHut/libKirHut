@@ -321,7 +321,9 @@ TEMPLATE_TEST_CASE("Using shl() method in all conditions", "[base][utility][shl]
 
     SECTION("Ensure over shifts are zero")
     {
-        unsigned int shift = GENERATE_COPY(take(100, random(maxShift, Limits<unsigned int>::max())));
+        REQUIRE(shl(test, maxShift) == zero);
+        REQUIRE(shl(test, maxShift + 1) == zero);
+        unsigned int shift = GENERATE_COPY(take(98, random(maxShift, Limits<unsigned int>::max())));
         REQUIRE(shl(test, shift) == zero);
     }
 }
@@ -351,7 +353,9 @@ TEMPLATE_TEST_CASE("Using shr() method in all conditions", "[base][utility][shr]
 
     SECTION("Ensure over shifts are zero")
     {
-        unsigned int shift = GENERATE_COPY(take(100, random(maxShift, Limits<unsigned int>::max())));
+        REQUIRE(shr(test, maxShift) == zero);
+        REQUIRE(shr(test, maxShift + 1) == zero);
+        unsigned int shift = GENERATE_COPY(take(98, random(maxShift + 2, Limits<unsigned int>::max())));
         REQUIRE(shr(test, shift) == zero);
     }
 
@@ -362,7 +366,9 @@ TEMPLATE_TEST_CASE("Using shr() method in all conditions", "[base][utility][shr]
 
         SECTION("Ensure negative over shifts are -1")
         {
-            unsigned int shift = GENERATE_COPY(take(100, random(maxShift, Limits<unsigned int>::max())));
+            REQUIRE(shr(test2, maxShift) == negOne);
+            REQUIRE(shr(test2, maxShift + 1) == negOne);
+            unsigned int shift = GENERATE_COPY(take(98, random(maxShift, Limits<unsigned int>::max())));
             REQUIRE(shr(test2, shift) == negOne);
         }
     }
