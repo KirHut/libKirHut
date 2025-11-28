@@ -19,6 +19,8 @@
 ***********************************************************************************************************************/
 #pragma once
 
+#include "kh/global.hpp"
+
 #if defined(KH_INCLUDE_TOML) or defined(KH_PRIV_DOCS)
 # include "kh/base.hpp"
 #endif

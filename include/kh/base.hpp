@@ -445,7 +445,7 @@ template <Integral Int_T>
 }
 
 /*!
- * Perform a bitwise arithmetic right shift of a given integer, but without UB risk.
+ * Perform a bitwise arithmetic or logical right shift of a given integer, but without UB risk.
  *
  * In C and C++, if you perform a bitwise right shift to a bit location beyond the size in bits of the integer you are
  * modifying the behavior is undefined. This is fine if you are very careful what values are passed to the bit shift
@@ -454,7 +454,7 @@ template <Integral Int_T>
  * of bits in \p value, than the "bit shift operation" simply results in the same thing if two consecutive shifts were
  * performed, so 0 for unsigned \p value and non-negative signed \p value, and -1 for negative signed \p value. The \p
  * amount is an unsigned integer, so signed integers will be automatically converted, including negative values, which
- * will inevitably result in shl() returning 0.
+ * will inevitably result in shr() returning 0 or -1.
  *
  * "Oh, so it's like a shitty std::rotr?"
  *
@@ -750,7 +750,10 @@ struct EboChild final : public EBO
 /*!
  * \internal
  *
- * \brief The EboFinalChild class
+ * A class that contains an \p EBO object that is placed under no_unique_address, to see if it uses any memory.
+ *
+ * If a class possesses data members (IE it is not an empty object) then this object will inevitably be larger than the
+ * NoChild object,
  */
 template <typename EBO>
 struct EboFinalChild final
@@ -766,7 +769,7 @@ struct EboFinalChild final
  * \return
  */
 template <typename Class_T>
-consteval bool emptyTest()
+consteval bool emptyTest() noexcept
 {
     using Normalized = std::remove_cv_t<Class_T>;
     if constexpr (std::is_final_v<Normalized>)
@@ -787,9 +790,9 @@ consteval bool emptyTest()
  * This function has two separate behavior branches for constant evaluation vs non-constant evaluation, so it must be
  * tested under both conditions.
  *
- * \param source
  * \tparam Num_T
  * \tparam sourceEndianness
+ * \param source
  * \return
  */
 template <Numeric Num_T, std::endian sourceEndianness>
@@ -1174,6 +1177,7 @@ template <Numeric Num_T>
  * static_assert(std::is_same_v<decltype(result), double>);
  * ~~~
  *
+ * \tparam Num_T An integer or floating point type you wish to interpret the \p source as the big endian value of.
  * \param source A span to a buffer of bytes at least sizeof(T) large.
  * \return The requested Numeric T type.
  */

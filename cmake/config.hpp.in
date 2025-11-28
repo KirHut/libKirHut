@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 ** The KirHut Application Development Library
-** kh/task.hpp
+** cmake/config.hpp.in
 ** Copyright © KirHut Software Company
 **
 ** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
@@ -19,36 +19,44 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#include "kh/global.hpp"
+#include "kh/export.hpp" // IWYU pragma: export
 
-#if defined(KH_INCLUDE_TASK_SYSTEM) or defined(KH_PRIV_DOCS)
-# include "kh/base.hpp"
+#cmakedefine KH_USES_QT 1
+#cmakedefine KH_USES_FMT 1
+#cmakedefine KH_USE_128BIT_TYPES 1
+#cmakedefine KH_NO_EXCEPTIONS 1
+#cmakedefine KH_NO_BADALLOC 1
+#cmakedefine KH_INCLUDE_ARG_PARSER 1
+#cmakedefine KH_INCLUDE_FILESYSTEM 1
+#cmakedefine KH_INCLUDE_MD5HASH 1
+#cmakedefine KH_INCLUDE_TASK_SYSTEM 1
+#cmakedefine KH_INCLUDE_TERMINAL_PRINT 1
+#cmakedefine KH_INCLUDE_TOML 1
+#cmakedefine KH_MUST_HAVE_16_32_64 1
+#cmakedefine KH_MUST_HAVE_32_64 1
+#cmakedefine KH_MUST_HAVE_16BIT_TYPES 1
+#cmakedefine KH_MUST_HAVE_32BIT_TYPES 1
+#cmakedefine KH_MUST_HAVE_64BIT_TYPES 1
+#cmakedefine KH_OVERRIDE_PLATFORM_SAFETY 1
+#cmakedefine KH_CLANG_GNUC_COMPATIBLE 1
+
+#cmakedefine KH_KERNEL_VERSION "@KH_KERNEL_VERSION@"
+
+#define KH_COMPILED_WITH_@KH_COMPILER_SHORTNAME@ @KH_COMPILER_VERSION@
+#define KH_COMPILER_DISPLAY_STRING "@KH_COMPILER_NAME@ @CMAKE_CXX_COMPILER_VERSION@"
+
+#ifdef KH_COMPILED_WITH_MSVC
+# ifdef KH_USES_FMT
+#  define _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING // This quiets a deprecation warning in {fmt} version 10.
+# endif
+# ifdef libKirHut_EXPORTS
+#  define KH_EXPLICIT_TEMPLATE_EXPORT
+#  define KH_EXPLICIT_TEMPLATE_INSTANCE KH_EXPORT
+# else
+#  define KH_EXPLICIT_TEMPLATE_EXPORT KH_EXPORT
+#  define KH_EXPLICIT_TEMPLATE_INSTANCE
+# endif
+#else
+# define KH_EXPLICIT_TEMPLATE_EXPORT KH_EXPORT
+# define KH_EXPLICIT_TEMPLATE_INSTANCE
 #endif
-
-/*!
- * Multithreading namespace under the KirHut namespace.
- *
- * This namespace encloses all of the multithreading functionality of libKirHut, including the Task system.
- */
-namespace KirHut::MT
-{
-
-/*!
- * Indication boolean for when the task system has been included in libKirHut.
- *
- * When you need to check if this library includes Task support using an if constexpr expression rather than the
- * preprocessor, you can use this to check if the library is built with Task support.
- *
- * \hideinitializer
- */
-[[maybe_unused]] constexpr bool hasTask = false
-#if defined(KH_INCLUDE_TASK_SYSTEM)
-                                          or true
-#endif
-    ;
-
-#if defined(KH_INCLUDE_TASK_SYSTEM) or defined(KH_PRIV_DOCS)
-// My library calls would go in here when I get started.
-#endif
-
-} // namespace KirHut::MT

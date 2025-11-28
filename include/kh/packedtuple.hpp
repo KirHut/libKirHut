@@ -433,9 +433,6 @@ class BasicPackedTuple
      */
     std::array<Block_T, blocksNeeded()> data{};
 
-    template <size_t index, BitFieldType CurField_T, BitFieldType... RestField_Ts>
-    struct _FieldTraits;
-
     struct FieldLocation
     {
         size_t blockIndex;

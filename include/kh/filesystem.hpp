@@ -25,7 +25,9 @@
  * File System Header that includes the standard filesystem namespace under KirHut::FS.
  */
 
-#if KH_INCLUDE_FILESYSTEM
+#include "kh/global.hpp"
+
+#if defined(KH_INCLUDE_FILESYSTEM)
 # include <filesystem> // IWYU pragma: export
 #endif
 
@@ -58,7 +60,7 @@ namespace KirHut::FS
 #endif
     ;
 
-#if KH_INCLUDE_FILESYSTEM
+#if defined(KH_INCLUDE_FILESYSTEM)
 using namespace std::filesystem;
 #endif
 

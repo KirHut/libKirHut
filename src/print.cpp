@@ -19,7 +19,13 @@
 ***********************************************************************************************************************/
 #include "kh/print.hpp"
 
+#include "kh/base.hpp"
+
 #include <iostream>
+
+#if defined(KH_USES_QT)
+# include <QTextStream>
+#endif
 
 #if defined(KH_WINDOWS) and (defined(KH_USES_FMT) or not defined(__cpp_lib_print))
 # include "nowide/iostream.hpp"
@@ -92,6 +98,17 @@ void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const 
 # endif
 #endif
 }
+
+#if defined(KH_USES_QT)
+void vprint(QIODevice &stream, FMT::string_view form, FMT::format_args const &args)
+{
+    if (stream.isWritable())
+    {
+        string formatted = FMT::vformat(form, args);
+        QTextStream(&stream) << QByteArray::fromRawData(formatted.data(), formatted.size() + 1);
+    }
+}
+#endif
 
 #if defined(KH_USES_FMT)
 void vprint(fmt::text_style style, fmt::string_view form, fmt::format_args const &args)

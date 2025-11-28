@@ -57,23 +57,27 @@ namespace Detail
  * The LimitsFinder class
  *
  * This is required to be a struct and not an alias template because there are specializations of LimitsFinder that are
- * specifically for 128-bit types when using libc++. This could, otherwise, simply be an alias over std::numeric_limits.
+ * specifically for 128-bit types when using libc++. This is, otherwise, simply an alias over std::numeric_limits.
+ *
+ * \tparam Num_T The number type to use for std::numeric_limits as limits, if such a specialization exists.
  */
-template <typename T>
+template <typename Num_T>
 struct LimitsFinder
 {
     /*!
      * \internal
      *
-     * The actual limits type being used by the T type.
+     * The actual limits type being used by the \p Num_T type.
      *
-     * In nearly every condition, LimitsFinder<T>::limits is just std::numeric_limits<T>. The only time this isn't the
-     * case is on Clang on 64-bit systems, because Clang does not implement std::numeric_limits<__int128_t>, so this
-     * library has to provide its own custom implementation. That is the reason all of this exists in the first place.
+     * In nearly every condition, LimitsFinder<Num_T>::limits is just std::numeric_limits<Num_T>. The only time this
+     * isn't the case is on Clang on 64-bit systems, because Clang does not implement std::numeric_limits<__int128_t>,
+     * so this library has to provide its own custom implementation. That is the reason all of this exists in the first
+     * place.
      */
-    using limits = std::numeric_limits<T>;
+    using limits = std::numeric_limits<Num_T>;
 
-    static_assert(limits::is_specialized, "There must exist a specialization of std::numeric_limits for the given T.");
+    static_assert(limits::is_specialized,
+                  "There must exist a specialization of std::numeric_limits for the given Num_T.");
 };
 
 #if defined(KH_USE_128BIT_TYPES) or defined(KH_PRIV_DOCS)

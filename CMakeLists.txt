@@ -133,8 +133,6 @@ if(KH_USES_QT)
     )
 endif()
 
-set(KH_BINARY_DIR ${PROJECT_BINARY_DIR})
-
 if(WIN32)
     # Boost::nowide is unconditionally downloaded and built, unlike other dependencies that check find_package first.
     # This is because this library uses the standalone version of nowide, which is almost never distributed using
@@ -233,35 +231,6 @@ list(TRANSFORM libKirHut_PRIV_HEADERS PREPEND "priv/")
 list(APPEND libKirHut_HEADERS ${libKirHut_PRIV_HEADERS})
 list(TRANSFORM libKirHut_HEADERS PREPEND "include/kh/")
 
-set(libKirHut_COMPILE_DEFS
-    $<$<BOOL:${KH_USES_QT}>:KH_USES_QT>
-    $<$<BOOL:${KH_USES_FMT}>:KH_USES_FMT>
-    $<$<BOOL:${KH_USE_128BIT_TYPES}>:KH_USE_128BIT_TYPES>
-    $<$<BOOL:${KH_NO_EXCEPTIONS}>:KH_NO_EXCEPTIONS>
-    $<$<BOOL:${KH_NO_BADALLOC}>:KH_NO_BADALLOC>
-    $<$<BOOL:${KH_INCLUDE_ARG_PARSER}>:KH_INCLUDE_ARG_PARSER>
-    $<$<BOOL:${KH_INCLUDE_FILESYSTEM}>:KH_INCLUDE_FILESYSTEM>
-    $<$<BOOL:${KH_INCLUDE_MD5HASH}>:KH_INCLUDE_MD5HASH>
-    $<$<BOOL:${KH_INCLUDE_TASK_SYSTEM}>:KH_INCLUDE_TASK_SYSTEM>
-    $<$<BOOL:${KH_INCLUDE_TERMINAL_PRINT}>:KH_INCLUDE_TERMINAL_PRINT>
-    $<$<BOOL:${KH_INCLUDE_TOML}>:KH_INCLUDE_TOML>
-    $<$<BOOL:${KH_MUST_HAVE_16_32_64}>:KH_MUST_HAVE_16_32_64>
-    $<$<BOOL:${KH_MUST_HAVE_32_64}>:KH_MUST_HAVE_32_64>
-    $<$<BOOL:${KH_MUST_HAVE_16BIT_TYPES}>:KH_MUST_HAVE_16BIT_TYPES>
-    $<$<BOOL:${KH_MUST_HAVE_32BIT_TYPES}>:KH_MUST_HAVE_32BIT_TYPES>
-    $<$<BOOL:${KH_MUST_HAVE_64BIT_TYPES}>:KH_MUST_HAVE_64BIT_TYPES>
-    $<$<BOOL:${KH_OVERRIDE_PLATFORM_SAFETY}>:KH_OVERRIDE_PLATFORM_SAFETY>
-    $<$<BOOL:${KH_CLANG_GNUC_COMPATIBLE}>:KH_CLANG_GNUC_COMPATIBLE>
-    # This is necessary because this library supports building with fmtlib version 10, which still uses these deprecated
-    # array iterators. As such, this CMake just silences that warning since it is irrelevant in our use case.
-    $<$<BOOL:${KH_COMPILED_WITH_MSVC}>:_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING>
-    ${KH_COMPILED_WITH_NAME}=${${KH_COMPILED_WITH_NAME}}
-    $<$<BOOL:${KH_KERNEL_VERSION}>:KH_KERNEL_VERSION=${KH_KERNEL_VERSION}>
-    KH_COMPILER_DISPLAY_STRING="${KH_COMPILER_DISPLAY_STRING}"
-)
-
-message(DEBUG "Compile Defs: ${libKirHut_COMPILE_DEFS}")
-
 add_subdirectory(extern)
 
 add_library(libKirHut
@@ -302,7 +271,6 @@ message(DEBUG "Private Libs: ${libKirHut_LINK_LIBRARIES}")
 add_library(libKirHutInterface INTERFACE)
 
 target_include_directories(libKirHutInterface INTERFACE "include" "${CMAKE_CURRENT_BINARY_DIR}/include")
-target_compile_definitions(libKirHutInterface INTERFACE ${libKirHut_COMPILE_DEFS})
 target_link_libraries(libKirHutInterface INTERFACE ${libKirHut_PUBLIC_LIBRARIES})
 if(WIN32)
     target_link_directories(libKirHutInterface INTERFACE ${KH_NOWIDE_BINARY_DIR})
@@ -320,24 +288,9 @@ endif()
 target_link_libraries(libKirHut PUBLIC libKirHutInterface)
 target_link_libraries(libKirHut PRIVATE ${libKirHut_LINK_LIBRARIES})
 
-string(CONCAT KH_EXPORT_HEADER_ADDON
-    "\n"
-    "#ifdef KH_COMPILED_WITH_MSVC\n"
-    "#  ifdef libKirHut_EXPORTS\n"
-    "#    define KH_EXPLICIT_TEMPLATE_EXPORT\n"
-    "#    define KH_EXPLICIT_TEMPLATE_INSTANCE KH_EXPORT\n"
-    "#  else\n"
-    "#    define KH_EXPLICIT_TEMPLATE_EXPORT KH_EXPORT\n"
-    "#    define KH_EXPLICIT_TEMPLATE_INSTANCE\n"
-    "#  endif\n"
-    "#else\n"
-    "#  define KH_EXPLICIT_TEMPLATE_EXPORT KH_EXPORT\n"
-    "#  define KH_EXPLICIT_TEMPLATE_INSTANCE\n"
-    "#endif\n"
-)
+configure_file(cmake/config.hpp.in include/kh/config.hpp @ONLY)
 
 generate_export_header(libKirHut
     BASE_NAME kh
     EXPORT_FILE_NAME include/kh/export.hpp
-    CUSTOM_CONTENT_FROM_VARIABLE KH_EXPORT_HEADER_ADDON
 )

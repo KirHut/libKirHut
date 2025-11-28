@@ -19,11 +19,12 @@
 ***********************************************************************************************************************/
 #pragma once
 
+#include "kh/global.hpp"
+
 #if defined(KH_INCLUDE_TERMINAL_PRINT) or defined(KH_PRIV_DOCS)
 
 # include <ostream>
 
-# include "kh/global.hpp"
 # include "kh/priv/format.hpp"
 
 # if defined(KH_USES_FMT)
@@ -31,6 +32,10 @@
 #  include "fmt/color.h"
 # elif defined(__cpp_lib_print)
 #  include <print>
+# endif
+
+# if defined(KH_USES_QT)
+#  include <QIODevice>
 # endif
 
 #endif
@@ -106,6 +111,19 @@ KH_EXPORT void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args
  * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
  */
 KH_EXPORT void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
+
+#if defined(KH_USES_QT) or defined(KH_PRIV_DOCS)
+/*!
+ * \brief vprint
+ * \param stream
+ * \param form
+ * \param args
+ * \throws FMT::format_error If there is an error with the format string passed as \p form or its \p args.
+ * \throws std::ios_base::failure If the \p stream throws this exception due to a text insertion.
+ * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
+ */
+KH_EXPORT void vprint(QIODevice &stream, FMT::string_view form, FMT::format_args const &args);
+#endif
 
 #if defined(KH_USES_FMT) or defined(KH_PRIV_DOCS)
 /*!
