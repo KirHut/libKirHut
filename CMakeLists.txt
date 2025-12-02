@@ -1,30 +1,20 @@
-## The KirHut Software Development Library
+## The KirHut Software Development Library - A Universally Useful Set of Tools
 ## CMake Main File
 ##
 ## Copyright © KirHut Software Company
 
 cmake_minimum_required(VERSION 3.27)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if(POLICY CMP0141)
-    cmake_policy(SET CMP0141 NEW)
-    string(CONCAT KIRHUT_MSVC_DEBUG_HOTRELOAD
-        "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,"
-        "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>"
-    )
-    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
-        ${KIRHUT_MSVC_DEBUG_HOTRELOAD})
-endif()
-
 project(libKirHut
     VERSION 0.3.0
-    LANGUAGES CXX
     DESCRIPTION "The KirHut Software Company General C++ Development Library"
+    HOMEPAGE_URL "https://www.kirhut.com/libKirHut"
+    LANGUAGES CXX
 )
 
-include(CMakeDependentOption)
-include(GenerateExportHeader)
-include(cmake/kh_compiler_info.cmake)
+list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+include(KHCompilerInfo)
 
 kh_find_compiler_info()
 
@@ -34,14 +24,9 @@ else()
     set(KH_SUPPORTS_128_TYPES OFF)
 endif()
 
-if(WIN32)
-    set(KH_CAN_TURN_OFF_FETCHCONTENT OFF)
-else()
-    set(KH_CAN_TURN_OFF_FETCHCONTENT ON)
-endif()
-
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     set(KH_BUILD_TESTS_DEFAULT ON)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>")
 else()
     set(KH_BUILD_TESTS_DEFAULT OFF)
 endif()
@@ -56,6 +41,8 @@ string(CONCAT KH_MUST_HAVE_32_64_STRING
     "(implies KH_MUST_HAVE_32BIT_TYPES and KH_MUST_HAVE_64BIT_TYPES)."
 )
 
+include(CMakeDependentOption)
+
 option(KH_MUST_HAVE_16_32_64 "${KH_MUST_HAVE_16_32_64_STRING}" OFF)
 option(KH_MUST_HAVE_32_64 "${KH_MUST_HAVE_32_64_STRING}" OFF)
 option(KH_MUST_HAVE_16BIT_TYPES "Require that the platform has 16 bit integers." OFF)
@@ -64,8 +51,9 @@ option(KH_MUST_HAVE_64BIT_TYPES "Require that the platform has 64 bit integers."
 
 option(KH_USES_QT "Build libKirHut with Qt dependency (implies KH_NO_BADALLOC)." OFF)
 option(KH_USES_FMT "Build libKirHut with {fmt} dependency instead of std::format." ON)
-option(KH_BUILD_TESTS "Build the tests for this library." ${KH_BUILD_TESTS_DEFAULT})
+option(KH_BUILD_TESTS "Build the tests for this library (requires KH_ALLOW_FETCHCONTENT)." ${KH_BUILD_TESTS_DEFAULT})
 option(BUILD_SHARED_LIBS "Build this library (and its dependencies) as shared libraries." ON)
+option(KH_ALLOW_FETCHCONTENT "Allow libKirHut to download {fmt} using FetchContent." ON)
 option(KH_NO_BADALLOC "Remove support for throwing or catching std::bad_alloc." OFF)
 option(KH_NO_EXCEPTIONS "Removes exception support entirely, along with the Error type (implies KH_NO_BADALLOC)." OFF)
 option(KH_INCLUDE_ARG_PARSER "Include KirHut::CLI command line argument parsing functionality." ON)
@@ -80,12 +68,6 @@ cmake_dependent_option(KH_USE_128BIT_TYPES
     ON
     KH_SUPPORTS_128_TYPES
     OFF
-)
-cmake_dependent_option(KH_ALLOW_FETCHCONTENT
-    "Allow this library to download dependencies using FetchContent."
-    ON
-    KH_CAN_TURN_OFF_FETCHCONTENT
-    ON
 )
 
 mark_as_advanced(
@@ -118,8 +100,6 @@ else()
     )
 endif()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS})
-
 if(KH_USES_QT)
     # Qt must be installed on the platform prior to building. This can be done using the Qt Installer tool on Windows or
     # using a package manager on Unix. This may also be done with the Installer tool or Homebrew on MacOS.
@@ -133,46 +113,29 @@ if(KH_USES_QT)
     )
 endif()
 
-if(WIN32)
-    # Boost::nowide is unconditionally downloaded and built, unlike other dependencies that check find_package first.
-    # This is because this library uses the standalone version of nowide, which is almost never distributed using
-    # packaging systems, so to prevent dragging in all of Boost, this is done.
-    FetchContent_Declare(
-        nowide
-        URL "https://github.com/boostorg/nowide/releases/download/v11.3.0/nowide_standalone_v11.3.0.tar.gz"
-        URL_HASH SHA256=153ac93173c8de9c08e7701e471fa750f84c27e51fe329570c5aa06016591f8c
-    )
-
-    FetchContent_MakeAvailable(nowide)
-    target_compile_features(nowide PUBLIC cxx_std_20)
-    set_target_properties(nowide
-        PROPERTIES
-            ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-            LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-            RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-    )
-endif()
-
 if(KH_USES_FMT)
-    find_package(fmt 10 CONFIG QUIET)
+    find_package(fmt 9 CONFIG QUIET)
 
-    if(NOT fmt_FOUND AND KH_ALLOW_FETCHCONTENT)
-        FetchContent_Declare(
-            fmt
-            GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-            GIT_TAG a0b8a92e3d1532361c2f7feb63babc5c18d00ef2
-        )
+    if(NOT fmt_FOUND)
+        if (KH_ALLOW_FETCHCONTENT)
+            FetchContent_Declare(
+                fmt
+                GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+                GIT_TAG 40626af88bd7df9a5fb80be7b25ac85b122d6c21
+            )
 
-        FetchContent_MakeAvailable(fmt)
-        target_compile_features(fmt PUBLIC cxx_std_20)
-        set_target_properties(fmt
-            PROPERTIES
-                ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-                LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-                RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-        )
-    else()
-        message(FATAL_ERROR "libKirHut depends on {fmt}, but it was not found.")
+            FetchContent_MakeAvailable(fmt)
+            target_compile_features(fmt PUBLIC cxx_std_20)
+            set_target_properties(fmt
+                PROPERTIES
+                    ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                    LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                    POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
+            )
+        else()
+            message(FATAL_ERROR "libKirHut depends on {fmt} version 9 or greater, but it was not found.")
+        endif()
     endif()
 endif()
 
@@ -246,6 +209,7 @@ set_target_properties(libKirHut
         ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
         LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+        POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
 )
 
 if(MINGW AND BUILD_SHARED_LIBS)
@@ -259,22 +223,10 @@ set(libKirHut_PUBLIC_LIBRARIES
     $<$<BOOL:${KH_USES_FMT}>:fmt::fmt>
 )
 
-message(DEBUG "Public Libs: ${libKirHut_PUBLIC_LIBRARIES}")
-
-set(libKirHut_LINK_LIBRARIES
-    $<$<BOOL:${WIN32}>:nowide::nowide>
-    KirHut::libKirHutExternal
-)
-
-message(DEBUG "Private Libs: ${libKirHut_LINK_LIBRARIES}")
-
 add_library(libKirHutInterface INTERFACE)
 
 target_include_directories(libKirHutInterface INTERFACE "include" "${CMAKE_CURRENT_BINARY_DIR}/include")
 target_link_libraries(libKirHutInterface INTERFACE ${libKirHut_PUBLIC_LIBRARIES})
-if(WIN32)
-    target_link_directories(libKirHutInterface INTERFACE ${KH_NOWIDE_BINARY_DIR})
-endif()
 
 # Do NOT use CMAKE_CXX_STANDARD! This library supports building for newer versions than C++20, and could have a slightly
 # different API and ABI in those cases. This allows the library builder to set a C++ version, while also requiring at
@@ -286,10 +238,11 @@ if(KH_BUILD_TESTS)
 endif()
 
 target_link_libraries(libKirHut PUBLIC libKirHutInterface)
-target_link_libraries(libKirHut PRIVATE ${libKirHut_LINK_LIBRARIES})
+target_link_libraries(libKirHut PRIVATE KirHut::libKirHutExternal)
 
 configure_file(cmake/config.hpp.in include/kh/config.hpp @ONLY)
 
+include(GenerateExportHeader)
 generate_export_header(libKirHut
     BASE_NAME kh
     EXPORT_FILE_NAME include/kh/export.hpp

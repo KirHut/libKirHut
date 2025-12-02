@@ -74,7 +74,7 @@ configure_file(Doxyfile.in Doxyfile @ONLY)
 if(KH_BUILD_DOCS)
     set(KH_DOCS_ALL_FLAG ALL)
 else()
-    set(KH_DOCS_ALL_FLAG "")
+    set(KH_DOCS_ALL_FLAG)
 endif()
 
 doxygen_add_docs(docs

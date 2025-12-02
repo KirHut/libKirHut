@@ -28,7 +28,6 @@
 # include "kh/priv/format.hpp"
 
 # if defined(KH_USES_FMT)
-#  include "fmt/ostream.h"
 #  include "fmt/color.h"
 # elif defined(__cpp_lib_print)
 #  include <print>
@@ -43,11 +42,11 @@
 /*!
  * Namespace for IO operations provided by libKirHut.
  *
- * This namespace is currently only comprised of C++23-style print functions like KirHut::print() and
- * KirHut::vprintln(). These functions are all designed to mirror the C++23 versions of these functions, except unlike
- * the standard functions, all of the default outputting functions are "unicode aware" and only accept UTF-8 text.
- * KirHut applications use UTF-8 as the universal internal text representation on all platforms, so this library must
- * support outputting and formatting UTF-8 strings as the default in all cases.
+ * This namespace is currently only comprised of C++23-style print functions like KirHut::IO::print() and
+ * KirHut::IO::vprintln(). These functions are all designed to mirror the C++23 versions of these functions, except
+ * unlike the standard functions, all of the default outputting functions are "unicode aware" and only accept UTF-8
+ * text. KirHut applications use UTF-8 as the universal internal text representation on all platforms, so this library
+ * must support outputting and formatting UTF-8 strings as the default in all cases.
  */
 namespace KirHut::IO
 {
@@ -66,15 +65,15 @@ namespace KirHut::IO
 #endif
     ;
 
+#if defined(KH_INCLUDE_TERMINAL_PRINT) or defined(KH_PRIV_DOCS)
 /*!
- * \brief vprint
+ * Formats \p form using the passed in \p args, and then outputs that result to the passed in \p stream.
  *
- * Formats \p form using the passed in \p args, and then outputs that result to the passed in \p stream. If \p stream is
- * a nullptr, then this method will actually do nothing at all (including perform the formatting). This means that if
- * \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an invalid format
- * string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the \p form or \p args
- * are invalid for each other, will throw std::system_error if there is a failure to write to the underlying stream, and
- * will throw std::bad_alloc when there is an allocation failure.
+ * If \p stream is a nullptr, then this method will actually do nothing at all (including perform the formatting). This
+ * means that if \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an
+ * invalid format string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the
+ * \p form or \p args are invalid for each other, will throw std::system_error if there is a failure to write to the
+ * underlying stream, and will throw std::bad_alloc when there is an allocation failure.
  *
  * This function will attempt to perform UTF-8 transcoding to the appropriate output format for the terminal. Namely,
  * this method will detect if you pass in stdout or stderr as \p stream, and if you do, it will divert the text to an
@@ -92,9 +91,9 @@ namespace KirHut::IO
  * \warning The behavior of this method is undefined if the \p stream pointer is non-null and does not point to a valid
  * C output stream. A nullptr will do nothing, but this method cannot prevent passing invalid pointers as a std::FILE.
  *
- * \param stream
- * \param form
- * \param args
+ * \param stream A pointer to the std::FILE stream to output the formatted text to.
+ * \param form A string_view of the format string which will be formatted with \p args and printed to \p stream.
+ * \param args An object of FMT::format_args usually created from a set of template arguments.
  * \throws FMT::format_error If there is an error with the format string passed as \p form or its \p args.
  * \throws std::system_error If writing to the underlying stream fails and this library is C++23 or later enabled.
  * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
@@ -102,17 +101,55 @@ namespace KirHut::IO
 KH_EXPORT void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args const &args);
 
 /*!
- * \brief vprint
- * \param stream
- * \param form
- * \param args
+ * Formats \p form using the passed in \p args, and then outputs that result, and a newline, to the passed in \p stream.
+ *
+ * \copydetails KirHut::IO::vprint(std::FILE*,FMT::string_view,FMT::format_args const&)
+ */
+KH_EXPORT void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &args);
+
+/*!
+ * Formats \p form using the passed in \p args, and then outputs that result to the passed in \p stream.
+ *
+ * If \p stream is a nullptr, then this method will actually do nothing at all (including perform the formatting). This
+ * means that if \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an
+ * invalid format string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the
+ * \p form or \p args are invalid for each other, will throw std::system_error if there is a failure to write to the
+ * underlying stream, and will throw std::bad_alloc when there is an allocation failure.
+ *
+ * This function will attempt to perform UTF-8 transcoding to the appropriate output format for the terminal. Namely,
+ * this method will detect if you pass in stdout or stderr as \p stream, and if you do, it will divert the text to an
+ * appropriate UTF-8 transcoding output file. Otherwise, it will simply write the output bytes directly to the given
+ * \p stream. The bytes may or may not be UTF-8 text, however that is generally assumed. This function makes no further
+ * attempts beyond directly checking if \p stream is stdout or stderr, since this method is assumed to be output to a
+ * file or network destination, and in those cases precise control of the output is preferable to automatic character
+ * encoding conversions.
+ *
+ * If this library is compiled with {fmt} support, this method will always call the
+ * fmt::vprint(std::FILE*,fmt::string_view,fmt::format_args) overload, otherwise it depends on if this library is
+ * compiled with C++23 support. If it is, it uses std::vprint_unicode(std::FILE*,std::string_view,std::format_args), or
+ * it will just use std::vformat(std::string_view,std::format_args) and fputs() the returned string to the \p stream.
+ *
+ * \warning The behavior of this method is undefined if the \p stream pointer is non-null and does not point to a valid
+ * C output stream. A nullptr will do nothing, but this method cannot prevent passing invalid pointers as a std::FILE.
+ *
+ * \param stream A pointer to the std::FILE stream to output the formatted text to.
+ * \param form A string_view of the format string which will be formatted with \p args and printed to \p stream.
+ * \param args An object of FMT::format_args usually created from a set of template arguments.
  * \throws FMT::format_error If there is an error with the format string passed as \p form or its \p args.
- * \throws std::ios_base::failure If the \p stream throws this exception due to a text insertion.
+ * \throws std::ios_base::failure If writing to the underlying stream fails and the stream is set to throw exceptions.
  * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
  */
 KH_EXPORT void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
 
-#if defined(KH_USES_QT) or defined(KH_PRIV_DOCS)
+/*!
+ * \brief vprintln
+ * \param stream
+ * \param form
+ * \param args
+ */
+KH_EXPORT void vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
+
+# if defined(KH_USES_QT) or defined(KH_PRIV_DOCS)
 /*!
  * \brief vprint
  * \param stream
@@ -123,16 +160,34 @@ KH_EXPORT void vprint(std::ostream &stream, FMT::string_view form, FMT::format_a
  * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
  */
 KH_EXPORT void vprint(QIODevice &stream, FMT::string_view form, FMT::format_args const &args);
-#endif
 
-#if defined(KH_USES_FMT) or defined(KH_PRIV_DOCS)
+/*!
+ * \brief vprintln
+ * \param stream
+ * \param form
+ * \param args
+ * \throws FMT::format_error If there is an error with the format string passed as \p form or its \p args.
+ * \throws std::ios_base::failure If the \p stream throws this exception due to a text insertion.
+ * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
+ */
+KH_EXPORT void vprintln(QIODevice &stream, FMT::string_view form, FMT::format_args const &args);
+# endif
+
+# if defined(KH_USES_FMT) or defined(KH_PRIV_DOCS)
 /*!
  * \brief vprint
  * \param form
  * \param args
  */
 KH_EXPORT void vprint(fmt::text_style style, fmt::string_view form, fmt::format_args const &args);
-#endif
+
+/*!
+ * \brief vprintln
+ * \param form
+ * \param args
+ */
+KH_EXPORT void vprintln(fmt::text_style style, fmt::string_view form, fmt::format_args const &args);
+# endif
 
 /*!
  * \brief vprint
@@ -140,22 +195,6 @@ KH_EXPORT void vprint(fmt::text_style style, fmt::string_view form, fmt::format_
  * \param args
  */
 KH_EXPORT void vprint(FMT::string_view form, FMT::format_args const &args);
-
-/*!
- * \brief vprintln
- * \param stream
- * \param form
- * \param args
- */
-KH_EXPORT void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &args);
-
-/*!
- * \brief vprintln
- * \param stream
- * \param form
- * \param args
- */
-KH_EXPORT void vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
 
 /*!
  * \brief vprintln
@@ -178,7 +217,6 @@ KH_EXPORT void vreport(FMT::string_view form, FMT::format_args const &args);
  */
 KH_EXPORT void vreportln(FMT::string_view form, FMT::format_args const &args);
 
-#if defined(KH_INCLUDE_TERMINAL_PRINT) or defined(KH_PRIV_DOCS)
 /*!
  * \brief print
  * \param stream
@@ -188,55 +226,7 @@ KH_EXPORT void vreportln(FMT::string_view form, FMT::format_args const &args);
 template <typename... Arg_Ts>
 void print(FILE *stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
-# if defined(KH_USES_FMT) or defined(__cpp_lib_print)
-    FMT::print(stream, formatString, std::forward<Arg_Ts>(args)...);
-# else
-    IO::vprint(stream, formatString.get(), std::make_format_args(std::forward<Arg_Ts>(args)...));
-# endif
-}
-
-/*!
- * \brief print
- * \param stream
- * \param formatString
- * \param args
- */
-template <typename... Arg_Ts>
-void print(std::ostream &stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
-{
-# if defined(KH_USES_FMT) or defined(__cpp_lib_print)
-    FMT::print(stream, formatString, std::forward<Arg_Ts>(args)...);
-# else
-    IO::vprint(stream, formatString.get(), std::make_format_args(args...));
-# endif
-}
-
-# if defined(KH_USES_FMT) or defined(KH_PRIV_DOCS)
-/*!
- * \brief print
- * \param formatString
- * \param args
- */
-template <typename... Arg_Ts>
-void print(fmt::text_style style, fmt::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
-{
-    // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
-    // to print must go through vprint(). This still benefits from compile time format checking.
-    IO::vprint(style, formatString.get(), FMT::make_format_args(args...));
-}
-# endif
-
-/*!
- * \brief print
- * \param formatString
- * \param args
- */
-template <typename... Arg_Ts>
-void print(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
-{
-    // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
-    // to print must go through vprint(). This still benefits from compile time format checking.
-    IO::vprint(formatString.get(), FMT::make_format_args(args...));
+    IO::vprint(stream, formatString, FMT::make_format_args(args...));
 }
 
 /*!
@@ -248,11 +238,19 @@ void print(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 template <typename... Arg_Ts>
 void println(FILE *stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
-# if defined(KH_USES_FMT) or defined(__cpp_lib_print)
-    FMT::println(stream, formatString, std::forward<Arg_Ts>(args)...);
-# else
-    IO::vprintln(stream, formatString.get(), std::make_format_args(args...));
-# endif
+    IO::vprintln(stream, formatString, FMT::make_format_args(args...));
+}
+
+/*!
+ * \brief print
+ * \param stream
+ * \param formatString
+ * \param args
+ */
+template <typename... Arg_Ts>
+void print(std::ostream &stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
+{
+    IO::vprint(stream, formatString, FMT::make_format_args(args...));
 }
 
 /*!
@@ -264,11 +262,72 @@ void println(FILE *stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&
 template <typename... Arg_Ts>
 void println(std::ostream &stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
-# if defined(KH_USES_FMT) or defined(__cpp_lib_print)
-    FMT::println(stream, formatString, std::forward<Arg_Ts>(args)...);
-# else
-    IO::vprintln(stream, formatString.get(), std::make_format_args(args...));
+    IO::vprintln(stream, formatString, FMT::make_format_args(args...));
+}
+
+# if defined(KH_USES_QT) or defined(KH_PRIV_DOCS)
+/*!
+ * \brief vprint
+ * \param stream
+ * \param form
+ * \param args
+ * \throws std::ios_base::failure If the \p stream throws this exception due to a text insertion.
+ * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
+ */
+template <typename... Arg_Ts>
+void print(QIODevice &stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
+{
+    IO::vprint(stream, formatString, FMT::make_format_args(args...));
+}
+
+/*!
+ * \brief vprintln
+ * \param stream
+ * \param form
+ * \param args
+ * \throws std::ios_base::failure If the \p stream throws this exception due to a text insertion.
+ * \throws std::bad_alloc If there is a failure to allocate memory for the formatted string buffer.
+ */
+template <typename... Arg_Ts>
+void println(QIODevice &stream, FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
+{
+    IO::vprintln(stream, formatString, FMT::make_format_args(args...));
+}
 # endif
+
+# if defined(KH_USES_FMT) or defined(KH_PRIV_DOCS)
+/*!
+ * \brief print
+ * \param formatString
+ * \param args
+ */
+template <typename... Arg_Ts>
+void print(fmt::text_style style, fmt::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
+{
+    IO::vprint(style, formatString, fmt::make_format_args(args...));
+}
+
+/*!
+ * \brief print
+ * \param formatString
+ * \param args
+ */
+template <typename... Arg_Ts>
+void println(fmt::text_style style, fmt::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
+{
+    IO::vprint(style, formatString, fmt::make_format_args(args...));
+}
+# endif
+
+/*!
+ * \brief print
+ * \param formatString
+ * \param args
+ */
+template <typename... Arg_Ts>
+void print(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
+{
+    IO::vprint(formatString.get(), FMT::make_format_args(args...));
 }
 
 /*!
@@ -279,8 +338,6 @@ void println(std::ostream &stream, FMT::format_string<Arg_Ts...> formatString, A
 template <typename... Arg_Ts>
 void println(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
-    // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
-    // to println must go through vprintln(). This still benefits from compile time format checking.
     IO::vprintln(formatString.get(), FMT::make_format_args(args...));
 }
 
@@ -292,8 +349,6 @@ void println(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 template <typename... Arg_Ts>
 void report(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
-    // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
-    // to print must go through vprint(). This still benefits from compile time format checking.
     IO::vreport(formatString.get(), FMT::make_format_args(args...));
 }
 
@@ -305,58 +360,7 @@ void report(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 template <typename... Arg_Ts>
 void reportln(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 {
-    // The UTF-8 output stream is only within the print.cpp TU, so we cannot acces it in the header. As such, all calls
-    // to println must go through vprintln(). This still benefits from compile time format checking.
     IO::vreportln(formatString.get(), FMT::make_format_args(args...));
-}
-
-#else
-template <typename... Arg_Ts>
-void print(FILE *stream, auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
-}
-
-template <typename... Arg_Ts>
-void print(std::ostream &stream, auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
-}
-
-template <typename... Arg_Ts>
-void print(auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
-}
-
-template <typename... Arg_Ts>
-void println(FILE *stream, auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
-}
-
-template <typename... Arg_Ts>
-void println(std::ostream &stream, auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
-}
-
-template <typename... Arg_Ts>
-void println(auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
-}
-
-template <typename... Arg_Ts>
-void report(auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
-}
-
-template <typename... Arg_Ts>
-void reportln(auto formatString, Arg_Ts &&...args)
-{
-    // No further implementation.
 }
 #endif
 

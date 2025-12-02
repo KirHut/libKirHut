@@ -5,6 +5,15 @@
 
 cmake_minimum_required(VERSION 3.27)
 
+if(NOT KH_ALLOW_FETCHCONTENT)
+    string(APPEND KH_FETCHCONTENT_REQUIRED_MESSAGE
+        "The Catch2 library must be custom-built for libKirHut's test bed, because libKirHut uses C++20 features that "
+        "are only provided when Catch2 is built from source with them enabled. As such, building the tests for this "
+        "library requires allowing the use of FetchContent."
+    )
+    message(FATAL_ERROR ${KH_FETCHCONTENT_REQUIRED_MESSAGE})
+endif()
+
 FetchContent_Declare(
     Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git

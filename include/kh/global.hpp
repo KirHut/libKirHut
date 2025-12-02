@@ -49,6 +49,7 @@
 // MSVC doesn't do this at all. To allow this library to define the WINVER and _WIN32_WINNT values (if the builder
 // hasn't set them directly already), the standard includes are done after our preprocessor defines are completed.
 
+#include "kh/export.hpp" // IWYU pragma: export
 #include "kh/config.hpp" // IWYU pragma: export
 
 /*!

@@ -37,17 +37,16 @@ u64 currentTicks() noexcept
     return static_cast<u64>(std::chrono::steady_clock::now().time_since_epoch().count());
 }
 
-#if KH_USE_128BIT_TYPES and not defined(__SIZEOF_INT128__)
+#if defined(KH_USE_128BIT_TYPES) and not defined(__SIZEOF_INT128__)
 static_assert(false,
               "libKirHut is being built with 128-bit integer support, but the compiler or platform does not seem to "
               "support that type (as __SIZEOF_INT128__ is not defined). In order to build with 128-bit integers, the "
               "compiler and/or platform must support that type. Please use an up-to-date version of GCC or Clang to "
               "compile this library or another compiler based on an up-to-date version of one of those two compilers.");
-#endif // KH_USE_128BIT_TYPES and not defined(__SIZEOF_INT128__)
+#endif // defined(KH_USE_128BIT_TYPES) and not defined(__SIZEOF_INT128__)
 
-#if CHAR_BIT != 8
-static_assert(false, "libKirHut does not support platforms that do not have 8-bit bytes.");
-#endif
+// I know of no platforms that support C++20 and have bytes that aren't 8 bits, but this checks for that anyway.
+static_assert(Limits<unsigned char>::digits == 8, "libKirHut does not support platforms that do not have 8-bit bytes.");
 
 // I know of no mixed endian systems in modern use, and this library does not support single type processors.
 static_assert(Platform::BigEndian or Platform::LittleEndian, "libKirHut does not support mixed endian systems.");
@@ -104,7 +103,7 @@ consteval bool onlyOneCompiler()
     return onlyOneOf(compilers);
 }
 
-#if KH_USES_QT and not defined(KH_QT_VERSION)
+#if defined(KH_USES_QT) and not defined(KH_QT_VERSION)
 static_assert(false, "libKirHut is set to compile with Qt, but no Qt version was detected.");
 #endif
 
@@ -112,14 +111,14 @@ static_assert(false, "libKirHut is set to compile with Qt, but no Qt version was
 static_assert(onlyOnePlatform(), "libKirHut cannot be built for more than one target platform.");
 static_assert(not Build::unknownCompiler,
               "libKirHut could not successfully detect the compiler used. Compilers currently correctly detected are:\n"
-              " - GCC\n - MSVC\n - Clang\n - Apple Clang\n - HPC Cray CCE\n - IBM Open XL\n - Intel oneAPI\n"
-              " - ARM Clang\n - NVidia HPC SDK\nIf you want to attempt compiling anyway, define "
-              "KH_OVERRIDE_PLATFORM_SAFETY.");
+              " - GCC\n - MSVC\n - Clang\n - Apple Clang\n - HPC Cray CCE\n - IBM Open XL\n - Intel ICX oneAPI\n"
+              " - ARM Clang\n - NVidia HPC SDK\n - NVidia CUDA\n - QNX\n - Wind River Diab\n - Green Hills\n - Elbrus\n"
+              "If you want to attempt compiling anyway, define KH_OVERRIDE_PLATFORM_SAFETY.");
 
 static_assert(KH_QT_VERSION >= 0, "libKirHut does not support building for versions of Qt lower than Qt 5.15.");
 #endif
 
-#if not KH_COMPILED_WITH_UNKNOWN
+#if not defined(KH_COMPILED_WITH_UNKNOWN)
 static_assert(onlyOneCompiler(),
               "libKirHut has identified two compilers being used, which should not be possible. Please report this as "
               "a bug to the developers at the libKirHut GitHub repository!");

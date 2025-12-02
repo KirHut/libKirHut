@@ -19,8 +19,6 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#include "kh/export.hpp" // IWYU pragma: export
-
 #cmakedefine KH_USES_QT 1
 #cmakedefine KH_USES_FMT 1
 #cmakedefine KH_USE_128BIT_TYPES 1
@@ -46,9 +44,6 @@
 #define KH_COMPILER_DISPLAY_STRING "@KH_COMPILER_NAME@ @CMAKE_CXX_COMPILER_VERSION@"
 
 #ifdef KH_COMPILED_WITH_MSVC
-# ifdef KH_USES_FMT
-#  define _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING // This quiets a deprecation warning in {fmt} version 10.
-# endif
 # ifdef libKirHut_EXPORTS
 #  define KH_EXPLICIT_TEMPLATE_EXPORT
 #  define KH_EXPLICIT_TEMPLATE_INSTANCE KH_EXPORT
