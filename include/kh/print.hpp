@@ -48,7 +48,12 @@
  * text. KirHut applications use UTF-8 as the universal internal text representation on all platforms, so this library
  * must support outputting and formatting UTF-8 strings as the default in all cases.
  */
-namespace KirHut::IO
+namespace KirHut
+{
+
+KH_INLINE_NAMESPACE_V1
+
+namespace IO
 {
 
 /*!
@@ -364,4 +369,8 @@ void reportln(FMT::format_string<Arg_Ts...> formatString, Arg_Ts &&...args)
 }
 #endif
 
-} // namespace KirHut::IO
+} // namespace IO
+
+KH_END_INLINE_NAMESPACE
+
+} // namespace KirHut

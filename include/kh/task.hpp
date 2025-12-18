@@ -30,7 +30,12 @@
  *
  * This namespace encloses all of the multithreading functionality of libKirHut, including the Task system.
  */
-namespace KirHut::MT
+namespace KirHut
+{
+
+KH_INLINE_NAMESPACE_V1
+
+namespace MT
 {
 
 /*!
@@ -51,4 +56,8 @@ namespace KirHut::MT
 // My library calls would go in here when I get started.
 #endif
 
-} // namespace KirHut::MT
+} // namespace MT
+
+KH_END_INLINE_NAMESPACE
+
+} // namespace KirHut

@@ -22,7 +22,7 @@
 #include "kh/base.hpp"
 
 /*!
- * \file invalid.hpp "kh/invalid.hpp"
+ * \file invalid.hpp
  *
  * Invalid template object and MaybeInv object header file. This header contains all of the baseline information for
  * error handling throughout all KirHut applications.
@@ -30,6 +30,8 @@
 
 namespace KirHut
 {
+
+KH_INLINE_NAMESPACE_V1
 
 /*!
  * Dumb data object containing a view to a static message and a WhyInvalid.
@@ -358,14 +360,14 @@ namespace
  *
  * \brief getWhyInvalid
  */
-constexpr auto const &getWhyInvalid  = Detail::staticConstRef<Detail::GetWhyInvalidImpl>;
+constexpr auto const &getWhyInvalid = v1::Detail::staticConstRef<Detail::GetWhyInvalidImpl>;
 
 /*!
  * \internal
  *
  * \brief getInvalidInfo
  */
-constexpr auto const &getInvalidInfo = Detail::staticConstRef<Detail::GetInvalidInfoImpl>;
+constexpr auto const &getInvalidInfo = v1::Detail::staticConstRef<Detail::GetInvalidInfoImpl>;
 
 } // namespace
 
@@ -1364,5 +1366,7 @@ private:
     static_assert(not std::is_function_v<Contained_T>,
                   "MaybeInv cannot contain a function type. Return a function object instead.");
 };
+
+KH_END_INLINE_NAMESPACE
 
 } // namespace KirHut

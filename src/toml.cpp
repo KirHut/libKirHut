@@ -21,7 +21,7 @@
 
 #include "tomlpp.hpp"
 
-namespace KirHut::TOML
+namespace KirHut
 {
 
-} // namespace KirHut::TOML
+} // namespace KirHut

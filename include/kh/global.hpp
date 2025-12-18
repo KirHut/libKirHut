@@ -908,7 +908,7 @@
  */
 
 //! \}
-
+//* Edit assistant. Qt Creator is slow with this block active, but commenting it out while editing makes editing faster.
 //! \cond
 #if defined(_WIN32)
 // The builder can set _WIN32_WINNT and WINVER to the desired values before compiling, or this library will just use
@@ -1257,6 +1257,8 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_MUST_HAVE_16BIT_TYPES
 #endif
 
+// */
+
 /*!
  * \def KH_FORCEINLINE
  *
@@ -1372,6 +1374,53 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_ATTR_FLATTEN gnu::flatten
 #endif
 
+/*!
+ * \def KH_INLINE_NAMESPACE_V1
+ * Preprocessor define to begin a v1 inline namespace.
+ *
+ * This generates `inline namespace v1 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
+ * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
+ * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_INLINE_NAMESPACE_V2
+ * Preprocessor define to begin a v2 inline namespace.
+ *
+ * This generates `inline namespace v2 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
+ * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
+ * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ *
+ * \hideinitializer
+ */
+
+/*!
+ * \def KH_END_INLINE_NAMESPACE
+ * Preprocessor define to end an inline namespace.
+ *
+ * This generates `}` and little else, unless the library is being built with KH_PRIV_DOCS active, in which case this
+ * will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline namespaces for the
+ * purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ *
+ * \hideinitializer
+ */
+
+#if not defined(KH_PRIV_DOCS)
+# define KH_INLINE_NAMESPACE_V1 \
+     inline namespace v1        \
+     {
+# define KH_INLINE_NAMESPACE_V2 \
+     inline namespace v2        \
+     {
+# define KH_END_INLINE_NAMESPACE }
+#else
+# define KH_INLINE_NAMESPACE_V1
+# define KH_INLINE_NAMESPACE_V2
+# define KH_END_INLINE_NAMESPACE
+#endif
+
 #include <cstdint>
 #include <cstddef>
 #include <type_traits>
@@ -1382,6 +1431,8 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 
 namespace KirHut
 {
+
+KH_INLINE_NAMESPACE_V1
 
 //! \cond
 using std::byte;
@@ -1993,5 +2044,7 @@ enum class WhyInvalid
 {
     return static_cast<int>(why);
 }
+
+KH_END_INLINE_NAMESPACE
 
 } // namespace KirHut

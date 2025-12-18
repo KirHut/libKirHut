@@ -32,7 +32,7 @@ void Detail::throwTooSmallSpan(string_view message)
     throw IllegalArgument(message);
 }
 
-u64 currentTicks() noexcept
+u64 v1::currentTicks() noexcept
 {
     return static_cast<u64>(std::chrono::steady_clock::now().time_since_epoch().count());
 }
@@ -92,7 +92,7 @@ consteval bool onlyOneOf(array<bool, N> const &vals)
 consteval bool onlyOnePlatform()
 {
     using namespace KirHut::Platform;
-    array platforms{ windows, macOS, linuxos, wasm, iPhone, android };
+    array platforms{ windows, macOS, gnulinux, wasm, iPhone, android };
     return onlyOneOf(platforms);
 }
 

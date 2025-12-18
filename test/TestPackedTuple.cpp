@@ -56,6 +56,15 @@ TEST_CASE("Basic constant sanity checks for BitFields", "[packedtuple][BitField]
     STATIC_REQUIRE(BF::U8<7>::digits() == 7);
     STATIC_REQUIRE(BF::U8<7>::min() == 0);
     STATIC_REQUIRE(BF::U8<7>::max() == 127);
+
+    STATIC_REQUIRE(BF::I8<8>::bits() == 8);
+    STATIC_REQUIRE(BF::I8<8>::digits() == 7);
+    STATIC_REQUIRE(BF::I8<8>::min() == -128);
+    STATIC_REQUIRE(BF::I8<8>::max() == 127);
+    STATIC_REQUIRE(BF::I8<7>::bits() == 7);
+    STATIC_REQUIRE(BF::I8<7>::digits() == 6);
+    STATIC_REQUIRE(BF::I8<7>::min() == -64);
+    STATIC_REQUIRE(BF::I8<7>::max() == 63);
 }
 
 TEST_CASE("Basic single-block packing/unpacking", "[packedtuple][PackedTuple]")

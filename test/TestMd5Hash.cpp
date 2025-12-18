@@ -25,26 +25,33 @@
 
 #include <algorithm>
 #include <random>
+#include <numeric>
 
 #include "Md51.hpp"
 // #include "Md51.cpp"
 
 using namespace KirHut;
+using namespace KirHut::Hash;
 
-template <size_t SIZE = std::dynamic_extent>
-string getHex(span<byte, SIZE> biteSize)
+string getHex(ReadableSpanOf<byte> auto biteSize)
 {
-    constexpr auto tform = [](char hexDigit) { return hexDigit < 10 ? hexDigit += '0' : hexDigit += 'a' - 10; };
-    size_t bufSize = biteSize.size_bytes() * 2;
-    string ret(bufSize, '\0');
-    char *dsti = ret.data();
+    constexpr auto hexDigits = "0123456789abcdef"sv;
+    string ret;
+    ret.reserve(biteSize.size_bytes() * 2);
     for (byte b : biteSize)
     {
-        *dsti++ = tform(static_cast<char>(b >> 4));
-        *dsti++ = tform(static_cast<char>(b) & 0x0F);
+        ret.push_back(hexDigits[static_cast<char>(b >> 4)]);
+        ret.push_back(hexDigits[static_cast<char>(b) & 0xf]);
     }
 
     return ret;
+}
+
+Md5Sum md5Reference(span<byte const> data)
+{
+    Md5Sum out;
+    md5::md5_t(data.data(), static_cast<unsigned int>(data.size_bytes()), out.data());
+    return out;
 }
 
 constexpr string_view SmallTestBlock =
@@ -70,49 +77,89 @@ constexpr string_view SmallTestBlock =
 
 TEST_CASE("Check the size for Md5Sum", "[md5hash][constant]")
 {
-    STATIC_REQUIRE(sizeof(Md5Sum) == MD5SUM_RETURN_SIZE);
+    STATIC_REQUIRE(sizeof(Md5Sum) == md5SumSize);
     Md5Sum sum;
-    REQUIRE(sum.size() == MD5SUM_RETURN_SIZE);
+    REQUIRE(sum.size() == md5SumSize);
 }
 
 TEST_CASE("Empty Md5Hash Object Construction State", "[md5hash][constructor]")
 {
-    Md5Hash hasher;
+    Md5 hasher;
     string emptyMd5Str = "d41d8cd98f00b204e9800998ecf8427e";
-    Md5Sum sum         = hasher.getMd5();
+    Md5Sum sum         = hasher.getHash();
     REQUIRE(emptyMd5Str == getHex(span{ sum }));
+}
+
+TEST_CASE("RFC 1321 test vectors", "[md5hash][constructor][rfc]")
+{
+    struct Vec
+    {
+        string_view input;
+        string_view expected;
+    };
+
+    constexpr Vec vectors[] = { { "", "d41d8cd98f00b204e9800998ecf8427e" },
+                                { "a", "0cc175b9c0f1b6a831c399e269772661" },
+                                { "abc", "900150983cd24fb0d6963f7d28e17f72" },
+                                { "message digest", "f96b697d7cb7938d525a2f31aaf161d0" },
+                                { "abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b" },
+                                { "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                                  "d174ab98d277d9f5a5611c2c9f419d9f" },
+                                { "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
+                                  "57edf4a22be3c955ac49da2e2107b67a" } };
+
+    for (auto const &v : vectors)
+    {
+        Md5 hasher(v.input);
+        auto hash = hasher.getHash();
+        REQUIRE(getHex(span{ hash }) == v.expected);
+    }
 }
 
 TEST_CASE("Initialize Md5Hash With An Array of Bytes", "[md5hash][constructor]")
 {
-    Md5Hash hasher(SmallTestBlock);
+    Md5 hasher(SmallTestBlock);
     string blockMd5Str = "266c6efea54d63c04fb8083f40d441cc";
-    Md5Sum sum         = hasher.getMd5();
+    Md5Sum sum         = hasher.getHash();
     REQUIRE(blockMd5Str == getHex(span{ sum }));
+}
+
+TEST_CASE("MD5 padding boundary conditions", "[md5hash][padding]")
+{
+    for (size_t size : { 55u, 56u, 57u, 63u, 64u, 65u })
+    {
+        INFO("Size = " << size);
+
+        std::vector<u8> data(size);
+        std::iota(data.begin(), data.end(), u8{ 0 });
+
+        Md5 hasher(span{ data });
+        REQUIRE(hasher.getHash() == md5Reference(std::as_bytes(span{ data })));
+    }
 }
 
 TEST_CASE("Constructing With Different Types of Input Data", "[md5hash][constructor]")
 {
-    Md5Hash hasher(SmallTestBlock);
-    array<byte, MD5SUM_RETURN_SIZE> md5OtherBuffer;
+    Md5 hasher(SmallTestBlock);
+    array<byte, md5SumSize> md5OtherBuffer;
     md5::md5_t(SmallTestBlock.data(), SmallTestBlock.size(), md5OtherBuffer.data());
-    REQUIRE(hasher.getMd5() == md5OtherBuffer);
+    REQUIRE(hasher.getHash() == md5OtherBuffer);
     array<u64, 512> randLongs;
     std::mt19937_64 rng(currentTicks());
     std::generate(randLongs.begin(), randLongs.end(), rng);
-    Md5Hash hasher2(span<u64, 512>{ randLongs });
+    Md5 hasher2(span<u64, 512>{ randLongs });
     md5::md5_t(randLongs.data(), randLongs.size() * sizeof(u64), md5OtherBuffer.data());
-    REQUIRE(hasher2.getMd5() == md5OtherBuffer);
+    REQUIRE(hasher2.getHash() == md5OtherBuffer);
 }
 
 TEST_CASE("Adding Bytes After Completing Md5Hash", "[md5hash]")
 {
-    Md5Hash hasher;
+    Md5 hasher;
     string emptyMd5Str = "d41d8cd98f00b204e9800998ecf8427e";
-    Md5Sum sum         = hasher.getMd5();
+    Md5Sum sum         = hasher.getHash();
     REQUIRE(emptyMd5Str == getHex(span{ sum }));
     hasher.provideInput(span{ "Other invalid data that won't affect anything." });
-    Md5Sum sum2 = hasher.getMd5();
+    Md5Sum sum2 = hasher.getHash();
     REQUIRE(emptyMd5Str == getHex(span{ sum2 }));
 }
 
@@ -123,23 +170,66 @@ TEST_CASE("Providing Input of Different Types of Data", "[md5hash]")
     array<u32, 512> unsignedList;
     std::generate(signedList.begin(), signedList.end(), rng);
     std::generate(unsignedList.begin(), unsignedList.end(), [&rng] { return static_cast<u32>(rng()); });
-    Md5Hash hasher, hasher2;
-    array<byte, MD5SUM_RETURN_SIZE> md5OtherBuf;
+    Md5 hasher, hasher2;
+    array<byte, md5SumSize> md5OtherBuf;
     md5::md5_t(signedList.data(), signedList.size() * sizeof(i64), md5OtherBuf.data());
     hasher.provideInput(span{ signedList });
-    REQUIRE(hasher.getMd5() == md5OtherBuf);
+    REQUIRE(hasher.getHash() == md5OtherBuf);
     md5::md5_t(unsignedList.data(), unsignedList.size() * sizeof(u32), md5OtherBuf.data());
     hasher2.provideInput(span{ unsignedList });
-    REQUIRE(hasher2.getMd5() == md5OtherBuf);
+    REQUIRE(hasher2.getHash() == md5OtherBuf);
+}
+
+TEST_CASE("Incremental input equals one-shot input", "[md5hash][streaming]")
+{
+    std::vector<byte> data(4096);
+    std::mt19937 rng(12'345);
+    std::generate(data.begin(), data.end(), [&] { return byte(rng()); });
+
+    Md5 oneShot(span{ data });
+
+    Md5 streamed;
+    for (size_t offset = 0; offset < data.size();)
+    {
+        size_t chunk = std::min<size_t>((rng() % 37) + 1, data.size() - offset);
+        streamed.provideInput(span{ data }.subspan(offset, chunk));
+        offset += chunk;
+    }
+
+    REQUIRE(oneShot.getHash() == streamed.getHash());
+}
+
+TEST_CASE("MD5 output iterator variants", "[md5hash][output]")
+{
+    Md5 hasher("abc");
+
+    std::vector<byte> out1;
+    hasher.getHash(std::back_inserter(out1));
+
+    std::vector<char> out2;
+    hasher.getHash(std::back_inserter(out2));
+
+    REQUIRE(out1.size() == md5SumSize);
+    REQUIRE(std::equal(out1.begin(), out1.end(), out2.begin(), [](byte b, char c) { return b == byte(c); }));
+}
+
+TEST_CASE("fitHash copies partial hash correctly", "[md5hash][fitHash]")
+{
+    Md5 hasher("abc");
+    array<byte, 8> small{};
+    hasher.fitHash(span{ small });
+
+    auto full = hasher.getHash();
+    REQUIRE(std::equal(small.begin(), small.end(), full.begin()));
 }
 
 TEST_CASE("Using The provideInput() Method to Input Data", "[md5hash]")
 {
-    std::string blockMd5Str = "266c6efea54d63c04fb8083f40d441cc";
+    string blockMd5Str = "266c6efea54d63c04fb8083f40d441cc";
 
     size_t divAmount = GENERATE(range(1u, 33u));
 
-    Md5Hash hasher;
+    Md5 hasher;
 
     size_t amount    = SmallTestBlock.size() / divAmount;
     size_t remainder = SmallTestBlock.size() % divAmount;
@@ -154,17 +244,46 @@ TEST_CASE("Using The provideInput() Method to Input Data", "[md5hash]")
         hasher.provideInput(remainder, &SmallTestBlock[SmallTestBlock.size() - remainder]);
     }
 
-    Md5Sum sum = hasher.getMd5();
+    Md5Sum sum = hasher.getHash();
 
     REQUIRE(blockMd5Str == getHex(span{ sum }));
 }
 
 TEST_CASE("Taking MD5 Result Using Spans", "[md5hash]")
 {
-    Md5Hash hasher;
+    Md5 hasher;
     string emptyMd5Str = "d41d8cd98f00b204e9800998ecf8427e";
     array<byte, 16> buffer; // Set this below 16 to test that hasher.getMd5() fails to compile with too small a span.
     auto bSpan = span{ buffer };
-    hasher.getMd5(bSpan);
+    hasher.getHash(bSpan);
     REQUIRE(emptyMd5Str == getHex(bSpan));
+}
+
+TEST_CASE("Large input MD5", "[md5hash][stress]")
+{
+    constexpr size_t size = 1 << 20; // 1 MB
+    std::vector<byte> data(size, byte{ 0xA5 });
+
+    Md5 hasher(span{ data });
+    REQUIRE(hasher.getHash() == md5Reference(span{ data }));
+}
+
+TEST_CASE("Repeated getHash calls are stable", "[md5hash][state]")
+{
+    Md5 hasher("abc");
+
+    auto h1 = hasher.getHash();
+    auto h2 = hasher.getHash();
+    auto h3 = hasher.getHash();
+
+    REQUIRE(h1 == h2);
+    REQUIRE(h2 == h3);
+}
+
+TEST_CASE("Endian-sensitive data patterns", "[md5hash][endian]")
+{
+    array<u32, 4> words = { 0x11'22'33'44, 0x55'66'77'88, 0x99'AA'BB'CC, 0xDD'EE'FF'00 };
+
+    Md5 hasher(span{ words });
+    REQUIRE(hasher.getHash() == md5Reference(as_bytes(span{ words })));
 }

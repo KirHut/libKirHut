@@ -62,6 +62,8 @@
 namespace KirHut
 {
 
+KH_INLINE_NAMESPACE_V1
+
 template <WhyInvalid why>
 struct Error;
 
@@ -362,5 +364,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
 private:
     using Parent = TaggedInvalid<reason, Detail::ErrorState<reason>>;
 };
+
+KH_END_INLINE_NAMESPACE
 
 } // namespace KirHut

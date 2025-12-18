@@ -34,8 +34,10 @@
 
 #include <algorithm>
 
-namespace KirHut::CLI
+namespace KirHut
 {
+
+using namespace v1::CLI;
 
 string_view readNextOptionValue(string_view optionString, size_t &loc) noexcept
 {
@@ -82,7 +84,7 @@ void testCommandString(string_view commandString)
         return;
     }
 
-    if (R::any_of(illegalStartingChars, [&](char illegal) { return commandString.front() == illegal; }))
+    if (Ranges::any_of(illegalStartingChars, [&](char illegal) { return commandString.front() == illegal; }))
     {
         throw IllegalArgument("A command cannot begin with any of these characters: \"-0123456789\".");
     }
@@ -150,7 +152,7 @@ Option::Option([[maybe_unused]] RuntimeFlag rt, string_view optionNames, bool ta
     Detail::validateOptionString(optionNames);
 }
 
-bool Option::operator==(const Option &other) const noexcept
+bool Option::operator==(Option const &other) const noexcept
 {
     return opNames == other.opNames and isFlag == other.isFlag;
 }
@@ -475,7 +477,7 @@ struct Parser::Impl
                             }
 
                             auto foundMatch =
-                                R::find_if(matched, [&](OptionMatches const &pot) { return pot.option == op; });
+                                Ranges::find_if(matched, [&](OptionMatches const &pot) { return pot.option == op; });
                             if (foundMatch == matched.end())
                             {
                                 // The constructor is private so we cannot use emplace_back directly...
@@ -548,7 +550,7 @@ span<string_view const> const Parser::positionalArguments() const noexcept
     return im->positional;
 }
 
-const Command &Parser::activeCommand() const noexcept
+Command const &Parser::activeCommand() const noexcept
 {
     return im->active.value();
 }
@@ -567,7 +569,7 @@ template <WhyInvalid invValue, typename... Args>
     throw Error<invValue>(Flags::runtime, fmtStr.get(), FMT::make_format_args(args...));
 }
 
-void Detail::throwIllegalOptionCharacter(char whichOne)
+void CLI::Detail::throwIllegalOptionCharacter(char whichOne)
 {
     throwOrExit<WhyInvalid::IllegalArgument>(
         "An illegal character was passed to the Option constructor: {}\nThese are the legal "
@@ -575,7 +577,7 @@ void Detail::throwIllegalOptionCharacter(char whichOne)
         whichOne);
 }
 
-void Detail::throwIllegalCommandCharacter(char whichOne)
+void CLI::Detail::throwIllegalCommandCharacter(char whichOne)
 {
     string_view illegalChar{ &whichOne, 1 };
 
@@ -589,26 +591,26 @@ void Detail::throwIllegalCommandCharacter(char whichOne)
     throwOrExit<WhyInvalid::IllegalArgument>("The {} character is illegal to use in a Command name.", illegalChar);
 }
 
-void Detail::throwIllegalBeginningCommandCharacter(char whichOne)
+void CLI::Detail::throwIllegalBeginningCommandCharacter(char whichOne)
 {
     throwOrExit<WhyInvalid::IllegalArgument>(
         "The {} character cannot be used as the first character in a Command name.",
         whichOne);
 }
 
-void Detail::throwNoValidOptionToken(string_view str)
+void CLI::Detail::throwNoValidOptionToken(string_view str)
 {
     throwOrExit<WhyInvalid::IllegalArgument>(
         "There must be at least one valid token in an Option string. This was the option string passed:\n\"{}\"",
         str);
 }
 
-void Detail::throwNoPlusMinusBeginOption(char whichOne)
+void CLI::Detail::throwNoPlusMinusBeginOption(char whichOne)
 {
     throwOrExit<WhyInvalid::IllegalArgument>("An option cannot begin with the '{}' character.", whichOne);
 }
 
-void Detail::throwNotJustDigitsOption(string_view opStr)
+void CLI::Detail::throwNotJustDigitsOption(string_view opStr)
 {
     throwOrExit<WhyInvalid::IllegalArgument>("An option cannot only consist of digits. \"{}\" cannot be an option.",
                                              opStr);

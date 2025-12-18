@@ -43,7 +43,12 @@
  * manually turn this option off to remove KirHut::FS support. This could be useful when attempting to compile libKirHut
  * for platforms that do not properly support std::filesystem.
  */
-namespace KirHut::FS
+namespace KirHut
+{
+
+KH_INLINE_NAMESPACE_V1
+
+namespace FS
 {
 
 /*!
@@ -64,4 +69,8 @@ namespace KirHut::FS
 using namespace std::filesystem;
 #endif
 
-} // namespace KirHut::FS
+} // namespace FS
+
+KH_END_INLINE_NAMESPACE
+
+} // namespace KirHut

@@ -34,6 +34,8 @@
 namespace KirHut
 {
 
+KH_INLINE_NAMESPACE_V1
+
 /*!
  * Error thrown when an impossible condition arises due to a programming error.
  *
@@ -98,6 +100,8 @@ using NoValidData = Error<WhyInvalid::DataRemoved>;
  * for just such a circumstance.
  */
 using BadState = Error<WhyInvalid::InvalidState>;
+
+KH_END_INLINE_NAMESPACE
 
 //! \cond
 // Poor Doxygen doesn't understand extern template instantiations with KH_EXPORT...

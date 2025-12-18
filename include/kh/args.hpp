@@ -39,7 +39,12 @@
  * command line parsing objects like Option, Command, and Parser. These are the fundamental building-blocks of the
  * argument parsing system and are well-documented in their according objects.
  */
-namespace KirHut::CLI
+namespace KirHut
+{
+
+KH_INLINE_NAMESPACE_V1
+
+namespace CLI
 {
 
 /*!
@@ -144,14 +149,14 @@ constexpr void validateOptionString(string_view optionString)
     }
 
     bool ran = false;
-    for (string_view word : V::words(optionString))
+    for (string_view word : Views::words(optionString))
     {
         if (word.front() == '-' or word.front() == '+')
         {
             throwNoPlusMinusBeginOption(word.front());
         }
 
-        if (R::all_of(word, isDigit))
+        if (Ranges::all_of(word, isDigit))
         {
             throwNotJustDigitsOption(word);
         }
@@ -182,7 +187,7 @@ constexpr void validateCommandString(string_view commandString)
         return;
     }
 
-    if (R::any_of(illegalStartingChars, [&](char illegal) { return commandString.front() == illegal; }))
+    if (Ranges::any_of(illegalStartingChars, [&](char illegal) { return commandString.front() == illegal; }))
     {
         throwIllegalBeginningCommandCharacter(commandString.front());
     }
@@ -223,7 +228,7 @@ struct OptionString final
 template <std::convertible_to<string_view> S>
 consteval OptionString::OptionString(S str) : data(str)
 {
-    validateOptionString(data);
+    validateOptionString(str);
 }
 
 /*!
@@ -652,6 +657,110 @@ private:
     void matchFound(string_view argument);
 };
 
+struct OptionDef
+{
+    Detail::OptionString tokenString;
+    bool takesArgument;
+
+    constexpr OptionDef(Detail::OptionString tokenString, bool takesArgument = true) :
+        tokenString(tokenString),
+        takesArgument(takesArgument)
+    {
+        // No further implementation.
+    }
+
+    char *charMatch(string_view arg) const noexcept;
+    bool stringMatch(string_view arg) const noexcept;
+};
+
+struct FlagDef
+{
+    Detail::OptionString tokenString;
+    bool takesArgument;
+
+    constexpr FlagDef(Detail::OptionString tokenString, bool takesArgument = false) :
+        tokenString(tokenString),
+        takesArgument(takesArgument)
+    {
+        // No further implementation.
+    }
+
+    operator OptionDef()
+    {
+        return { tokenString, takesArgument };
+    }
+};
+
+struct CommandDef
+{
+    Detail::CommandString name;
+    std::vector<OptionDef> options;
+
+    constexpr CommandDef(Detail::CommandString name, std::vector<OptionDef> const &options) :
+        name(name),
+        options(options)
+    {
+        // No further implementation.
+    }
+
+    constexpr CommandDef(Detail::CommandString name, std::vector<OptionDef> &&options) :
+        name(name),
+        options(std::move(options))
+    {
+        // No further implementation.
+    }
+
+    bool stringMatch(string_view arg) const noexcept;
+};
+
+enum class ArgType
+{
+    Unknown,
+    Flag,
+    Flags,
+    FlagsAndOption,
+    Option,
+    OptionArg,
+    OptionWithArg,
+    InvalidOption,
+    OptionMissingArgument,
+    Subcommand,
+    Positional,
+    HelpFlag,
+    VersionFlag,
+};
+
+struct Arg
+{
+    string_view v;
+    ArgType type;
+    CommandDef *subcommand;
+    std::vector<OptionDef> matches;
+};
+
+struct ReadArgs
+{
+    std::vector<Arg> args;
+
+    ReadArgs(OptionView universalOptions, std::vector<CommandDef> const &commandList, int argc, char **argv);
+    ReadArgs(std::vector<CommandDef> const &commandList, int argc, char **argv);
+
+private:
+    struct Impl;
+    UPtr<Impl> im;
+};
+
+inline void test()
+{
+    Detail::CommandString cmdStr = "commit";
+
+    CommandDef commitCmd{ "commit",
+                          {
+                              OptionDef{ "a all" },
+                              FlagDef{ "m message" },
+                          } };
+}
+
 /*!
  * Class that performs the parsing of the command line arguments and provides the result of that parsing.
  *
@@ -804,4 +913,8 @@ public:
 };
 #endif // defined(KH_INCLUDE_ARG_PARSER) or defined(KH_PRIV_DOCS)
 
-} // namespace KirHut::CLI
+} // namespace CLI
+
+KH_END_INLINE_NAMESPACE
+
+} // namespace KirHut

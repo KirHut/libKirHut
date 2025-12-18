@@ -105,6 +105,8 @@ using namespace std::literals::string_literals;
 using namespace std::literals::string_view_literals;
 //! \endcond
 
+KH_INLINE_NAMESPACE_V1
+
 /*!
  * Alias name for std::unique_ptr.
  *
@@ -796,7 +798,8 @@ consteval bool emptyTest() noexcept
  * \return
  */
 template <Numeric Num_T, std::endian sourceEndianness>
-[[nodiscard]] constexpr Num_T fromEndian(ByteType auto const *source) noexcept
+[[nodiscard]] constexpr Num_T fromEndian(std::contiguous_iterator auto source) noexcept
+    requires(ByteType<std::iter_value_t<decltype(source)>>)
 {
     if constexpr (sizeof(Num_T) == sizeof(byte))
     {
@@ -804,25 +807,29 @@ template <Numeric Num_T, std::endian sourceEndianness>
     }
 
     ExactUIntOf<Num_T> ret = 0;
-    if (std::is_constant_evaluated())
+    if (std::is_pointer_v<decltype(source)> and not std::is_constant_evaluated())
     {
-        constexpr bool fromBig = sourceEndianness == std::endian::big;
-        for (size_t i = 0; i < sizeof(Num_T); ++i)
+        // Keep memcpy nested in if constexpr to ensure compiler doesn't try to manifest memcpy with a non-pointer
+        // contiguous_iterator.
+        if constexpr (std::is_pointer_v<decltype(source)>)
         {
-            // We do a bit_cast to unsigned first because the bytes in source may be signed, so static_cast could change
-            // the binary representation if we don't first bit_cast to u8.
-            auto temp = std::bit_cast<u8>(fromBig ? source[sizeof(Num_T) - 1 - i] : source[i]);
-            ret |= static_cast<ExactUIntOf<Num_T>>(temp) << (i * Platform::bitsInByte);
+            memcpy(&ret, source, sizeof(Num_T));
         }
     }
     else
     {
-        memcpy(&ret, source, sizeof(Num_T));
-
-        if constexpr (sourceEndianness != Platform::Endianness)
+        for (size_t i = 0; i < sizeof(Num_T); ++i)
         {
-            ret = byteSwap(ret);
+            // We do a bit_cast to unsigned first because the bytes in source may be signed, so static_cast could change
+            // the binary representation if we don't first bit_cast to u8.
+            auto temp = std::bit_cast<u8>(*source++);
+            ret |= static_cast<ExactUIntOf<Num_T>>(temp) << (i * Platform::bitsInByte);
         }
+    }
+
+    if constexpr (sourceEndianness != Platform::Endianness)
+    {
+        ret = byteSwap(ret);
     }
 
     return std::bit_cast<Num_T>(ret);
@@ -836,41 +843,40 @@ template <Numeric Num_T, std::endian sourceEndianness>
  * \return
  */
 template <std::endian destEndianness>
-constexpr auto toEndian(Numeric auto value, ByteType auto *dest) noexcept -> decltype(dest)
+constexpr auto toEndian(Numeric auto value, std::contiguous_iterator auto dest) noexcept -> decltype(dest)
+    requires(ByteType<std::iter_value_t<decltype(dest)>> and not std::is_const_v<std::iter_value_t<decltype(dest)>>)
 {
-    using Byte_T = std::remove_pointer_t<decltype(dest)>;
-    static_assert(not std::is_const_v<Byte_T>, "toEndian needs a non-const array to write to.");
+    using Byte_T = std::iter_value_t<decltype(dest)>;
 
     constexpr auto returnTypeSize = sizeof(decltype(value));
-
     if constexpr (returnTypeSize == sizeof(byte))
     {
-        *dest = std::bit_cast<byte>(value);
-        return ++dest;
+        *dest++ = std::bit_cast<Byte_T>(value);
+        return dest;
     }
 
     auto bits = std::bit_cast<ExactUInt<returnTypeSize>>(value);
-    if (std::is_constant_evaluated())
+    if constexpr (destEndianness != Platform::Endianness)
     {
-        constexpr bool toBig = destEndianness == std::endian::big;
-        for (size_t i = 0; i < returnTypeSize; ++i)
-        {
-            auto temp = static_cast<u8>(bits >> (i * Platform::bitsInByte));
-
-            dest[toBig ? returnTypeSize - 1 - i : i] = std::bit_cast<Byte_T>(temp);
-        }
-    }
-    else
-    {
-        if constexpr (destEndianness != Platform::Endianness)
-        {
-            bits = byteSwap(bits);
-        }
-
-        memcpy(dest, &bits, returnTypeSize);
+        bits = byteSwap(bits);
     }
 
-    return dest + returnTypeSize;
+    if constexpr (std::is_pointer_v<decltype(dest)>)
+    {
+        if (not std::is_constant_evaluated())
+        {
+            memcpy(dest, &bits, returnTypeSize);
+            return std::next(dest, returnTypeSize);
+        }
+    }
+
+    for (size_t i = 0; i < returnTypeSize; ++i)
+    {
+        u8 temp = static_cast<u8>(bits >> (i * Platform::bitsInByte));
+        *dest++ = std::bit_cast<Byte_T>(temp);
+    }
+
+    return dest;
 }
 
 /*!
@@ -1155,9 +1161,17 @@ template <typename Var_T>
  * \return The bytes under \p source interpreted as a big endian \p Num_T type.
  */
 template <Numeric Num_T>
-[[nodiscard]] constexpr Num_T fromBigEndian(ByteType auto const *source) noexcept
+[[nodiscard]] constexpr Num_T fromBigEndian(std::contiguous_iterator auto source) noexcept
+    requires(ByteType<std::iter_value_t<decltype(source)>>)
 {
-    return source ? Detail::fromEndian<Num_T, std::endian::big>(source) : Num_T{};
+    if constexpr (std::is_pointer_v<decltype(source)>)
+    {
+        // FIXME: Reimplemented to keep branch free functionality, however this may be unnecessary. Need to check with
+        // more compilers!
+        return source ? Detail::fromEndian<Num_T, std::endian::big>(source) : Num_T{};
+    }
+
+    return Detail::fromEndian<Num_T, std::endian::big>(source);
 }
 
 /*!
@@ -1199,11 +1213,11 @@ template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
 /*!
  * \copydoc fromBigEndian(span<Byte_T const,size>)
  */
-template <Numeric T, ByteType Byte_T, size_t fixedSize>
-[[nodiscard]] constexpr T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
-    requires(fixedSize >= sizeof(T))
+template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
+[[nodiscard]] constexpr Num_T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
+    requires(fixedSize >= sizeof(Num_T))
 {
-    return fromBigEndian<T>(span<Byte_T const, fixedSize>{ source });
+    return fromBigEndian<Num_T>(span<Byte_T const, fixedSize>{ source });
 }
 
 /*!
@@ -1211,10 +1225,18 @@ template <Numeric T, ByteType Byte_T, size_t fixedSize>
  * \param source
  * \return
  */
-template <Numeric T>
-[[nodiscard]] constexpr T fromLittleEndian(ByteType auto const *source) noexcept
+template <Numeric Num_T>
+[[nodiscard]] constexpr Num_T fromLittleEndian(std::contiguous_iterator auto source) noexcept
+    requires(ByteType<std::iter_value_t<decltype(source)>>)
 {
-    return Detail::fromEndian<T, std::endian::little>(source);
+    if constexpr (std::is_pointer_v<decltype(source)>)
+    {
+        // FIXME: Reimplemented to keep branch free functionality, however this may be unnecessary. Need to check with
+        // more compilers!
+        return source ? Detail::fromEndian<Num_T, std::endian::little>(source) : Num_T{};
+    }
+
+    return Detail::fromEndian<Num_T, std::endian::little>(source);
 }
 
 /*!
@@ -1222,19 +1244,19 @@ template <Numeric T>
  * \param source
  * \return
  */
-template <Numeric T, ByteType Byte_T, size_t fixedSize>
-[[nodiscard]] constexpr T fromLittleEndian(span<Byte_T const, fixedSize> source)
-    noexcept(fixedSize != std::dynamic_extent) requires(fixedSize >= sizeof(T))
+template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
+[[nodiscard]] constexpr Num_T fromLittleEndian(span<Byte_T const, fixedSize> source)
+    noexcept(fixedSize != std::dynamic_extent) requires(fixedSize >= sizeof(Num_T))
 {
     if constexpr (fixedSize == std::dynamic_extent)
     {
-        if (source.size() < sizeof(T))
+        if (source.size() < sizeof(Num_T))
         {
             Detail::throwTooSmallSpan("Source span is too small.");
         }
     }
 
-    return Detail::fromEndian<T, std::endian::little>(source.data());
+    return Detail::fromEndian<Num_T, std::endian::little>(source.data());
 }
 
 /*!
@@ -1242,11 +1264,11 @@ template <Numeric T, ByteType Byte_T, size_t fixedSize>
  * \param source
  * \return
  */
-template <Numeric T, ByteType Byte_T, size_t fixedSize>
-[[nodiscard]] constexpr T fromLittleEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
-    requires(fixedSize >= sizeof(T))
+template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
+[[nodiscard]] constexpr Num_T fromLittleEndian(span<Byte_T, fixedSize> source)
+    noexcept(fixedSize != std::dynamic_extent) requires(fixedSize >= sizeof(Num_T))
 {
-    return fromLittleEndian<T>(span<Byte_T const, fixedSize>{ source });
+    return fromLittleEndian<Num_T>(span<Byte_T const, fixedSize>{ source });
 }
 
 /*!
@@ -1256,9 +1278,15 @@ template <Numeric T, ByteType Byte_T, size_t fixedSize>
  * \param dest The buffer to write the big endian data for \p value.
  * \return A pointer to the first byte in \p dest that was **not** written to as a result of this call.
  */
-constexpr auto toBigEndian(Numeric auto value, ByteType auto *dest) noexcept -> decltype(dest)
+constexpr auto toBigEndian(Numeric auto value, std::contiguous_iterator auto dest) noexcept -> decltype(dest)
+    requires(ByteType<std::iter_value_t<decltype(dest)>> and not std::is_const_v<std::iter_value_t<decltype(dest)>>)
 {
-    static_assert(not std::is_const_v<decltype(*dest)>, "toBigEndian needs a non-const array to write to.");
+    if constexpr (std::is_pointer_v<decltype(dest)>)
+    {
+        // FIXME: Reimplemented to keep branch free functionality, however this may be unnecessary. Need to check with
+        // more compilers!
+        return dest ? Detail::toEndian<std::endian::big>(value, dest) : dest;
+    }
 
     return Detail::toEndian<std::endian::big>(value, dest);
 }
@@ -1307,9 +1335,15 @@ constexpr void toBigEndian(Numeric auto value, span<Byte_T, fixedSize> dest) noe
  * \param dest
  * \return A pointer to the first byte in \p dest that was **not** written to as a result of this call.
  */
-constexpr auto toLittleEndian(Numeric auto value, ByteType auto *dest) noexcept -> decltype(dest)
+constexpr auto toLittleEndian(Numeric auto value, std::contiguous_iterator auto dest) noexcept -> decltype(dest)
+    requires(ByteType<std::iter_value_t<decltype(dest)>> and not std::is_const_v<std::iter_value_t<decltype(dest)>>)
 {
-    static_assert(not std::is_const_v<decltype(*dest)>, "toLittleEndian needs a non-const array to write to.");
+    if constexpr (std::is_pointer_v<decltype(dest)>)
+    {
+        // FIXME: Reimplemented to keep branch free functionality, however this may be unnecessary. Need to check with
+        // more compilers!
+        return dest ? Detail::toEndian<std::endian::little>(value, dest) : dest;
+    }
 
     return Detail::toEndian<std::endian::little>(value, dest);
 }
@@ -1380,5 +1414,7 @@ template <typename T, size_t size>
  * \return A number of "ticks" since the beginning of some system dependent time period.
  */
 [[nodiscard]] KH_EXPORT u64 currentTicks() noexcept;
+
+KH_END_INLINE_NAMESPACE
 
 } // namespace KirHut

@@ -30,10 +30,12 @@
 # include <QTextStream>
 #endif
 
-namespace KirHut::IO
+namespace KirHut
 {
 
-void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args const &args)
+using namespace v1::IO;
+
+void IO::vprint(std::FILE *stream, FMT::string_view form, FMT::format_args const &args)
 {
 #if defined(__cpp_lib_print) and not defined(KH_USES_FMT)
     std::vprint_unicode(stream, form, args);
@@ -64,12 +66,12 @@ void vprint(std::FILE *stream, FMT::string_view form, FMT::format_args const &ar
 #endif
 }
 
-void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &args)
+void IO::vprintln(std::FILE *stream, FMT::string_view form, FMT::format_args const &args)
 {
     IO::print(stream, "{}\n", FMT::vformat(form, args));
 }
 
-void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args)
+void IO::vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args)
 {
 #if defined(__cpp_lib_print) and not defined(KH_USES_FMT)
     std::vprint_unicode(stream, form, args);
@@ -98,13 +100,13 @@ void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const 
 #endif
 }
 
-void vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args)
+void IO::vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args)
 {
     IO::print(stream, "{}\n", FMT::vformat(form, args));
 }
 
 #if defined(KH_USES_QT)
-void vprint(QIODevice &stream, FMT::string_view form, FMT::format_args const &args)
+void IO::vprint(QIODevice &stream, FMT::string_view form, FMT::format_args const &args)
 {
     if (stream.isWritable())
     {
@@ -113,14 +115,14 @@ void vprint(QIODevice &stream, FMT::string_view form, FMT::format_args const &ar
     }
 }
 
-void vprintln(QIODevice &stream, FMT::string_view form, FMT::format_args const &args)
+void IO::vprintln(QIODevice &stream, FMT::string_view form, FMT::format_args const &args)
 {
     IO::print(stream, "{}\n", FMT::vformat(form, args));
 }
 #endif
 
 #if defined(KH_USES_FMT)
-void vprint(fmt::text_style style, fmt::string_view form, fmt::format_args const &args)
+void IO::vprint(fmt::text_style style, fmt::string_view form, fmt::format_args const &args)
 {
     // The {fmt} lib's vprint() function internally uses detail::vprint_to to output the formatted string to a buffer,
     // then prints that, but we cannot use names in the detail namespace. We're forced to use {fmt}'s vformat function,
@@ -128,7 +130,7 @@ void vprint(fmt::text_style style, fmt::string_view form, fmt::format_args const
     fmt::print(nowide::cout, fmt::string_view{ "{}" }, fmt::vformat(style, form, args));
 }
 
-void vprintln(fmt::text_style style, fmt::string_view form, fmt::format_args const &args)
+void IO::vprintln(fmt::text_style style, fmt::string_view form, fmt::format_args const &args)
 {
     // The {fmt} lib's vprint() function internally uses detail::vprint_to to output the formatted string to a buffer,
     // then prints that, but we cannot use names in the detail namespace. We're forced to use {fmt}'s vformat function,
@@ -137,24 +139,24 @@ void vprintln(fmt::text_style style, fmt::string_view form, fmt::format_args con
 }
 #endif
 
-void vprint(FMT::string_view form, FMT::format_args const &args)
+void IO::vprint(FMT::string_view form, FMT::format_args const &args)
 {
     IO::vprint(nowide::cout, form, args);
 }
 
-void vprintln(FMT::string_view form, FMT::format_args const &args)
+void IO::vprintln(FMT::string_view form, FMT::format_args const &args)
 {
     IO::vprintln(nowide::cout, form, args);
 }
 
-void vreport(FMT::string_view form, FMT::format_args const &args)
+void IO::vreport(FMT::string_view form, FMT::format_args const &args)
 {
     IO::vprint(nowide::cerr, form, args);
 }
 
-void vreportln(FMT::string_view form, FMT::format_args const &args)
+void IO::vreportln(FMT::string_view form, FMT::format_args const &args)
 {
     IO::vprintln(nowide::cerr, form, args);
 }
 
-} // namespace KirHut::IO
+} // namespace KirHut

@@ -27,6 +27,8 @@
 namespace KirHut
 {
 
+KH_INLINE_NAMESPACE_V1
+
 namespace Detail
 {
 
@@ -46,9 +48,9 @@ namespace Detail
 {
 #if defined(KH_USE_128BIT_TYPES)
     return true;
-#endif
-
+#else
     return false;
+#endif
 }
 
 /*!
@@ -787,9 +789,9 @@ namespace Platform
  *
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool linuxos = false
+[[maybe_unused]] constexpr bool gnulinux = false
 #if defined(KH_LINUX)
-                                        or true
+                                           or true
 #endif
     ;
 
@@ -1399,5 +1401,7 @@ namespace Build
     ;
 
 } // namespace Build
+
+KH_END_INLINE_NAMESPACE
 
 } // namespace KirHut

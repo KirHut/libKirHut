@@ -19,7 +19,7 @@
 ***********************************************************************************************************************/
 #include "kh/task.hpp"
 
-namespace KirHut::MT
+namespace KirHut
 {
 
-} // namespace KirHut::MT
+} // namespace KirHut

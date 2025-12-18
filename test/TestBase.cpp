@@ -32,6 +32,8 @@
 
 using namespace KirHut;
 
+namespace R = Ranges;
+
 struct SomeObject
 {
     // No members.

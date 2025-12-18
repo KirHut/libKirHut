@@ -28,6 +28,9 @@
 
 using namespace KirHut;
 
+namespace R = Ranges;
+namespace V = Views;
+
 TEST_CASE("The R::getIters() method in ranges.hpp", "[ranges][utility][getIters]")
 {
     std::vector<int> nums{ 1, 2, 3, 4, 5 };
@@ -63,7 +66,7 @@ TEST_CASE("WordView basic construction", "[ranges][WordView]")
     SECTION("Construct from string and custom separators")
     {
         constexpr R::WordView csv("a,b,c", R::Separators{ "," });
-        STATIC_REQUIRE(std::ranges::distance(csv) == 3);
+        STATIC_REQUIRE(R::distance(csv) == 3);
     }
 
     SECTION("Construct with empty separators (whole string is one word)")
@@ -129,7 +132,7 @@ TEST_CASE("WordView iterator operations", "[ranges][WordView][iterator]")
 
 TEST_CASE("WordView equality comparisons", "[ranges][WordView]")
 {
-    std::string s = "a b c";
+    string s = "a b c";
     R::WordView wv1(s);
     R::WordView wv2(s);
     REQUIRE(wv1 == wv2);
@@ -137,7 +140,7 @@ TEST_CASE("WordView equality comparisons", "[ranges][WordView]")
     R::WordView wv3(s, R::Separators{ "," });
     REQUIRE_FALSE(wv1 == wv3);
 
-    std::string s2 = "a b c";
+    string s2 = "a b c";
     R::WordView wv4(s2);
     // Although s2 and s have same content, they are at different addresses
     REQUIRE_FALSE(wv1 == wv4);
@@ -146,8 +149,8 @@ TEST_CASE("WordView equality comparisons", "[ranges][WordView]")
 TEST_CASE("WordView behaves as a forward range", "[ranges][WordView]")
 {
     R::WordView wv("alpha beta gamma");
-    STATIC_REQUIRE(std::ranges::forward_range<R::WordView<char>>);
-    STATIC_REQUIRE(std::ranges::view<R::WordView<char>>);
+    STATIC_REQUIRE(R::forward_range<R::WordView<char>>);
+    STATIC_REQUIRE(R::view<R::WordView<char>>);
 
     auto count = R::count_if(wv, [](auto sv) { return sv.size() > 4; });
     REQUIRE(count == 2);
@@ -156,11 +159,11 @@ TEST_CASE("WordView behaves as a forward range", "[ranges][WordView]")
 TEST_CASE("words CPO basic callable behavior", "[ranges][words]")
 {
     auto vw = V::words("alpha beta gamma");
-    STATIC_REQUIRE(std::ranges::view<decltype(vw)>);
-    STATIC_REQUIRE(std::same_as<std::ranges::range_value_t<decltype(vw)>, string_view>);
+    STATIC_REQUIRE(R::view<decltype(vw)>);
+    STATIC_REQUIRE(std::same_as<R::range_value_t<decltype(vw)>, string_view>);
 
-    std::vector<std::string_view> words_vec(vw.begin(), vw.end());
-    REQUIRE(words_vec == std::vector<std::string_view>{ "alpha", "beta", "gamma" });
+    std::vector<string_view> words_vec(vw.begin(), vw.end());
+    REQUIRE(words_vec == std::vector<string_view>{ "alpha", "beta", "gamma" });
 }
 
 TEST_CASE("words CPO pipe syntax", "[ranges][words][pipe]")

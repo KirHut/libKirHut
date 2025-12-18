@@ -30,7 +30,12 @@
  *
  * Under construction
  */
-namespace KirHut::TOML
+namespace KirHut
+{
+
+KH_INLINE_NAMESPACE_V1
+
+namespace TOML
 {
 
 /*!
@@ -51,4 +56,8 @@ namespace KirHut::TOML
 // My library calls would go in here when I get started.
 #endif
 
-} // namespace KirHut::TOML
+} // namespace TOML
+
+KH_END_INLINE_NAMESPACE
+
+} // namespace KirHut

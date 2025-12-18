@@ -6,7 +6,7 @@
 cmake_minimum_required(VERSION 3.27)
 
 project(libKirHut
-    VERSION 0.3.0
+    VERSION 0.4.0
     DESCRIPTION "The KirHut Software Company General C++ Development Library"
     HOMEPAGE_URL "https://www.kirhut.com/libKirHut"
     LANGUAGES CXX
@@ -118,6 +118,8 @@ if(KH_USES_FMT)
 
     if(NOT fmt_FOUND)
         if (KH_ALLOW_FETCHCONTENT)
+            # When compiling from source, this uses fmt version 11.2, instead of 9, because 9 has fundamental issues
+            # with it's build system and emits a lot of deprecation warnings.
             FetchContent_Declare(
                 fmt
                 GIT_REPOSITORY https://github.com/fmtlib/fmt.git

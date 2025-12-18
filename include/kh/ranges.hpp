@@ -33,13 +33,15 @@
  *
  * Currently includes:
  *
- *  - KirHut::R::WordView: a forward range over tokens in a string delimited by separators.
- *  - KirHut::V::words: a range adaptor object for using a WordView object over a given string_view.
- *  - KirHut::R::getIters: a method that returns the begin() and end() iterators of a range in a pair.
+ *  - KirHut::Ranges::WordView: a forward range over tokens in a string delimited by separators.
+ *  - KirHut::Views::words: a range adaptor object for using a WordView object over a given string_view.
+ *  - KirHut::Ranges::getIters: a method that returns the begin() and end() iterators of a range in a pair.
  */
 
 namespace KirHut
 {
+
+KH_INLINE_NAMESPACE_V1
 
 /*!
  * Namespace for range utilities in libKirHut.
@@ -47,7 +49,7 @@ namespace KirHut
  * This mostly is just an alias to std::ranges, but also comes with some additional range-based utility classes and
  * functions.
  */
-namespace R
+namespace Ranges
 {
 
 using namespace std::ranges;
@@ -79,9 +81,9 @@ struct IterPair
  * \param r A std::ranges::range type to get the begin and end iterators from.
  * \return An IterPair of the std::range::begin() and std::range::end() iterators.
  */
-[[nodiscard]] constexpr auto getIters(range auto &r) noexcept -> decltype(IterPair{ R::begin(r), R::end(r) })
+[[nodiscard]] constexpr auto getIters(range auto &r) noexcept -> decltype(IterPair{ Ranges::begin(r), Ranges::end(r) })
 {
-    return IterPair{ R::begin(r), R::end(r) };
+    return IterPair{ Ranges::begin(r), Ranges::end(r) };
 }
 
 /*!
@@ -162,10 +164,10 @@ struct Separators final
  *
  * ~~~
  * auto printline = [](std::string_view tok) { std::cout << tok << "\n"; };
- * R::WordView tv("alpha beta gamma");
- * R::WordView csv("options, in, csv, 123", Separators{ " ," });
- * R::for_each(tv, printline);
- * R::for_each(csv, printline);
+ * RN::WordView tv("alpha beta gamma");
+ * RN::WordView csv("options, in, csv, 123", Separators{ " ," });
+ * RN::for_each(tv, printline);
+ * RN::for_each(csv, printline);
  *
  * // Output:
  * // alpha
@@ -308,7 +310,7 @@ template <StringLike String_T>
 WordView(String_T) -> WordView<StringLikeType<String_T>>;
 
 template <StringLike String_T>
-WordView(String_T, R::Separators<StringLikeType<String_T>>) -> WordView<StringLikeType<String_T>>;
+WordView(String_T, Ranges::Separators<StringLikeType<String_T>>) -> WordView<StringLikeType<String_T>>;
 
 /*!
  * Forward iterator over the tokens in a WordView.
@@ -502,14 +504,14 @@ constexpr WordView<Char_T>::iterator WordView<Char_T>::end() const noexcept
     return {};
 }
 
-} // namespace R
+} // namespace Ranges
 
 /*!
  * Namespace alias for std::views.
  *
- * Allows for efficient and fast access to views algorithms.
+ * Allows for efficient and fast access to views algorithms. Also includes the Views::words CPO.
  */
-namespace V
+namespace Views
 {
 
 using namespace std::views;
@@ -517,7 +519,7 @@ using namespace std::views;
 /*!
  * \internal
  *
- * Detail namespace for KirHut::V.
+ * Detail namespace for KirHut::VW.
  *
  * Just another Detail namespace, see KirHut::Detail for information.
  *
@@ -548,7 +550,7 @@ struct WordsFn final
          *
          * \brief separators
          */
-        R::Separators<Char_T> separators;
+        Ranges::Separators<Char_T> separators;
 
         /*!
          * \internal
@@ -557,9 +559,9 @@ struct WordsFn final
          * \param s
          * \return
          */
-        constexpr R::WordView<Char_T> operator()(R::contiguous_range auto &&data) const noexcept
+        constexpr Ranges::WordView<Char_T> operator()(Ranges::contiguous_range auto &&data) const noexcept
         {
-            return R::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data), separators);
+            return Ranges::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data), separators);
         }
 
         /*!
@@ -569,7 +571,7 @@ struct WordsFn final
          * \param data
          * \param wseps
          */
-        friend constexpr auto operator|(R::contiguous_range auto &&data, WithSeparators const &wseps) noexcept
+        friend constexpr auto operator|(Ranges::contiguous_range auto &&data, WithSeparators const &wseps) noexcept
         {
             return wseps(std::forward<std::remove_reference_t<decltype(data)>>(data));
         }
@@ -582,9 +584,9 @@ struct WordsFn final
      * \param s
      * \return
      */
-    constexpr auto operator()(R::contiguous_range auto &&data) const noexcept
+    constexpr auto operator()(Ranges::contiguous_range auto &&data) const noexcept
     {
-        return R::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data));
+        return Ranges::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data));
     }
 
     /*!
@@ -595,9 +597,10 @@ struct WordsFn final
      * \return
      */
     template <typename Char_T>
-    constexpr R::WordView<Char_T> operator()(R::contiguous_range auto &&data, R::Separators<Char_T> seps) const noexcept
+    constexpr Ranges::WordView<Char_T> operator()(Ranges::contiguous_range auto &&data,
+                                                  Ranges::Separators<Char_T> seps) const noexcept
     {
-        return R::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data), seps);
+        return Ranges::WordView(std::forward<std::remove_reference_t<decltype(data)>>(data), seps);
     }
 
     /*!
@@ -608,7 +611,7 @@ struct WordsFn final
      * \return
      */
     template <typename Char_T>
-    constexpr WithSeparators<Char_T> operator()(R::Separators<Char_T> seps) const noexcept
+    constexpr WithSeparators<Char_T> operator()(Ranges::Separators<Char_T> seps) const noexcept
     {
         return WithSeparators(seps);
     }
@@ -620,7 +623,7 @@ struct WordsFn final
      * \param data
      * \param self
      */
-    friend constexpr auto operator|(R::contiguous_range auto &&data, WordsFn const &self) noexcept
+    friend constexpr auto operator|(Ranges::contiguous_range auto &&data, WordsFn const &self) noexcept
     {
         return self(std::forward<std::remove_reference_t<decltype(data)>>(data));
     }
@@ -653,7 +656,7 @@ struct WordsFn final
  * \return A WordView over the given string.
  */
 #if defined(KH_PRIV_DOCS)
-auto words(R::contiguous_range auto &&data);
+auto words(Ranges::contiguous_range auto &&data);
 #endif
 
 namespace
@@ -676,5 +679,7 @@ namespace
 } // namespace V
 
 using std::back_inserter;
+
+KH_END_INLINE_NAMESPACE
 
 } // namespace KirHut
