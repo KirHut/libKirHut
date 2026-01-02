@@ -28,10 +28,9 @@
  * types, as well as performing some compilation checks.
  *
  * This file provides all of the compilation environment detection directives that libKirHut has documented here. This
- * file can be included in your project to detect the platform, processor hardware, build type and potentially Qt
- * Version (if #KH_USES_QT is defined before this file is included). This file gives simple, short names for all
- * detections that are unambiguous. All directives within the same group are mutually exclusive, meaning that if one is
- * defined the others are by necessity not. A Windows PC is not a Linux PC.
+ * file can be included in your project to detect the platform, processor hardware, and build type. This file gives
+ * simple, short names for all detections that are unambiguous. All directives within the same group are mutually
+ * exclusive, meaning that if one is defined the others are by necessity not. A Windows PC is not a Linux PC.
  *
  * This file also provides base types that are used all over KirHut software applications. These types should be used in
  * *conjunction with* rather than in *preference of* the standard types like `int` and `long`. The `int` type is
@@ -467,15 +466,25 @@
  */
 
 /*!
- * \def KH_USES_QT
+ * \def KH_EXPLICIT_TEMPLATE_EXPORT
  *
- * Preprocessor flag to build libKirHut and applications using libKirHut using the Qt extensions.
+ * Preprocessor define to place in front of explicit template declarations in a header file.
  *
- * This library supports building for both Qt and non-Qt based applications. Almost everything KirHut makes is a Qt
- * application, however there are exceptions and this library should support builds on non-Qt systems. The primary
- * exception to this is for embedded devices.
+ * Unlike most of the preprocessor defines, this one is always defined, so it may be safely used in KirHut headers and
+ * libraries in all build configurations. The KH_EXPLICIT_TEMPLATE_EXPORT macro is provided by libKirHut directly, but
+ * is based on the #KH_EXPORT definition from generate_export_header. Unfortunately, CMake's generate_export_header does
+ * not generate appropriate definitions to use explicit templates instances in shared libraries without warnings.
+ */
+
+/*!
+ * \def KH_EXPLICIT_TEMPLATE_INSTANCE
  *
- * As a consequence of building libKirHut with this flag, the #KH_NO_BADALLOC flag is overridden and defined as 1.
+ * Preprocessor define to place in front of an explicit template definition found in a source file.
+ *
+ * Unlike most of the preprocessor defines, this one is always defined, so it may be safely used in KirHut headers and
+ * libraries in all build configurations. The KH_EXPLICIT_TEMPLATE_INSTANCE macro is provided by libKirHut directly, but
+ * is based on the #KH_EXPORT definition from generate_export_header. Unfortunately, CMake's generate_export_header does
+ * not generate appropriate definitions to use explicit templates instances in shared libraries without warnings.
  */
 
 /*!
@@ -512,8 +521,8 @@
  * std::bad_alloc is to immediately call std::terminate(). This does have the benefit of marking several additional
  * functions and methods in this library as noexcept, namely any function or method that only throws std::bad_alloc.
  *
- * The use of #KH_USES_QT or #KH_NO_EXCEPTIONS implies that this is also defined, even if that option was not passed in
- * as a CMake build option.
+ * The use of #KH_NO_EXCEPTIONS implies that this is also defined, even if that option was not passed in as a CMake
+ * build option.
  *
  * \see KH_THROWS_BADALLOC
  */
@@ -531,54 +540,6 @@
  */
 
 /*!
- * \def KH_INCLUDE_ARG_PARSER
- *
- * Preprocessor flag to build libKirHut with the command line argument parsing functionality included.
- *
- * Some projects have no need for command line argument parsing at all, and in those cases, why drag an argument parser
- * with you? Generally speaking, unless you use the argument parser it will not be included in an executable that is
- * statically linked anyway, so you can usually include it no matter what, but sometimes you want to avoid this
- * additional portion if you do not need it.
- */
-
-/*!
- * \def KH_INCLUDE_FILESYSTEM
- *
- * Preprocessor flag to build libKirHut with the std::filesystem library included as KirHut::FS.
- *
- * This does almost nothing except provide a convenience namespace within the KirHut namespace to access
- * std::filesystem functions and types. There are times you would want to remove this, though, namely when you want to
- * compile for an embedded platform that does not support a file system at all, in which case this would not be a useful
- * namespace or extension.
- */
-
-/*!
- * \def KH_INCLUDE_MD5HASH
- *
- * Preprocessor flag to build libKirHut with the MD5 Hashing object and functions included.
- *
- * The MD5 Hashing functionality of this library is extremely lightweight and there's little reason to want to remove
- * this, but there is also never any real reason you would use this outside of specifically needing to support legacy
- * hashing functions or if you want a kind-of-slow, insecure hashing function to uniquely identify some asset.
- *
- * As a consequence of building libKirHut with this flag, the #KH_MUST_HAVE_32_64 flag is overridden and defined as 1.
- */
-
-/*!
- * \def KH_INCLUDE_TASK_SYSTEM
- *
- * Preprocessor flag to build libKirHut with the Multithreaded task system included.
- *
- * The Task system is an out-of-the-box thread pool like set of functions that allow running multiple separate threads
- * of execution using a global thread pool. The pool is provided either directly by this library or it is provided by
- * Qt using Qt Concurrent. The task system allow for cancelling the task, pausing and unpausing the task, and getting
- * the current progress of a task that is currently running. It is up to the thread itself to report this information
- * using the provided KirHut::Promise object.
- *
- * This system is not yet implemented, so this flag currently does a fat lot of nothing.
- */
-
-/*!
  * \def KH_INCLUDE_TERMINAL_PRINT
  *
  * Preprocessor flag to build libKirHut with the MD5 Hashing object and functions included.
@@ -588,81 +549,15 @@
  * hashing functions or if you want a kind-of-slow, insecure hashing function to uniquely identify some asset.
  */
 
-/*!
- * \def KH_INCLUDE_TOML
- *
- * Preprocessor flag to build libKirHut with the TOML parsing functionality included.
- *
- * TOML parsing is a frequently useful capability when developing a very wide variety of applications, however it is a
- * heavy parsing system and may not be necessary for certain extremely small projects. If your project cannot include
- * TOML parsing, you can set this to false and the KirHut::TOML namespace will be completely empty and have no members
- * (save for the member flagging that the namespace is empty).
- *
- * TOML documents are required to be in UTF-8 per the TOML 1.0.0 standard.
- */
-
 //! \}
 
 /*!
  * \defgroup BuildInfo Info On This Library Build
  *
  * This group defines a set of different preprocessor defines with information about how this library was built, such as
- * the version info, the Qt version (if any), the compiler used, and the build type.
- *
- * The Qt versions currently have the major Qt LTS release versions that were supported by the Qt Company when this
- * library was written. This will likely expand and change as time goes on.
+ * the version info, the compiler used to build the library, and exposed build settings like debug or release.
  *
  * \{
- */
-
-/*!
- * \def KH_QT5_15
- * Preprocessor define indicating if the system is compiled using Qt 5.15.
- *
- * This is defined if the preprocessor reports `QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)` and
- * `QT_VERSION < QT_VERSION_CHECK(6, 2, 0)`. This library assumes you are using one of the major LTS versions of Qt if
- * it is used, so compatibility is based on LTS versions. When using Qt 5.15 to 6.1.X, this will be 1, otherwise it is
- * not defined.
- */
-
-/*!
- * \def KH_QT6_2
- * Preprocessor define indicating if the system is compiled using Qt 6.2.
- *
- * This is defined if the preprocessor reports `QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)` and
- * `QT_VERSION < QT_VERSION_CHECK(6, 5, 0)`. This library assumes you are using one of the major LTS versions of Qt if
- * it is used, so compatibility is based on LTS versions. When using Qt 6.2 to 6.4.X, this will be 1, otherwise it is
- * not defined.
- */
-
-/*!
- * \def KH_QT6_5
- * Preprocessor define indicating if the system is compiled using Qt 6.5.
- *
- * This is defined if the preprocessor reports `QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)` and
- * `QT_VERSION < QT_VERSION_CHECK(6, 8, 0)`. This library assumes you are using one of the major LTS versions of Qt if
- * it is used, so compatibility is based on LTS versions. When using Qt 6.5 to version 6.7.X, this will be 1, otherwise
- * it is not defined.
- */
-
-/*!
- * \def KH_QT6_8
- * Preprocessor define indicating if the system is compiled using Qt 6.8.
- *
- * This is defined if the preprocessor reports `QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)`. This library assumes you are
- * using one of the major LTS versions of Qt if it is used, so compatibility is based on LTS versions. When using
- * Qt 6.8 or newer, this will be 1, otherwise it is not defined.
- */
-
-/*!
- * \def KH_QT_VERSION
- * Preprocessor define with integer definition of each supported Qt version.
- *
- * This is always defined to be an integer value corresponding with the major supported versions of Qt. Qt version 5.15
- * is designated version 1, and every later LTS version of Qt is given an increasing integer (so 6.2 is 2, 6.5 is 3,
- * etc.). This gives you an easy method to detect the version of Qt being used. If KH_USES_QT is set and the version of
- * Qt used is lower than 5.15, this value will be -1, indicating an unsupported version of Qt. If KH_USES_QT is not
- * defined, than this value is always 0, since Qt is not used nor detected.
  */
 
 /*!
@@ -1118,30 +1013,6 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # endif
 #endif
 
-#if defined(KH_USES_QT)
-# include <QtGlobal>
-# include <QtTypes>
-# if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0) and QT_VERSION < QT_VERSION_CHECK(6, 2, 0)
-#  define KH_QT5_15 1
-#  define KH_QT_VERSION 1
-# elif QT_VERSION < QT_VERSION_CHECK(6, 5, 0)
-#  define KH_QT6_2 1
-#  define KH_QT_VERSION 2
-# elif QT_VERSION < QT_VERSION_CHECK(6, 8, 0)
-#  define KH_QT6_5 1
-#  define KH_QT_VERSION 3
-# elif QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-#  define KH_QT6_8 1
-#  define KH_QT_VERSION 4
-# else
-#  define KH_QT_VERSION (-1)
-# endif // QT_VERSION < QT_VERSION_CHECK
-# undef KH_NO_BADALLOC
-# define KH_NO_BADALLOC 1
-#else
-# define KH_QT_VERSION 0
-#endif // KH_USES_QT
-
 #if defined(KH_INCLUDE_MD5HASH)
 # undef KH_MUST_HAVE_32_64
 # define KH_MUST_HAVE_32_64 1
@@ -1237,7 +1108,6 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_EXPLICIT_TEMPLATE_EXPORT
 # define KH_EXPLICIT_TEMPLATE_INSTANCE
 # define KH_CLANG_GCC_COMPATIBLE
-# define KH_USES_QT
 # define KH_USES_FMT
 # define KH_NO_BADALLOC
 # define KH_NO_EXCEPTIONS
@@ -1397,6 +1267,17 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
  */
 
 /*!
+ * \def KH_INLINE_NAMESPACE_V3
+ * Preprocessor define to begin a v3 inline namespace.
+ *
+ * This generates `inline namespace v3 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
+ * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
+ * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ *
+ * \hideinitializer
+ */
+
+/*!
  * \def KH_END_INLINE_NAMESPACE
  * Preprocessor define to end an inline namespace.
  *
@@ -1413,6 +1294,9 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
      {
 # define KH_INLINE_NAMESPACE_V2 \
      inline namespace v2        \
+     {
+# define KH_INLINE_NAMESPACE_V3 \
+     inline namespace v3        \
      {
 # define KH_END_INLINE_NAMESPACE }
 #else
@@ -1444,48 +1328,28 @@ using std::size_t;
  *
  * This type is guaranteed to be at least 8 bits, and for all current supported platforms, is precisely 8 bits.
  */
-using i8 =
-#if defined(KH_USES_QT)
-    qint8;
-#else
-    std::int_least8_t;
-#endif
+using i8 = std::int_least8_t;
 
 /*!
  * The standard 16 bit signed integer type.
  *
  * This type is guaranteed to be at least 16 bits.
  */
-using i16 =
-#if defined(KH_USES_QT)
-    qint16;
-#else
-    std::int_least16_t;
-#endif
+using i16 = std::int_least16_t;
 
 /*!
  * The standard 32 bit signed integer type.
  *
  * This type is guaranteed to be at least 32 bits, and for all current supported platforms, is precisely 32 bits.
  */
-using i32 =
-#if defined(KH_USES_QT)
-    qint32;
-#else
-    std::int_least32_t;
-#endif
+using i32 = std::int_least32_t;
 
 /*!
  * The standard 64 bit signed integer type.
  *
  * This type is guaranteed to be at least 64 bits, and for all current supported platforms, is precisely 64 bits.
  */
-using i64 =
-#if defined(KH_USES_QT)
-    qint64;
-#else
-    std::int_least64_t;
-#endif
+using i64 = std::int_least64_t;
 
 /*!
  * A 128-bit integer type available on GCC and Clang only.
@@ -1502,12 +1366,7 @@ using i64 =
  * for the "widest" type on the platform.
  */
 #if KH_PRIV_DOCS or KH_USE_128BIT_TYPES
-using i128 =
-# if defined(KH_USES_QT) and defined(QT_SUPPORTS_INT128)
-    qint128;
-# else
-    __int128_t;
-# endif
+using i128 = __int128_t;
 #else
 using i128 = i64;
 #endif
@@ -1527,48 +1386,28 @@ using iWidest = i128;
  *
  * This type is guaranteed to be at least 8 bits, and for all current supported platforms, is precisely 8 bits.
  */
-using u8 =
-#if defined(KH_USES_QT)
-    quint8;
-#else
-    std::uint_least8_t;
-#endif
+using u8 = std::uint_least8_t;
 
 /*!
  * The standard 16 bit unsigned integer type.
  *
  * This type is guaranteed to be at least 16 bits.
  */
-using u16 =
-#if defined(KH_USES_QT)
-    quint16;
-#else
-    std::uint_least16_t;
-#endif
+using u16 = std::uint_least16_t;
 
 /*!
  * The standard 32 bit unsigned integer type.
  *
  * This type is guaranteed to be at least 32 bits, and for all current supported platforms, is precisely 32 bits.
  */
-using u32 =
-#if defined(KH_USES_QT)
-    quint32;
-#else
-    std::uint_least32_t;
-#endif
+using u32 = std::uint_least32_t;
 
 /*!
  * The standard 64 bit unsigned integer type.
  *
  * This type is guaranteed to be at least 64 bits, and for all current supported platforms, is precisely 64 bits.
  */
-using u64 =
-#if defined(KH_USES_QT)
-    quint64;
-#else
-    std::uint_least64_t;
-#endif
+using u64 = std::uint_least64_t;
 
 /*!
  * A 128-bit integer type available on GCC and Clang.
@@ -1585,12 +1424,7 @@ using u64 =
  * for the "widest" type on the platform.
  */
 #if KH_PRIV_DOCS or KH_USE_128BIT_TYPES
-using u128 =
-# if defined(KH_USES_QT) and defined(QT_SUPPORTS_INT128)
-    quint128;
-# else
-    __uint128_t;
-# endif
+using u128 = __uint128_t;
 #else
 using u128 = u64;
 #endif

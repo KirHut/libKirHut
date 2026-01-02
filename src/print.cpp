@@ -26,10 +26,6 @@
 
 #include "fmt/ostream.h"
 
-#if defined(KH_USES_QT)
-# include <QTextStream>
-#endif
-
 namespace KirHut
 {
 
@@ -104,22 +100,6 @@ void IO::vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args 
 {
     IO::print(stream, "{}\n", FMT::vformat(form, args));
 }
-
-#if defined(KH_USES_QT)
-void IO::vprint(QIODevice &stream, FMT::string_view form, FMT::format_args const &args)
-{
-    if (stream.isWritable())
-    {
-        string formatted = FMT::vformat(form, args);
-        QTextStream(&stream) << QByteArray::fromRawData(formatted.data(), formatted.size() + 1);
-    }
-}
-
-void IO::vprintln(QIODevice &stream, FMT::string_view form, FMT::format_args const &args)
-{
-    IO::print(stream, "{}\n", FMT::vformat(form, args));
-}
-#endif
 
 #if defined(KH_USES_FMT)
 void IO::vprint(fmt::text_style style, fmt::string_view form, fmt::format_args const &args)

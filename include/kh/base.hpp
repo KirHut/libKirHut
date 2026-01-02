@@ -284,7 +284,7 @@ template <typename T>
 template <typename T>
 inline span<byte const, sizeof(T)> asBytes(T const &object) noexcept
 {
-    return std::as_bytes(span<T const, 1>{ &object, &object + 1 });
+    return std::as_bytes(span<T const, 1>{ &object, 1 });
 }
 
 /*!
@@ -293,7 +293,7 @@ inline span<byte const, sizeof(T)> asBytes(T const &object) noexcept
 template <typename T>
 inline span<byte, sizeof(T)> asWritableBytes(T &object) noexcept
 {
-    return std::as_writable_bytes(span<T, 1>{ &object, &object + 1 });
+    return std::as_writable_bytes(span<T, 1>{ &object, 1 });
 }
 
 /*!
@@ -337,7 +337,7 @@ template <typename Byte_T>
 concept ByteType = OneOf<std::remove_cv_t<Byte_T>, char, byte, unsigned char, std::byte>;
 
 /*!
- * A constexpr version of the std::abs function that is free of UB.
+ * A constexpr version of the std::abs() function that is free of UB.
  *
  * For some inexplicable reason, the std::abs() function is not constexpr until C++23, and this library needs to provide
  * support for C++20. As such, a constexpr abs function is provided by this library directly, but unlike the C++
@@ -429,11 +429,14 @@ template <Integral Int_T>
  * signed integers will be automatically converted, including negative values, which will inevitably result in shl()
  * returning 0.
  *
- * "Oh, so it's like a shitty std::rotl?"
+ * This library's shl() and shr() functions are based off of the WG21 proposal P3793R0: Better Shifting.
+ * https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3793r0.html
  *
- * Well, kind of, but no. The std::rotl() function *rotates* a set of bits, whereas this function **only shifts** the
- * bits, it does not rotate them. Sometimes this is preferred over a rotation, when you want bits to fall off instead of
- * appearing in the lower bits.
+ * The only real difference is that these methods take an unsigned int as the shift \p amount rather than a signed
+ * integer. This is because the recommended implementation of shl() and shr() both already cast the signed integer into
+ * an unsigned one, so this function simply front-loads that conversion to the interface, making it clear to a
+ * programmer using this function that the value passed is read as an unsigned integer. This does not use the compile
+ * failure trick of abs() because silent conversion from signed integer literals is desireable.
  *
  * This function is constexpr like std::rotl() so that it may be used at compile time.
  *
@@ -447,7 +450,7 @@ template <Integral Int_T>
 }
 
 /*!
- * Perform a bitwise arithmetic or logical right shift of a given integer, but without UB risk.
+ * Perform a bitwise arithmetic right shift of a given integer, but without UB risk.
  *
  * In C and C++, if you perform a bitwise right shift to a bit location beyond the size in bits of the integer you are
  * modifying the behavior is undefined. This is fine if you are very careful what values are passed to the bit shift
@@ -458,11 +461,14 @@ template <Integral Int_T>
  * amount is an unsigned integer, so signed integers will be automatically converted, including negative values, which
  * will inevitably result in shr() returning 0 or -1.
  *
- * "Oh, so it's like a shitty std::rotr?"
+ * This library's shl() and shr() functions are based off of the WG21 proposal P3793R0: Better Shifting.
+ * https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p3793r0.html
  *
- * Well, kind of, but no. The std::rotr() function *rotates* a set of bits, whereas this function **only shifts** the
- * bits, it does not rotate them. Sometimes this is preferred over a rotation, when you want bits to fall off instead of
- * appearing in the lower bits.
+ * The only real difference is that these methods take an unsigned int as the shift \p amount rather than a signed
+ * integer. This is because the recommended implementation of shl() and shr() both already cast the signed integer into
+ * an unsigned one, so this function simply front-loads that conversion to the interface, making it clear to a
+ * programmer using this function that the value passed is read as an unsigned integer. This does not use the compile
+ * failure trick of abs() because silent conversion from signed integer literals is desireable.
  *
  * This function is constexpr like std::rotr() so that it may be used at compile time.
  *
@@ -472,7 +478,7 @@ template <Integral Int_T>
  */
 [[nodiscard]] constexpr auto shr(Integral auto value, unsigned int amount) noexcept -> decltype(value)
 {
-    auto const bottom = value < 0 ? -1 : 0;
+    auto const bottom = static_cast<decltype(value)>(value < 0 ? -1 : 0);
     return amount < sizeof(value) * Platform::bitsInByte ? value >> amount : bottom;
 }
 
@@ -642,7 +648,8 @@ template <Integral Int_T>
 # endif
     }
 
-    auto [firstHalf, lastHalf] = pair{ static_cast<u64>(bytes >> Platform::bitsInU64), static_cast<u64>(bytes) };
+    auto firstHalf = static_cast<u64>(bytes >> Platform::bitsInU64);
+    auto lastHalf  = static_cast<u64>(bytes);
     return (static_cast<u128>(byteSwap(lastHalf)) << Platform::bitsInU64) | byteSwap(firstHalf);
 }
 #endif

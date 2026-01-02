@@ -19,17 +19,11 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#cmakedefine KH_USES_QT 1
 #cmakedefine KH_USES_FMT 1
 #cmakedefine KH_USE_128BIT_TYPES 1
 #cmakedefine KH_NO_EXCEPTIONS 1
 #cmakedefine KH_NO_BADALLOC 1
-#cmakedefine KH_INCLUDE_ARG_PARSER 1
-#cmakedefine KH_INCLUDE_FILESYSTEM 1
-#cmakedefine KH_INCLUDE_MD5HASH 1
-#cmakedefine KH_INCLUDE_TASK_SYSTEM 1
 #cmakedefine KH_INCLUDE_TERMINAL_PRINT 1
-#cmakedefine KH_INCLUDE_TOML 1
 #cmakedefine KH_MUST_HAVE_16_32_64 1
 #cmakedefine KH_MUST_HAVE_32_64 1
 #cmakedefine KH_MUST_HAVE_16BIT_TYPES 1

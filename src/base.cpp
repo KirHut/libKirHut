@@ -103,10 +103,6 @@ consteval bool onlyOneCompiler()
     return onlyOneOf(compilers);
 }
 
-#if defined(KH_USES_QT) and not defined(KH_QT_VERSION)
-static_assert(false, "libKirHut is set to compile with Qt, but no Qt version was detected.");
-#endif
-
 #if not KH_OVERRIDE_PLATFORM_SAFETY
 static_assert(onlyOnePlatform(), "libKirHut cannot be built for more than one target platform.");
 static_assert(not Build::unknownCompiler,
@@ -114,8 +110,6 @@ static_assert(not Build::unknownCompiler,
               " - GCC\n - MSVC\n - Clang\n - Apple Clang\n - HPC Cray CCE\n - IBM Open XL\n - Intel ICX oneAPI\n"
               " - ARM Clang\n - NVidia HPC SDK\n - NVidia CUDA\n - QNX\n - Wind River Diab\n - Green Hills\n - Elbrus\n"
               "If you want to attempt compiling anyway, define KH_OVERRIDE_PLATFORM_SAFETY.");
-
-static_assert(KH_QT_VERSION >= 0, "libKirHut does not support building for versions of Qt lower than Qt 5.15.");
 #endif
 
 #if not defined(KH_COMPILED_WITH_UNKNOWN)

@@ -20,7 +20,7 @@
 #pragma once
 
 /*!
- * \file kh/error.hpp
+ * \file error.hpp
  *
  * Header file for the Error type and its according methods and helper objects.
  *

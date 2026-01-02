@@ -51,28 +51,12 @@ set(TESTS_TO_EXECUTE
     Ranges
 )
 
-if(KH_INCLUDE_ARG_PARSER)
-    list(APPEND TESTS_TO_EXECUTE Args)
-endif()
-
 if(NOT KH_NO_EXCEPTIONS)
     list(APPEND TESTS_TO_EXECUTE Errors)
 endif()
 
-if(KH_INCLUDE_MD5HASH)
-    list(APPEND TESTS_TO_EXECUTE Md5Hash)
-endif()
-
 if(KH_INCLUDE_TERMINAL_PRINT)
     list(APPEND TESTS_TO_EXECUTE Print)
-endif()
-
-if(KH_INCLUDE_TASK_SYSTEM)
-    list(APPEND TESTS_TO_EXECUTE Task)
-endif()
-
-if(KH_INCLUDE_TOML)
-    list(APPEND TESTS_TO_EXECUTE Toml)
 endif()
 
 list(TRANSFORM TESTS_TO_EXECUTE PREPEND Test)

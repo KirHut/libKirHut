@@ -31,14 +31,6 @@ set(libKirHut_EXTERN_HEADERS
 
 list(TRANSFORM libKirHut_EXTERN_HEADERS PREPEND "nowide/")
 
-list(APPEND libKirHut_EXTERN_HEADERS
-    BS_thread_pool.hpp
-    mio.hpp
-    Md51.hpp
-    Md51_loc.hpp
-    tomlpp.hpp
-)
-
 list(TRANSFORM libKirHut_EXTERN_HEADERS PREPEND "include/")
 
 set(libKirHut_EXTERN_SOURCES
@@ -47,7 +39,6 @@ set(libKirHut_EXTERN_SOURCES
     cstdlib.cpp
     filebuf.cpp
     iostream.cpp
-    Md51.cpp
     stat.cpp
 )
 

@@ -1,4 +1,4 @@
-## The KirHut Software Development Library - A Universally Useful Set of Tools
+## The KirHut Foundational Development Library - A Universally Useful Set of Tools
 ## CMake Main File
 ##
 ## Copyright © KirHut Software Company
@@ -6,8 +6,8 @@
 cmake_minimum_required(VERSION 3.27)
 
 project(libKirHut
-    VERSION 0.4.0
-    DESCRIPTION "The KirHut Software Company General C++ Development Library"
+    VERSION 0.5.0
+    DESCRIPTION "The KirHut Software Company Foundational C++ Development Library"
     HOMEPAGE_URL "https://www.kirhut.com/libKirHut"
     LANGUAGES CXX
 )
@@ -49,19 +49,13 @@ option(KH_MUST_HAVE_16BIT_TYPES "Require that the platform has 16 bit integers."
 option(KH_MUST_HAVE_32BIT_TYPES "Require that the platform has 32 bit integers." OFF)
 option(KH_MUST_HAVE_64BIT_TYPES "Require that the platform has 64 bit integers." OFF)
 
-option(KH_USES_QT "Build libKirHut with Qt dependency (implies KH_NO_BADALLOC)." OFF)
 option(KH_USES_FMT "Build libKirHut with {fmt} dependency instead of std::format." ON)
 option(KH_BUILD_TESTS "Build the tests for this library (requires KH_ALLOW_FETCHCONTENT)." ${KH_BUILD_TESTS_DEFAULT})
 option(BUILD_SHARED_LIBS "Build this library (and its dependencies) as shared libraries." ON)
 option(KH_ALLOW_FETCHCONTENT "Allow libKirHut to download {fmt} using FetchContent." ON)
 option(KH_NO_BADALLOC "Remove support for throwing or catching std::bad_alloc." OFF)
 option(KH_NO_EXCEPTIONS "Removes exception support entirely, along with the Error type (implies KH_NO_BADALLOC)." OFF)
-option(KH_INCLUDE_ARG_PARSER "Include KirHut::CLI command line argument parsing functionality." ON)
-option(KH_INCLUDE_FILESYSTEM "Include std::filesystem under the KirHut::FS namespace." ON)
-option(KH_INCLUDE_MD5HASH "Build this library with MD5Hash support (implies KH_MUST_HAVE_32_64)." ON)
-option(KH_INCLUDE_TASK_SYSTEM "Include controllable multithreaded task system." ON)
 option(KH_INCLUDE_TERMINAL_PRINT "Include UTF-8 C++23 style printing support in KirHut::IO." ON)
-option(KH_INCLUDE_TOML "Build this library with TOML parsing support." ON)
 option(KH_OVERRIDE_PLATFORM_SAFETY "Ignore unsupported platform checks during compile time checking (dangerous)." OFF)
 cmake_dependent_option(KH_USE_128BIT_TYPES
     "Use 128 bit types on platforms that support it."
@@ -78,12 +72,7 @@ mark_as_advanced(
     KH_MUST_HAVE_64BIT_TYPES
     KH_NO_BADALLOC
     KH_NO_EXCEPTIONS
-    KH_INCLUDE_ARG_PARSER
-    KH_INCLUDE_FILESYSTEM
-    KH_INCLUDE_MD5HASH
-    KH_INCLUDE_TASK_SYSTEM
     KH_INCLUDE_TERMINAL_PRINT
-    KH_INCLUDE_TOML
     KH_OVERRIDE_PLATFORM_SAFETY
 )
 
@@ -100,62 +89,49 @@ else()
     )
 endif()
 
-if(KH_USES_QT)
-    # Qt must be installed on the platform prior to building. This can be done using the Qt Installer tool on Windows or
-    # using a package manager on Unix. This may also be done with the Installer tool or Homebrew on MacOS.
-    find_package(QT NAMES Qt6 Qt5 REQUIRED
-        COMPONENTS
-            Core
-    )
-    find_package(Qt${QT_VERSION_MAJOR} REQUIRED
-        COMPONENTS
-            Core
-    )
-endif()
-
 if(KH_USES_FMT)
-    find_package(fmt 9 CONFIG QUIET)
+    if(KH_ALLOW_FETCHCONTENT)
+        set(KH_FMT_PACKAGE_ARGS CONFIG QUIET)
+    else()
+        set(KH_FMT_PACKAGE_ARGS REQUIRED)
+    endif()
+
+    find_package(fmt 9 ${KH_FMT_PACKAGE_ARGS})
 
     if(NOT fmt_FOUND)
-        if (KH_ALLOW_FETCHCONTENT)
-            # When compiling from source, this uses fmt version 11.2, instead of 9, because 9 has fundamental issues
-            # with it's build system and emits a lot of deprecation warnings.
-            FetchContent_Declare(
-                fmt
-                GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-                GIT_TAG 40626af88bd7df9a5fb80be7b25ac85b122d6c21
-            )
+        # When compiling from source, this uses fmt version 11.2, instead of 9, because 9 has fundamental issues with
+        # its build system and emits a lot of deprecation warnings.
+        FetchContent_Declare(
+            fmt
+            GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+            GIT_TAG 40626af88bd7df9a5fb80be7b25ac85b122d6c21
+        )
 
-            FetchContent_MakeAvailable(fmt)
-            target_compile_features(fmt PUBLIC cxx_std_20)
-            set_target_properties(fmt
-                PROPERTIES
-                    ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-                    LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-                    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-                    POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
-            )
-        else()
-            message(FATAL_ERROR "libKirHut depends on {fmt} version 9 or greater, but it was not found.")
-        endif()
+        FetchContent_MakeAvailable(fmt)
+        target_compile_features(fmt PUBLIC cxx_std_20)
+
+        # Install will put the libraries in the appropriate folder with the application, but this is for convenience of
+        # the developer when building without installing.
+        set_target_properties(fmt
+            PROPERTIES
+                ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
+                POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
+        )
     endif()
 endif()
 
 set(libKirHut_HEADERS
-    args.hpp
     base.hpp
     error.hpp
     errors.hpp
-    filesystem.hpp
     global.hpp
     invalid.hpp
-    md5hash.hpp
     packedtuple.hpp
     platform.hpp
     print.hpp
     ranges.hpp
-    task.hpp
-    toml.hpp
 )
 
 set(libKirHut_PRIV_HEADERS
@@ -167,24 +143,8 @@ set(libKirHut_SOURCES
     invalid.cpp
 )
 
-if(KH_INCLUDE_ARG_PARSER)
-    list(APPEND libKirHut_SOURCES args.cpp)
-endif()
-
-if(KH_INCLUDE_MD5HASH)
-    list(APPEND libKirHut_SOURCES md5hash.cpp)
-endif()
-
-if(KH_INCLUDE_TASK_SYSTEM)
-    list(APPEND libKirHut_SOURCES task.cpp)
-endif()
-
 if(KH_INCLUDE_TERMINAL_PRINT)
     list(APPEND libKirHut_SOURCES print.cpp)
-endif()
-
-if(KH_INCLUDE_TOML)
-    list(APPEND libKirHut_SOURCES toml.cpp)
 endif()
 
 if(APPLE)
@@ -221,7 +181,6 @@ if(MINGW AND BUILD_SHARED_LIBS)
 endif()
 
 set(libKirHut_PUBLIC_LIBRARIES
-    $<$<BOOL:${KH_USES_QT}>:Qt${QT_VERSION_MAJOR}::Core>
     $<$<BOOL:${KH_USES_FMT}>:fmt::fmt>
 )
 

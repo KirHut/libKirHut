@@ -25,7 +25,8 @@
 
 /*!
  * \file ranges.hpp
- * \brief Range-based utility types and adaptors.
+ *
+ * Range-based utility types and adaptors.
  *
  * This header provides lightweight range utilities for the KirHut project, intended to extend the C++20 ranges library
  * with small, practical helpers. These are designed for simplicity and constexpr-friendliness, not for replacing
@@ -54,16 +55,24 @@ namespace Ranges
 
 using namespace std::ranges;
 
+/*!
+ * \brief The IterPair class
+ *
+ * \tparam Begin_T
+ * \tparam End_T
+ */
 template <typename Begin_T, typename End_T>
 struct IterPair
 {
+    /*!
+     * \brief begin
+     */
     Begin_T begin;
-    End_T end;
 
-    IterPair(Begin_T &&b, End_T &&e) : begin(std::move(b)), end(std::move(e))
-    {
-        // No further implementation.
-    }
+    /*!
+     * \brief end
+     */
+    End_T end;
 };
 
 /*!
@@ -81,19 +90,21 @@ struct IterPair
  * \param r A std::ranges::range type to get the begin and end iterators from.
  * \return An IterPair of the std::range::begin() and std::range::end() iterators.
  */
-[[nodiscard]] constexpr auto getIters(range auto &r) noexcept -> decltype(IterPair{ Ranges::begin(r), Ranges::end(r) })
+template <range Range_T>
+[[nodiscard]] constexpr IterPair<iterator_t<Range_T>, sentinel_t<Range_T>> getIters(Range_T &r) noexcept
 {
-    return IterPair{ Ranges::begin(r), Ranges::end(r) };
+    return { .begin = Ranges::begin(r), .end = Ranges::end(r) };
 }
 
 /*!
  * Class representing a group of separators for a WordView.
  *
  * This class merely wraps a std::string_view object of separator characters as a tag type. The class signifies that the
- * contained string_view is a set of separators and will be treated as a different type by the compiler.
+ * contained string_view is a set of separators and will be treated as a different type by the compiler. This class
+ * otherwise does not perform any work, it is truly just a tag type to wrap around a string_view.
  *
- * \tparam Char_T The character type used by this Separators object for the internal string_view.
  * \see WordView
+ * \tparam Char_T The character type used by this Separators object for the internal string_view.
  */
 template <typename Char_T>
 struct Separators final
@@ -110,28 +121,16 @@ struct Separators final
      * object will be valid for the entire lifetime of the Separators object. The advantage of making no copies is this
      * constructor is extremely fast and guaranteed to work.
      *
-     * \param seps
-     */
-    explicit constexpr Separators(std::basic_string_view<Char_T> seps) noexcept : separators(seps)
-    {
-        // No further implementation.
-        // TODO: Implement some compile-time checking for seps if desired.
-    }
-
-    /*!
-     * Construct a Separators from a given string of separator characters.
-     *
-     * This object does not copy the passed in character buffer, so you must ensure that the buffer provided to this
-     * object will be valid for the entire lifetime of the Separators object. The advantage of making no copies is this
-     * constructor is extremely fast and guaranteed to work.
+     * \internal
+     * \todo This constructor may be used to perform compile-time checking of the separators string, however I can not
+     * think of a good reason to perform this compile-time checking. I don't know of any characters that should be
+     * considered "illegal" to make a separator, and multiple same characters in the string isn't really an issue. This
+     * may be simpler to leave as-is.
+     * \endinternal
      *
      * \param seps
      */
-    explicit constexpr Separators(Char_T const *seps) noexcept : separators(seps)
-    {
-        // No further implementation.
-        // TODO: Implement some compile-time checking for seps if desired.
-    }
+    explicit constexpr Separators(StringLike auto seps) noexcept;
 
     /*!
      * Implicit conversion from Separators<Char_T> to std::basic_string_view<Char_T>.
@@ -139,11 +138,23 @@ struct Separators final
      * This object is just a wrapper type that stores a string view of separator characters. This allows for easier
      * access to the separators within this object.
      */
-    constexpr operator std::basic_string_view<Char_T>() const noexcept
-    {
-        return separators;
-    }
+    constexpr operator std::basic_string_view<Char_T>() const noexcept;
 };
+
+template <StringLike String_T>
+Separators(String_T) -> Separators<StringLikeType<String_T>>;
+
+template <typename Char_T>
+constexpr Separators<Char_T>::Separators(StringLike auto seps) noexcept : separators(seps)
+{
+    // No further implementation.
+}
+
+template <typename Char_T>
+constexpr Separators<Char_T>::operator std::basic_string_view<Char_T>() const noexcept
+{
+    return separators;
+}
 
 /*!
  * A lightweight view that splits a string into "words" given a series of ignored characters.
@@ -184,7 +195,19 @@ struct Separators final
 template <typename Char_T>
 class WordView final : public view_interface<WordView<Char_T>>
 {
-    std::basic_string_view<Char_T> fullString, separators;
+    /*!
+     * \internal
+     *
+     * \brief fullString
+     */
+    std::basic_string_view<Char_T> fullString = "";
+
+    /*!
+     * \internal
+     *
+     * \brief separators
+     */
+    std::basic_string_view<Char_T> separators = " \t\r\n";
 
 public:
     class iterator;
@@ -193,7 +216,7 @@ public:
      * Required WordView default constructor.
      *
      * This does not initialize the WordView object into any kind of useful state, other than one to be reassigned to
-     * from another WordView. The returned iterators will always just be the default end iterator.
+     * from another WordView. The returned iterators will always just be the sentinel end iterator.
      */
     constexpr WordView() noexcept : WordView("")
     {
@@ -210,7 +233,7 @@ public:
      * does *not* have to match the full \p seps string.
      *
      * \param fullStr The string to tokenize. Must not be empty.
-     * \param seps A set of separator characters. Defaults to whitespace (space, tab, carriage return, newline).
+     * \param seps A set of separator characters. Defaults to ASCII whitespace (space, tab, carriage return, newline).
      */
     constexpr explicit WordView(std::basic_string_view<Char_T> fullStr,
                                 Separators<Char_T> seps = Separators<Char_T>{ " \t\r\n" }) noexcept :
@@ -226,7 +249,8 @@ public:
      * \param fullStr
      */
     constexpr WordView(Separators<Char_T> seps, std::basic_string_view<Char_T> fullStr) noexcept :
-        WordView(fullStr, seps)
+        fullString(fullStr),
+        separators(seps)
     {
         // No further implementation.
     }
@@ -237,7 +261,7 @@ public:
      * See the documentation on the iterator type for more information on how to use the returned iterator.
      *
      * \internal
-     * \note The definition of this method is found outside of the class body, unlike most class methods, because it
+     * \note The definition of this method is found under the iterator definition, unlike most class methods, because it
      * must return an object which has not itself been defined yet (the iterator object). As such, it must be defined
      * under the definition of the iterator object.
      * \endinternal
@@ -253,7 +277,7 @@ public:
      * The returned iterator is equivalent to default constructing WordView<Char_T>::iterator.
      *
      * \internal
-     * \note The definition of this method is found outside of the class body, unlike most class methods, because it
+     * \note The definition of this method is found under the iterator definition, unlike most class methods, because it
      * must return an object which has not itself been defined yet (the iterator object). As such, it must be defined
      * under the definition of the iterator object.
      * \endinternal
@@ -381,15 +405,7 @@ public:
      *
      * \param p The WordView this iterator will walk. Passed as reference to ensure a nullptr is not passed.
      */
-    constexpr iterator(WordView const &p) noexcept : parent(&p)
-    {
-        if (p.fullString.empty())
-        {
-            parent = nullptr;
-        }
-
-        nextToken();
-    }
+    constexpr iterator(WordView const &p) noexcept;
 
     /*!
      * Default constructor, creates an "end" sentinel.
@@ -423,6 +439,8 @@ public:
 
     /*!
      * Post-increment: advance and return old iterator.
+     *
+     * \return A copy of the previous iterator position.
      */
     constexpr iterator operator++(int) noexcept
     {
@@ -434,8 +452,13 @@ public:
     /*!
      * Compare two iterators for equality.
      *
-     * \note Two default-constructed iterators (ends) always compare equal, even if they come from different WordView
-     * objects.
+     * A WordView iterator is considered "equal" to another WordView iterator if both of the iterators are pointing to
+     * the same word in the same set of data **or** if the two WordView iterators are both end iterators of **any**
+     * WordView object. The WordView::iterator passed the end of the last word for a given set of text is a sentinel
+     * object that is identical for all WordView objects, so it is always considered equal to any other
+     * WordView::iterator that has went passed the end of the available data set.
+     *
+     * \return Whether or not the two iterators are considered "equal."
      */
     constexpr bool operator==(iterator const &other) const noexcept
     {
@@ -490,6 +513,17 @@ private:
     }
 };
 
+template <typename Char_T>
+constexpr WordView<Char_T>::iterator::iterator(WordView<Char_T> const &p) noexcept : parent(&p)
+{
+    if (p.fullString.empty())
+    {
+        parent = nullptr;
+    }
+
+    nextToken();
+}
+
 // Documented in object definition.
 template <typename Char_T>
 constexpr WordView<Char_T>::iterator WordView<Char_T>::begin() const noexcept
@@ -519,7 +553,7 @@ using namespace std::views;
 /*!
  * \internal
  *
- * Detail namespace for KirHut::VW.
+ * Detail namespace for KirHut::Views.
  *
  * Just another Detail namespace, see KirHut::Detail for information.
  *
