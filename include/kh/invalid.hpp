@@ -25,7 +25,8 @@
  * \file invalid.hpp
  *
  * Invalid template object and MaybeInv object header file. This header contains all of the baseline information for
- * error handling throughout all KirHut applications.
+ * error handling throughout all KirHut applications. Use the error.hpp header for the Error class, which is intended to
+ * be thrown as an exception.
  */
 
 namespace KirHut
@@ -70,10 +71,16 @@ struct MessageViewWhy
     constexpr static bool isQuickCopy = true;
 
     /*!
-     * \brief operator <=>
-     * \param other
+     * Comparison operator overload for MessageViewWhy type.
+     *
+     * This is defined as `= default`, so it will just perform a direct comparison of the why value followed by a
+     * character by character comparison of the info string. The why enumeration has assigned values in the global.hpp
+     * header, so all MessageViewWhy objects are sorted based first on the why, then based on alphabetical order of the
+     * info message when they both have the same underlying why.
+     *
+     * \param other Another MessageViewWhy object to compare this one to.
      */
-    constexpr auto operator<=>(MessageViewWhy const &other) const noexcept = default;
+    constexpr auto operator<=>(MessageViewWhy const &other) const noexcept;
 
     /*!
      * Returns this object's WhyInvalid type.
@@ -82,10 +89,7 @@ struct MessageViewWhy
      *
      * \return The value of why.
      */
-    constexpr WhyInvalid getWhyInvalid() const noexcept
-    {
-        return why;
-    }
+    constexpr WhyInvalid getWhyInvalid() const noexcept;
 
     /*!
      * Returns this object's info value.
@@ -94,11 +98,24 @@ struct MessageViewWhy
      *
      * \return The value of info.
      */
-    constexpr std::basic_string_view<CharType> getInvalidInfo() const noexcept
-    {
-        return info;
-    }
+    constexpr std::basic_string_view<CharType> getInvalidInfo() const noexcept;
 };
+
+template <typename Char_T>
+constexpr auto MessageViewWhy<Char_T>::operator<=>(MessageViewWhy const &other) const noexcept = default;
+
+template <typename Char_T>
+constexpr WhyInvalid MessageViewWhy<Char_T>::getWhyInvalid() const noexcept
+{
+    return why;
+}
+
+template <typename Char_T>
+constexpr std::basic_string_view<typename MessageViewWhy<Char_T>::CharType>
+MessageViewWhy<Char_T>::getInvalidInfo() const noexcept
+{
+    return info;
+}
 
 /*!
  * Concept that an object type can model to meet the requirements of the ValidWhyType concept.
@@ -122,9 +139,7 @@ namespace Detail
  *
  * Actual function implementation of the KirHut::getWhyInvalid WhyInvalid overload.
  *
- * \see KirHut::getWhyInvalid
- * \param why Same time that is returned by this function.
- * \return The same \p why passed as an argument.
+ * \copydetails KirHut::getWhyInvalid(WhyInvalid) noexcept
  */
 constexpr WhyInvalid getWhyInvalid(WhyInvalid why) noexcept
 {
@@ -134,9 +149,9 @@ constexpr WhyInvalid getWhyInvalid(WhyInvalid why) noexcept
 /*!
  * \internal
  *
- * \brief getInvalidInfo
- * \param why
- * \return
+ * Actual function implementation of the KirHut::getInvalidInfo WhyInvalid overload.
+ *
+ * \copydetails KirHut::getInvalidInfo(WhyInvalid) noexcept
  */
 constexpr string_view getInvalidInfo(WhyInvalid why) noexcept
 {
@@ -186,9 +201,9 @@ constexpr string_view getInvalidInfo(WhyInvalid why) noexcept
 /*!
  * \internal
  *
- * \brief getWhyInvalid
- * \param view
- * \return
+ * Actual function implementation of the KirHut::getWhyInvalid std::basic_string_view overload.
+ *
+ * \copydetails KirHut::getWhyInvalid<Char_T>(std::basic_string_view<Char_T>) noexcept
  */
 template <typename Char_T>
 constexpr WhyInvalid getWhyInvalid([[maybe_unused]] std::basic_string_view<Char_T> view) noexcept
@@ -199,9 +214,9 @@ constexpr WhyInvalid getWhyInvalid([[maybe_unused]] std::basic_string_view<Char_
 /*!
  * \internal
  *
- * \brief getInvalidInfo
- * \param view
- * \return
+ * Actual function implementation of the KirHut::getInvalidInfo std::basic_string_view overload.
+ *
+ * \copydetails KirHut::getInvalidInfo<Char_T>(std::basic_string_view<Char_T>) noexcept
  */
 template <typename Char_T>
 constexpr std::basic_string_view<Char_T> getInvalidInfo(std::basic_string_view<Char_T> view) noexcept
@@ -212,9 +227,9 @@ constexpr std::basic_string_view<Char_T> getInvalidInfo(std::basic_string_view<C
 /*!
  * \internal
  *
- * \brief getWhyInvalid
- * \param str
- * \return
+ * Actual function implementation of the KirHut::getWhyInvalid std::basic_string overload.
+ *
+ * \copydetails KirHut::getWhyInvalid<Char_T>(std::basic_string<Char_T> const&) noexcept
  */
 template <typename Char_T>
 constexpr WhyInvalid getWhyInvalid([[maybe_unused]] std::basic_string<Char_T> const &str) noexcept
@@ -225,9 +240,9 @@ constexpr WhyInvalid getWhyInvalid([[maybe_unused]] std::basic_string<Char_T> co
 /*!
  * \internal
  *
- * \brief getInvalidInfo
- * \param str
- * \return
+ * Actual function implementation of the KirHut::getInvalidInfo std::basic_string overload.
+ *
+ * \copydetails KirHut::getInvalidInfo<Char_T>(std::basic_string<Char_T> const&) noexcept
  */
 template <typename Char_T>
 constexpr std::basic_string_view<Char_T> getInvalidInfo(std::basic_string<Char_T> const &str) noexcept
@@ -238,9 +253,9 @@ constexpr std::basic_string_view<Char_T> getInvalidInfo(std::basic_string<Char_T
 /*!
  * \internal
  *
- * \brief getWhyInvalid
- * \param why
- * \return
+ * Actual function implementation of the KirHut::getWhyInvalid WhyObject type overload.
+ *
+ * \copydetails KirHut::getWhyInvalid<Why_T>(Why_T const&) noexcept
  */
 template <WhyObject Why_T>
 constexpr WhyInvalid getWhyInvalid(Why_T const &why) noexcept
@@ -251,8 +266,9 @@ constexpr WhyInvalid getWhyInvalid(Why_T const &why) noexcept
 /*!
  * \internal
  *
- * \brief getInvalidInfo
- * \param why
+ * Actual function implementation of the KirHut::getInvalidInfo WhyObject type overload.
+ *
+ * \copydetails KirHut::getInvalidInfo<Why_T>(Why_T const&) noexcept
  */
 template <WhyObject Why_T>
 constexpr auto getInvalidInfo(Why_T const &why) noexcept -> decltype(why.getInvalidInfo())
@@ -263,7 +279,9 @@ constexpr auto getInvalidInfo(Why_T const &why) noexcept -> decltype(why.getInva
 /*!
  * \internal
  *
- * \brief The GetWhyInvalidImpl class
+ * Function CPO that delegates an operator() call to the appropriate overload for the passed-in type.
+ *
+ * Bog-standard accessor CPO, see documentation on CPOs for more information on how this works.
  */
 struct GetWhyInvalidImpl
 {
@@ -330,9 +348,12 @@ struct QuickCopyExtractor<Why_T>
 
 #if defined(KH_PRIV_DOCS)
 /*!
- * \brief getWhyInvalid
- * \param why
- * \return
+ * The getWhyInvalid accessor function for the WhyInvalid type.
+ *
+ * This simply returns \p why itself as the result.
+ *
+ * \param why A WhyInvalid type that is simply returned by this function.
+ * \return The same \p why passed as an argument.
  */
 constexpr WhyInvalid getWhyInvalid(WhyInvalid why) noexcept;
 
@@ -372,18 +393,48 @@ constexpr auto const &getInvalidInfo = v1::Detail::staticConstRef<Detail::GetInv
 } // namespace
 
 /*!
- * \brief The WhyTypeTraits class
+ * The default instance of the WhyTypeTraits class, which sets isImplemented to false.
+ *
+ * Most types are not implemented as Why types in libKirHut. The type must explicitly opt-in to that functionality by
+ * the developer implementing a template specialization of KirHut::WhyTypeTraits with your own type. You can then set
+ * isImplemented to true, set isQuickCopy to whatever your preference is, and set the appropriate CharType. This
+ * information is essential for the BasicInvalid object to interact with the Why type and know that it works correctly.
+ *
+ * You must also implement free functions named getWhyInvalid() and getInvalidInfo() within the same namespace that the
+ * type comes from, accepting that type as an argument, OR you must implement two methods with those names within the
+ * custom type. The getWhyInvalid() function must return a WhyInvalid enumeration, and getInvalidInfo() must return a
+ * std::basic_string_view of the selected CharType in the object's WhyTypeTraits template specialization.
  */
 template <typename Why_T>
 struct WhyTypeTraits
 {
-    using CharType                      = char;
+    /*!
+     * Type alias for the character type returned by getInvalidInfo().
+     *
+     * The default WhyTypeTraits uses `char`, but isImplemented is false so this will be ignored.
+     */
+    using CharType = char;
+
+    /*!
+     * Boolean indicating if the \p Why_T type has been implemented as a valid Why type.
+     *
+     * The default for this is false, and you **must** implement a specialization of this class and set isImplemented to
+     * true in your specialization in order to create your own Why type. As an alternative, you could also create a
+     * class that models the WhyObject concept, which will automatically be considered "implemented" for the purposes of
+     * the BasicInvalid class.
+     */
     constexpr static bool isImplemented = false;
-    constexpr static bool isQuickCopy   = false;
+
+    /*!
+     * \brief isQuickCopy
+     */
+    constexpr static bool isQuickCopy = false;
 };
 
 /*!
- * \brief The WhyTypeTraits class
+ * The WhyTypeTraits specialization for the WhyInvalid type.
+ *
+ * A WhyInvalid is, itself, considered a valid Why type.
  */
 template <>
 struct WhyTypeTraits<WhyInvalid>
@@ -442,31 +493,55 @@ concept ValidWhyType = not std::is_reference_v<T> and not std::is_function_v<T> 
 /*!
  *
  */
-template <typename T>
-concept QuickWhyType = ValidWhyType<T> and std::is_nothrow_move_constructible_v<T> and
-                       std::is_nothrow_copy_constructible_v<T> and WhyTypeTraits<T>::isQuickCopy;
+template <typename Why_T>
+concept QuickWhyType = ValidWhyType<Why_T> and std::is_nothrow_move_constructible_v<Why_T> and
+                       std::is_nothrow_copy_constructible_v<Why_T> and WhyTypeTraits<Why_T>::isQuickCopy;
 
 /*!
- * Provides a simple interface to an error type object with a message and a why for the failure.
+ * Provides a simple interface to an error type object with a message and a "why" for the failure.
  *
  * This class is designed to be flexible enough to use any type as the "why" for possible subclasses that may have
  * more complicated internal representations, but for most use cases you should just use the Invalid typedef of this
  * class. The Invalid typedef uses the enum WhyInvalid to provide a method for programmers to know what happened and
  * distinguish it from other failures, and only provides a generic, untranslated message for each of the isssues.
  * Generally, you should use the Invalid typedef (or a TaggedInvalid<Why_T> subclass typedef) to signal to the user
- * application that something went wrong, and if the user application cannot resolve the issue on its own, it can
- * then translate the string to the user's language and report the issue. If you are always going to report, you
- * could simply use a key that is always translated after the Invalid is returned.
+ * application that something went wrong, and if the user application cannot resolve the issue on its own, it can then
+ * translate the string to the user's language and report the issue. If you are always going to report, you could simply
+ * use a key that is always translated after the Invalid is returned.
+ *
+ * There is a general, "complex," version of the BasicInvalid class, which has a single copy of the result data and all
+ * copies of BasicInvalid point to this central value. This version requires a dynamic memory allocation, so using the
+ * forwarding constructor is frequently more efficient because the underlying std::shared_ptr can allocate the control
+ * block and your data at the same time instead of as two separate allocations. This allows large, uncopyable, expensive
+ * to copy, or otherwise very difficult to transfer types to be used as Why types (such as std::string). The consequence
+ * is that access to the underlying Why_T is not thread safe between copies of a BasicInvalid pointing to the same Why
+ * type. This means that you almost certainly want to unwrap the Why type from the BasicInvalid as soon as you
+ * practicably can in this case. A subclass of the BasicInvalid class would likely be the best way to handle this in
+ * that case.
+ *
+ * There is also a "simple" template specialization that requires your Why_T to model the QuickWhyType concept. If it
+ * does, then the BasicInvalid type will consider it "fast" to copy your Why type rather than wrapping your Why type in
+ * a std::shared_ptr. This means that all copies of the BasicInvalid class will simply copy your underlying Why_T as a
+ * data member of the BasicInvalid class, making all of the aforementioned thread-safety issues completely moot, as
+ * every instance of the BasicInvalid will be completely reentrant, assuming two threads don't try to modify the same
+ * instance simultaneously.
  *
  * BasicInvalid objects, and their according MaybeInv objects, are safe to pass along to different threads as copies as
  * in most cases they are completely independent from one another. Copies of BasicInvalid using a complex Why_T type are
  * also guaranteed to be noexcept and safe to pass to different threads. The BasicInvalid object does enough thread
  * coordination to prevent data races and deadlocks between threads sharing the same complex Why_T object. However, this
  * class does not prevent data races and is not thread safe at all between two separate threads attempting to use the
- * same BasicInvalid object.
+ * same BasicInvalid object nor against two copies of .
  *
  * As a consequence of thread safety for complex Why_T types, BasicInvalids that do not contain a simple type are not
  * constexpr.
+ *
+ * The BasicInvalid class is intended to be subclassed, and meant to allow those subclasses to be referred to by their
+ * parent class. However, as a consequence of deliberately avoiding a vtable pointer in this type's data, the destructor
+ * is not marked as virtual. As such, the only safe way to delete data a subclass is using is to have your subclass
+ * provide its own Why_T instead of the user. This ensures that the BasicInvalid will correctly delete any data you are
+ * using in your BasicInvalid subclass while also not needing to use vtable dereferencing to find what objects actually
+ * need to be deleted.
  *
  * The BasicInvalid object is intended to be either returned in a MaybeInv object or, alternatively, thrown as an
  * exception from a method. The class is intended to be flexible enough to be used in both contexts properly,
@@ -474,9 +549,10 @@ concept QuickWhyType = ValidWhyType<T> and std::is_nothrow_move_constructible_v<
  * returning error conditions from Qt Signals and Slots, as exceptions are completely unsupported using Signals and
  * Slots.
  *
- * All of the methods of this class are marked as constexpr, so this class should be completely usable in a
- * constexpr context. This allows the creation of functions and methods marked constexpr that return a MaybeInv<T>
- * or Invalid and this would compile.
+ * All of the non-constructor methods of this class are marked as constexpr, and the "simple" template specialization
+ * constructors are all marked constexpr, so the simple template specialization of this class is completely usable in a
+ * constexpr context. This allows the creation of functions and methods marked constexpr that return a MaybeInv<T> or
+ * Invalid and this would compile.
  *
  * \tparam Why_T
  */
@@ -495,10 +571,6 @@ class BasicInvalid
      */
     SPtr<Why_T> data;
 
-    static_assert(not WhyTypeTraits<Why_T>::isQuickCopy,
-                  "The BasicInvalid's Why_T type trait's isQuickCopy is true, but Why_T is not nothrow copy and move "
-                  "constructible.");
-
 public:
     /*!
      * Typedef for BasicInvalid types to identify the character type of the returned info() string.
@@ -506,14 +578,19 @@ public:
     using CharType = WhyTypeTraits<Why_T>::CharType;
 
     /*!
-     * \brief BasicInvalid
+     * Construct a BasicInvalid using the given \p args forwarded to the \p Why_T constructor.
+     *
+     * This class requires the why type to be initialized at construction. It is implementation dependent whether or not
+     * this value can be modified after construction. If it is possible to do so, the Why_T object itself should expose
+     * methods for users to do this.
+     *
      * \param args The arguments to pass to the Why_T constructor to build this BasicInvalid object around.
-     * \throws std::bad_alloc
+     * \throws std::bad_alloc If this constructor fails to allocate memory for the underlying std::shared_ptr.
+     * \throws any exception that is thrown by the according constructor of Why_T (WhyInvalid has none).
      */
     template <typename... Arg_Ts>
     inline explicit(sizeof...(Arg_Ts) < 2) BasicInvalid(Arg_Ts &&...args)
-        KH_THROWS_BADALLOC_OR(std::is_nothrow_constructible_v<Why_T, Arg_Ts...>)
-            requires(std::is_constructible_v<Why_T, Arg_Ts...>)
+        requires(std::is_constructible_v<Why_T, Arg_Ts...>)
         : data(make_shared<Why_T>(std::forward<Arg_Ts>(args)...))
     {
         // No further implementation.
@@ -533,10 +610,10 @@ public:
      * so.
      *
      * \param why A Why_T state (usually a WhyInvalid) of what caused the BasicInvalid to be raised or returned.
+     * \throws std::bad_alloc If this constructor fails to allocate memory for the underlying std::shared_ptr.
      * \throws any exception that is thrown by the copy constructor of Why_T (WhyInvalid has none).
      */
-    inline explicit BasicInvalid(Why_T const &why) KH_THROWS_BADALLOC_OR(std::is_nothrow_copy_constructible_v<Why_T>)
-        requires(std::is_copy_constructible_v<Why_T>)
+    inline explicit BasicInvalid(Why_T const &why) requires(std::is_copy_constructible_v<Why_T>)
         : data(make_shared<Why_T>(why))
     {
         // No further implementation.
@@ -551,9 +628,10 @@ public:
      * message to BasicInvalid objects without one.
      *
      * \param why A Why_T state (usually a WhyInvalid) of what caused the BasicInvalid to be raised or returned.
+     * \throws std::bad_alloc If this constructor fails to allocate memory for the underlying std::shared_ptr.
+     * \throws any exception that is thrown by the move constructor of Why_T (WhyInvalid has none).
      */
-    inline explicit BasicInvalid(Why_T &&why) KH_THROWS_BADALLOC_OR(std::is_nothrow_move_constructible_v<Why_T>)
-        requires(std::is_move_constructible_v<Why_T>)
+    inline explicit BasicInvalid(Why_T &&why) requires(std::is_move_constructible_v<Why_T>)
         : data(make_shared<Why_T>(std::move(why)))
     {
         // No further implementation.
@@ -636,6 +714,10 @@ public:
      */
     constexpr static bool simple = false;
 
+    static_assert(not WhyTypeTraits<Why_T>::isQuickCopy,
+                  "The BasicInvalid's Why_T type trait's isQuickCopy is true, but Why_T is not nothrow copy and move "
+                  "constructible.");
+
 protected:
     /*!
      * Protected accessor method to allow subclasses to get data from the internal representation.
@@ -714,7 +796,7 @@ public:
      * has been created. The void specialization of BasicInvalid does not have a message and omits those constructors
      * and methods.
      *
-     * \param why A WHY state (usually a WhyInvalid) of what actually caused the BasicInvalid to be raised or returned.
+     * \param why A Why_T state (usually a WhyInvalid) of what caused the BasicInvalid to be raised or returned.
      * \throws any exception that is thrown by the move constructor of WHY (WhyInvalid has none).
      */
     constexpr explicit BasicInvalid(Why_T &&why) noexcept : data(std::move(why))
@@ -787,7 +869,26 @@ protected:
 };
 
 /*!
+ * A template alias of BasicInvalid using a MessageViewWhy as the Why type.
  *
+ * The MessageViewWhy type is a non-allocating, custom message Why type that can be used to provide statically
+ * allocated custom strings as the reason for an error. Since most exceptions that have custom messages usually use a
+ * static C string as the source for text, this provides a similar mechanism without relying on exception mechanisms or
+ * dynamic memory allocation to work.
+ *
+ * Ideally you use a BasicMessageInvalid as the MessageInvalid alias, or if you are using something other than char to
+ * represent characters in your application, you could use a typedef of this type to represent that. For example, for
+ * wide character support on Windows you could use this:
+ *
+ * ~~~
+ * using WideMessageInvalid = BasicMessageInvalid<whcar_t>;
+ * ~~~
+ *
+ * Then you would use WideMessageInvalid like any other MessageInvalid but the info() method returns a std::wstring_view
+ * instead of a std::string_view and the custom message will be a wide character message instead of a narrow character
+ * message.
+ *
+ * \tparam Char_T The character type of the BasicInvalid::info() method for this BasicMessageInvalid alias.
  */
 template <typename Char_T>
 requires(not std::same_as<Char_T, void>)

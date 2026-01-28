@@ -74,6 +74,7 @@
 
 /*!
  * \def KH_WINDOWS
+ *
  * Preprocessor define indicating if the system is compiled on Windows.
  *
  * This is dependent on the `_WIN32` preprocessor definition. This should be defined by the compiler on any Windows
@@ -83,6 +84,7 @@
 
 /*!
  * \def KH_LINUX
+ *
  * Preprocessor define indicating if the system is compiled on Linux.
  *
  * This is dependent on the `__linux` or `__linux__` preprocessor definitions. This should only be defined on Linux
@@ -95,6 +97,7 @@
 
 /*!
  * \def KH_APPLE
+ *
  * Preprocessor define indicating if the system is compiled for an Apple device.
  *
  * This is dependent on the `__APPLE__` and `__MACH__` preprocessor definitions. These should be defined by the compiler
@@ -103,6 +106,7 @@
 
 /*!
  * \def KH_ANDROID
+ *
  * Preprocessor define indicating if the system is compiled for an Android device.
  *
  * This is dependent on the `__ANDROID__` or `ANDROID` preprocessor definitions. One of these should be defined by the
@@ -111,6 +115,7 @@
 
 /*!
  * \def KH_WASM
+ *
  * Preprocessor define indicating if the system is compiled using Emscripten for WebAssembly.
  *
  * This is dependent on the `__EMSCRIPTEN__` preprocessor definition, which is defined on the Emscripten compiler used
@@ -119,6 +124,7 @@
 
 /*!
  * \def KH_BSD
+ *
  * Preprocessor define indicating if the system is compiled on a BSD system.
  *
  * This is dependent on any of the following being defined for determining the operating system:
@@ -132,6 +138,7 @@
 
 /*!
  * \def KH_MACOS
+ *
  * Preprocessor define indicating if the system is compiled on Mac OS X.
  *
  * This is dependent on Apple's TargetConditionals.h `TARGET_OS_IPHONE` macro. If `TARGET_OS_IPHONE` is not defined or
@@ -140,6 +147,7 @@
 
 /*!
  * \def KH_IPHONE
+ *
  * Preprocessor define indicating if the system is compiled for Apple iPhone or iPad OS.
  *
  * This is dependent on Apple's TargetConditionals.h `TARGET_OS_IPHONE` macro. If `TARGET_OS_IPHONE` is defined, than
@@ -148,6 +156,7 @@
 
 /*!
  * \def KH_DESKTOP
+ *
  * Preprocessor define indicating if the system is compiled for a desktop or laptop.
  *
  * This will conventionally be defined if either KH_WINDOWS, KH_LINUX, KH_MACOS, or KH_BSD are defined.
@@ -155,6 +164,7 @@
 
 /*!
  * \def KH_MOBILE
+ *
  * Preprocessor define indicating if the system is compiled for a mobile device.
  *
  * This will conventionally be defined if either KH_ANDROID or KH_IPHONE are defined.
@@ -172,13 +182,6 @@
  * - KH_ARMv6
  * - KH_ARMv7
  * - KH_ARMv8
- * - KH_MIPS
- * - KH_SUPERH
- * - KH_POWER64
- * - KH_POWER32
- * - KH_SPARC64
- * - KH_SPARC32
- * - KH_SX
  *
  * Many other informational preprocessor defines are also documented in this group.
  *
@@ -256,62 +259,6 @@
  * Preprocessor define indicating if the system is compiled for ARM v8 processors.
  *
  * This is dependent on the preprocessor defines `__aarch64__` or `_M_ARM64` being defined.
- */
-
-/*!
- * \def KH_MIPS
- *
- * Preprocessor define indicating if the system is compiled for MIPS processors.
- *
- * This is dependent on the preprocessor defines mips, `__mips` or `__mips__` being defined.
- */
-
-/*!
- * \def KH_POWER64
- *
- * Preprocessor define indicating if the system is compiled for 64 bit POWER processors.
- *
- * This is dependent on any of the following being defined for determining the operating system:
- * - `__PPC64__`
- * - `__ppc64__`
- * - `__powerpc64__`
- * - `_ARCH_PPC64`
- *
- * If any of the above are defined, than this is defined.
- */
-
-/*!
- * \def KH_POWER32
- *
- * Preprocessor define indicating if the system is compiled for 32 bit POWER processors.
- *
- *
- * This is dependent on any of the following being defined for determining the operating system:
- * - `__PPC__`
- * - `__ppc__`
- * - `__powerpc`
- * - `__powerpc__`
- * - `__POWERPC__`
- * - `_ARCH_PPC`
- *
- * If any of the above are defined, and #KH_POWER64 is **not** defined, than this is defined.
- */
-
-/*!
- * \def KH_SPARC64
- *
- * Preprocessor define indicating if the system is compiled for 64 bit SPARC processors.
- *
- * This is dependent on the preprocessor defines `__sparcv9` or `__sparc_v9__` being defined.
- */
-
-/*!
- * \def KH_SPARC32
- *
- * Preprocessor define indicating if the system is compiled for 32 bit SPARC processors.
- *
- * This is dependent on the preprocessor defines `__sparc` or `__sparc__` being defined and #KH_SPARC64 **not** being
- * defined.
  */
 
 /*!
@@ -488,6 +435,19 @@
  */
 
 /*!
+ * \def KH_OVERRIDE_PLATFORM_SAFETY
+ *
+ * Preprocessor define that communicates if the build is overriding the normal platform safety compile-time checks.
+ *
+ * This library performs several compile-time checks to prevent building on platforms that are not supported by
+ * libKirHut, like checking that the platform has 8 bit bytes, checking that it is building on a supported hardware
+ * architecture and OS platform, and that several sanity checks pass (like that integers use two's complement
+ * representation and not, for example, sign-magnitude). This is guaranteed to be defined as either 1 or 0, depending on
+ * if the user builds with the appropriate CMake option or not. It should always be defined as 0 for basically every
+ * build unless the user had some good reason to override it.
+ */
+
+/*!
  * \def KH_USES_FMT
  *
  * Preprocessor flag to build libKirHut and applications using libKirHut using {fmt} instead of std::format.
@@ -523,8 +483,6 @@
  *
  * The use of #KH_NO_EXCEPTIONS implies that this is also defined, even if that option was not passed in as a CMake
  * build option.
- *
- * \see KH_THROWS_BADALLOC
  */
 
 /*!
@@ -651,6 +609,16 @@
  */
 
 /*!
+ * \def KH_COMPILED_WITH_NVIDIA
+ *
+ * Preprocessor define indicating if the library is compiled using the NVidia CUDA C++ Compiler.
+ *
+ * This is defined if CMake reports that this library is built with NVidia CUDA. These defines are not based on any
+ * preprocessor defines by the compiler itself, so it is irrelevant what preprocessor symbols are defined. Instead, this
+ * information is directly provided by a CMake script in this project.
+ */
+
+/*!
  * \def KH_COMPILED_WITH_IBMXL
  *
  * Preprocessor define indicating if the library is compiled using the IBM Open XL C++ Compiler.
@@ -681,6 +649,46 @@
  */
 
 /*!
+ * \def KH_COMPILED_WITH_QNX
+ *
+ * Preprocessor define indicating if the library is compiled using the BlackBerry QNX C/C++ Compiler.
+ *
+ * This is defined if CMake reports that this library is built with BlackBerry QNX. These defines are not based on any
+ * preprocessor defines by the compiler itself, so it is irrelevant if __QNX__ is defined. Instead, this information is
+ * directly provided by a CMake script in this project.
+ */
+
+/*!
+ * \def KH_COMPILED_WITH_DIAB
+ *
+ * Preprocessor define indicating if the library is compiled using the Wind River Systems Diab Compiler.
+ *
+ * This is defined if CMake reports that this library is built with Wind River Diab. These defines are not based on any
+ * preprocessor defines by the compiler itself, so it is irrelevant what preprocessor symbols are defined. Instead, this
+ * information is directly provided by a CMake script in this project.
+ */
+
+/*!
+ * \def KH_COMPILED_WITH_GHS
+ *
+ * Preprocessor define indicating if the library is compiled using the Green Hills Systems' C++ Compiler.
+ *
+ * This is defined if CMake reports that this library is built with Green Hills. These defines are not based on any
+ * preprocessor defines by the compiler itself, so it is irrelevant what preprocessor symbols are defined. Instead, this
+ * information is directly provided by a CMake script in this project.
+ */
+
+/*!
+ * \def KH_COMPILED_WITH_MCST
+ *
+ * Preprocessor define indicating if the library is compiled using the MCST Elbrus C++ Compiler.
+ *
+ * This is defined if CMake reports that this library is built with Elbrus C++. These defines are not based on any
+ * preprocessor defines by the compiler itself, so it is irrelevant what preprocessor symbols are defined. Instead, this
+ * information is directly provided by a CMake script in this project.
+ */
+
+/*!
  * \def KH_COMPILED_WITH_UNKNOWN
  *
  * Preprocessor define indicating if the library is compiled using an unknown compiler.
@@ -700,10 +708,11 @@
  * - NVidia HPC SDK
  * - NVidia CUDA
  * - Cray Clang
- * - QNX QCC (future)
+ * - BlackBerry QNX QCC (future)
  * - Wind River Diab (future)
  * - Green Hills (future)
  * - IAR Embedded Workbench (future)
+ * - MCST Elbrus (future)
  *
  * C++ compilers currently detected by CMake but not included in the list have their reasons below:
  * - Analog VisualDSP++: Nowhere close to C++20 support and for hardware architectures unsupported by this library.
@@ -803,6 +812,47 @@
  */
 
 //! \}
+
+/*!
+ * \def KH_INLINE_NAMESPACE_V1
+ *
+ * Preprocessor define to begin a v1 inline namespace.
+ *
+ * This generates `inline namespace v1 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
+ * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
+ * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ */
+
+/*!
+ * \def KH_INLINE_NAMESPACE_V2
+ *
+ * Preprocessor define to begin a v2 inline namespace.
+ *
+ * This generates `inline namespace v2 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
+ * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
+ * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ */
+
+/*!
+ * \def KH_INLINE_NAMESPACE_V3
+ *
+ * Preprocessor define to begin a v3 inline namespace.
+ *
+ * This generates `inline namespace v3 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
+ * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
+ * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ */
+
+/*!
+ * \def KH_END_INLINE_NAMESPACE
+ *
+ * Preprocessor define to end an inline namespace.
+ *
+ * This generates `}` and little else, unless the library is being built with KH_PRIV_DOCS active, in which case this
+ * will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline namespaces for the
+ * purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
+ */
+
 //* Edit assistant. Qt Creator is slow with this block active, but commenting it out while editing makes editing faster.
 //! \cond
 #if defined(_WIN32)
@@ -1018,11 +1068,6 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_MUST_HAVE_32_64 1
 #endif
 
-#if defined(KH_NO_EXCEPTIONS)
-# undef KH_NO_BADALLOC
-# define KH_NO_BADALLOC 1
-#endif
-
 #if not defined(KH_DEBUG) and not defined(KH_RELEASE) and not defined(NDEBUG)
 # define KH_DEBUG 1
 #endif
@@ -1045,13 +1090,16 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_MUST_HAVE_64BIT_TYPES 1
 #endif
 
-#if defined(__GNUC__) and not defined(KH_COMPILED_WITH_MSVC)
-# define KH_COMPILED_GCC_COMPATIBLE 1
-#endif
-
-#if not defined(KH_OVERRIDE_PLATFORM_SAFETY)
-# define KH_OVERRIDE_PLATFORM_SAFETY 0
-#endif
+#define KH_INLINE_NAMESPACE_V1 \
+    inline namespace v1        \
+    {
+#define KH_INLINE_NAMESPACE_V2 \
+    inline namespace v2        \
+    {
+#define KH_INLINE_NAMESPACE_V3 \
+    inline namespace v3        \
+    {
+#define KH_END_INLINE_NAMESPACE }
 //! \endcond
 
 #if defined(KH_PRIV_DOCS)
@@ -1071,11 +1119,6 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_ARMv6
 # define KH_ARMv7
 # define KH_ARMv8
-# define KH_MIPS
-# define KH_POWER64
-# define KH_POWER32
-# define KH_SPARC64
-# define KH_SPARC32
 # define KH_ARM32
 # define KH_ARM64
 # define KH_X86
@@ -1085,6 +1128,7 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_RISCV128
 # define KH_32BIT
 # define KH_64BIT
+# define KH_128BIT
 # define KH_COMPILED_WITH_GCC
 # define KH_COMPILED_WITH_MSVC
 # define KH_COMPILED_WITH_CLANG
@@ -1094,12 +1138,12 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_COMPILED_WITH_IBMXL
 # define KH_COMPILED_WITH_ARMCLANG
 # define KH_COMPILED_WITH_CRAY
+# define KH_COMPILED_WITH_QNX
+# define KH_COMPILED_WITH_DIAB
+# define KH_COMPILED_WITH_GHS
+# define KH_COMPILED_WITH_MCST
 # define KH_COMPILED_WITH_UNKNOWN
-# define KH_QT_VERSION
-# define KH_QT5_15
-# define KH_QT6_2
-# define KH_QT6_5
-# define KH_QT6_8
+# define KH_CLANG_GNUC_COMPATIBLE
 # define KH_EXPORT
 # define KH_NO_EXPORT
 # define KH_DEPRECATED
@@ -1107,15 +1151,12 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_DEPRECATED_NO_EXPORT
 # define KH_EXPLICIT_TEMPLATE_EXPORT
 # define KH_EXPLICIT_TEMPLATE_INSTANCE
-# define KH_CLANG_GCC_COMPATIBLE
 # define KH_USES_FMT
-# define KH_NO_BADALLOC
 # define KH_NO_EXCEPTIONS
-# define KH_INCLUDE_MD5HASH
-# define KH_INCLUDE_TOML
-# define KH_INCLUDE_ARG_PARSER
-# define KH_INCLUDE_FILESYSTEM
-# define KH_INCLUDE_TASK_SYSTEM
+# define KH_INLINE_NAMESPACE_V1
+# define KH_INLINE_NAMESPACE_V2
+# define KH_INLINE_NAMESPACE_V3
+# define KH_END_INLINE_NAMESPACE
 # define KH_INCLUDE_TERMINAL_PRINT
 # define KH_OVERRIDE_PLATFORM_SAFETY
 # define KH_DEBUG
@@ -1145,48 +1186,15 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 
 #if defined(KH_COMPILED_WITH_MSVC)
 # define KH_FORCEINLINE __forceinline
-#elif defined(KH_COMPILED_GCC_COMPATIBLE)
+#elif defined(KH_CLANG_GNUC_COMPATIBLE)
 # define KH_FORCEINLINE __attribute__((always_inline))
 #else
 # define KH_FORCEINLINE
 #endif
 
 /*!
- * \def KH_THROWS_BADALLOC
- *
- * Preprocessor define used to mark certain methods as noexcept when support for throwing std::bad_alloc is removed.
- *
- * There are many cases, especially on hosted operating systems, where there is no useful way to handle or expect a
- * failure to allocate memory. As such, it is sometimes useful to remove support for throwing std::bad_alloc exceptions
- * as this does so as to provide optimization in some circumstances and to make the methods more useful in certain
- * contexts (for example, they may now be used in noexcept contexts).
- *
- * This is always defined after including this header.
- */
-
-/*!
- * \def KH_THROWS_BADALLOC_OR
- *
- * Identical functionality to #KH_THROWS_BADALLOC, but also allows placing an expression in the noexcept clause.
- *
- * There are many cases, especially on hosted operating systems, where there is no useful way to handle or expect a
- * failure to allocate memory. As such, it is sometimes useful to remove support for throwing std::bad_alloc exceptions
- * as this does so as to provide optimization in some circumstances and to make the methods more useful in certain
- * contexts (for example, they may now be used in noexcept contexts).
- *
- * This is always defined after including this header.
- */
-
-#if defined(KH_NO_BADALLOC)
-# define KH_THROWS_BADALLOC noexcept
-# define KH_THROWS_BADALLOC_OR(...) noexcept(__VA_ARGS__)
-#else
-# define KH_THROWS_BADALLOC
-# define KH_THROWS_BADALLOC_OR(...)
-#endif
-
-/*!
  * \def KH_EBO_EMPTY_BASES
+ *
  * Preprocessor define to fix inheriting from multiple empty base classes not applying EBO to those classes in MSVC.
  *
  * MSVC sucks when it comes to following C++ standards. There was a long standing bug with MSVC's object model with
@@ -1205,6 +1213,7 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 
 /*!
  * \def KH_ATTR_NO_UNIQUE_ADDRESS
+ *
  * Preprocessor define to the correct attribute syntax to use no_unique_address for the current compiler.
  *
  * MSVC sucks when it comes to following C++ standards. C++20 added the standard attribute **no_unique_address**,
@@ -1226,11 +1235,12 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 
 /*!
  * \def KH_ATTR_FLATTEN
+ *
  * Preprocessor define to the correct attribute syntax to use flatten for the current compiler.
  *
  * The "flatten" directive has not made its way to standard C++, so this attribute is dependent on using a supported
- * compiler. If libKirHut is being compiled on an unsupported compiler, this will simply generate "flatten" which should
- * emit a warning and be ignored by all C++ compliant compilers.
+ * compiler. If libKirHut is being compiled on a compiler without a known flatten attribute, this will simply generate
+ * "flatten" which should emit a warning and be ignored by all C++ compliant compilers.
  *
  * This is always defined after including this header.
  *
@@ -1240,69 +1250,10 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 // Check for __clang__ here as well to prevent clangd from complaining about msvc::flatten when compiling for MSVC.
 #if defined(KH_COMPILED_WITH_MSVC) and not defined(__clang__)
 # define KH_ATTR_FLATTEN msvc::flatten
-#else
+#elif defined(KH_CLANG_GNUC_COMPATIBLE)
 # define KH_ATTR_FLATTEN gnu::flatten
-#endif
-
-/*!
- * \def KH_INLINE_NAMESPACE_V1
- * Preprocessor define to begin a v1 inline namespace.
- *
- * This generates `inline namespace v1 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
- * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
- * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
- *
- * \hideinitializer
- */
-
-/*!
- * \def KH_INLINE_NAMESPACE_V2
- * Preprocessor define to begin a v2 inline namespace.
- *
- * This generates `inline namespace v2 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
- * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
- * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
- *
- * \hideinitializer
- */
-
-/*!
- * \def KH_INLINE_NAMESPACE_V3
- * Preprocessor define to begin a v3 inline namespace.
- *
- * This generates `inline namespace v3 {` and little else, unless the library is being built with KH_PRIV_DOCS active,
- * in which case this will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline
- * namespaces for the purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
- *
- * \hideinitializer
- */
-
-/*!
- * \def KH_END_INLINE_NAMESPACE
- * Preprocessor define to end an inline namespace.
- *
- * This generates `}` and little else, unless the library is being built with KH_PRIV_DOCS active, in which case this
- * will just output nothing at all. This is to workaround the problem of Doxygen not ignoring inline namespaces for the
- * purposes of documentation. https://github.com/doxygen/doxygen/issues/5914
- *
- * \hideinitializer
- */
-
-#if not defined(KH_PRIV_DOCS)
-# define KH_INLINE_NAMESPACE_V1 \
-     inline namespace v1        \
-     {
-# define KH_INLINE_NAMESPACE_V2 \
-     inline namespace v2        \
-     {
-# define KH_INLINE_NAMESPACE_V3 \
-     inline namespace v3        \
-     {
-# define KH_END_INLINE_NAMESPACE }
 #else
-# define KH_INLINE_NAMESPACE_V1
-# define KH_INLINE_NAMESPACE_V2
-# define KH_END_INLINE_NAMESPACE
+# define KH_ATTR_FLATTEN flatten
 #endif
 
 #include <cstdint>
@@ -1519,6 +1470,14 @@ using ue64 = std::uint_fast64_t;
  * the minor version number will be incremented. Further, if something about this breaks in a backward-incompatible way
  * (as in, you would need to change your code to accomodate), the major version number will be incremented.
  *
+ * This library attempts to maintain ABI compatibility for as long as humanly possible, including over minor version
+ * updates and even major version updates. The only reason an incompatible change should be published is because of a
+ * security issue, and this will have at least a minor version update to accompany it. There is the possibility of a
+ * breaking ABI change being introduced as a bug. If this occurs, the published library will be considered "broken" and
+ * it will be revised to match the previous library's ABI. So as a general contract, even if an ABI break occurs, if
+ * this ABI break was not previously disclosed, than it is a bug and the library will be fixed to be ABI compatible
+ * again.
+ *
  * \internal
  * This namespace will have a lot of different objects in it, and each object should be documented properly according to
  * our requirements. The global.hpp file only has two entries for this namespace: IntFinder and staticConstRef. Other
@@ -1537,6 +1496,11 @@ namespace Detail
  * A type that is only used by templates to find the appropriate integer type for a given number of bytes.
  *
  * This class exists for the Integer type inside of it, as that is the only public member.
+ *
+ * \tparam bytes The number of bytes the returned integer must be at least as large as.
+ * \tparam isSigned Whether or not the returned integer type should be signed.
+ * \tparam isFast Whether or not the returned integer type should be a "fast" type, IE from `std::int_fastXX_t` or not.
+ * \tparam mustBeExact Whether or not the returned integer type must be exactly \p bytes size. Defaults to true.
  */
 template <size_t bytes, bool isSigned, bool isFast, bool mustBeExact = true>
 class IntFinder
@@ -1547,6 +1511,9 @@ class IntFinder
      * A simple std::conditional_t alias that checks if sizeof(Int_T) is the same size or larger than bytes. If it is,
      * it becomes Int_T, and if it isn't, it uses Rest_T instead. Rest_T should usually be another cnd conditional type,
      * unless there is no larger type than the next one.
+     *
+     * \tparam Int_T The type who's size is being checked if it is large enough for the requested number of \p bytes.
+     * \tparam Rest_T
      */
     template <typename Int_T, typename Rest_T>
     using cnd = std::conditional_t<sizeof(Int_T) >= bytes, Int_T, Rest_T>;
@@ -1651,20 +1618,15 @@ public:
  * Constant value template for initializing CPO references in anonymous namespaces following N4381 recommendations.
  *
  * Customization Point Objects can be a cause of issues in certain cases when using them instead of a simple function.
- * Since the CPO
+ * Since the CPO is deliberately a non-template object, the operator() method, itself, must be templated instead. As
+ * such, creating an instance of a CPO in a header would result in violations of the ODR, because each translation unit
+ * would instantiate its own copy of the CPO, and they would all be using the same name, giving the linker a bad day. To
+ * prevent this, libKirHut uses a template instantiation of the CPO object, which is guaranteed by the language to only
+ * generate one instance. This prevents ODR violations without needing to put an extern instance of every CPO inside of
+ * a source file.
  */
 template <typename T>
 constexpr T staticConstRef{};
-
-/*!
- * \internal
- *
- * Basic constant value for Math::log10(2).
- *
- * This value is needed long before we include the math and base headers, so it is defined in a Detail namespace to keep
- * it hidden from users. The kh/math.hpp header should have an appropriate value for users.
- */
-[[maybe_unused]] constexpr double log10_2 = 0.30102999566398119521;
 
 } // namespace Detail
 
@@ -1808,6 +1770,62 @@ template <typename T>
 using ExactIntOf = Int<sizeof(T)>;
 
 /*!
+ *
+ */
+namespace Constant
+{
+
+/*!
+ * Basic constant value for Math::log10(2).
+ *
+ * This constant can be used to derive the maximum number of base 10 digits that can be represented given a number of
+ * base 2 digits. Just multiply the number of base 2 digits by this value and you'll have your number of base 10 digits.
+ */
+[[maybe_unused]] constexpr double log10_2 = 0.30102999566398119521;
+
+/*!
+ * An Unknown or Invalid number of bytes to use.
+ *
+ * There is no actual buffer of bytes or set of data of std::numeric_limits<size_t>::max() size, so this value is used
+ * instead to identify an amount that is invalid or otherwise unknown or unknowable. This is the case when a connection
+ * has not finished sending data or the data comes from a user source or separate application.
+ */
+[[maybe_unused]] constexpr size_t amountUnknown = std::numeric_limits<size_t>::max();
+
+/*!
+ * The number of bits in a byte.
+ *
+ * libKirHut is designed in such a way as to effectively require 8 bit bytes on all supported platforms. As such, this
+ * should never change on any supported platform, however there is the theoretical possibility that a byte may not be
+ * strictly eight bits. Because it is effectively impossible for this not to be the case on supported platforms, this is
+ * found in the Constant namespace instead of the Platform namespace.
+ *
+ * The type used by std::numeric_limits<T> cannot be std::byte because of a limitation where
+ * std::numeric_limits<std::byte> is not defined so cannot be used in constexpr expressions.
+ */
+[[maybe_unused]] constexpr int bitsInByte = std::numeric_limits<unsigned char>::digits;
+
+/*!
+ * A byte where all of the bits are set to 1.
+ *
+ * This is useful when you want a byte that is representative of a "full" byte, or a byte with all of the bits set to 1
+ * (or 'on'). This can be both shorter and more descriptive than the alternative used in the initializer.
+ *
+ * The type used by std::numeric_limits<T> cannot be std::byte because of a limitation where
+ * std::numeric_limits<std::byte> is not defined so cannot be used in constexpr expressions.
+ */
+[[maybe_unused]] constexpr byte fullByte = std::bit_cast<byte>(std::numeric_limits<unsigned char>::max());
+
+/*!
+ * A byte where all of the bits are set to 0.
+ *
+ * This is useful when you want a byte that is representative of an "empty" byte, or a byte with none of the bits set to
+ * 1 (or 'on'). This is a bit more descriptive than simply using `byte{0}`.
+ */
+[[maybe_unused]] constexpr byte emptyByte = byte{ 0 };
+}
+
+/*!
  * Enumeration for reasons why a function or command failed or the input was invalid.
  *
  * This base type is used by the Invalid class and it's TaggedInvalid<WHY> subclasses to communicate the reason that a
@@ -1841,10 +1859,11 @@ enum class WhyInvalid
     AlreadyInitialized   = 12, //!< 12 - An attempt to initialize something that is already initialized occurred.
     IllegalArgument      = 14, //!< 14 - An illegal argument was passed to the algorithm.
     OutOfMemory          = 15, //!< 15 - This process ran out of memory.
-    CurrentDirectory     = 16, //!< 16 - The directory cannot be removed because it is the current directory.
+    CurrentDirectory     = 16, //!< 16 - A directory operation cannot be performed because it is the current directory.
     DataUninitialized    = 20, //!< 20 - Data that should be initialized has not yet been initialized.
     InvalidState         = 21, //!< 21 - A state in data is in an invalid state.
     BadCRCResult         = 23, //!< 23 - An essential cyclic redundancy check in the algorithm failed.
+    BadHashResult        = 24, //!< 24 - An essential hash function check in the algorithm failed.
     HandleEndOfFile      = 38, //!< 38 - The end of a file provided to the algorithm was unexpectedly reached.
     DiskFullError        = 39, //!< 39 - The disk of a write destination is full.
     ConfigCmdInvalid     = 64, //!< 64 - A command provided in application configuration is incorrectly formatted.

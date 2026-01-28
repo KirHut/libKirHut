@@ -21,6 +21,7 @@
 
 #include <limits>
 #include <bit>
+#include <string_view>
 
 #include "kh/global.hpp"
 
@@ -90,41 +91,201 @@ struct LimitsFinder
  *
  * This is usually used in Clang compilers and derivatives that rely on libc++, as libc++ does not come with a 128-bit
  * specialization of std::numeric_limits. In that case, we need to provide a custom implementation, and that is done
- * using this type. The values in this type are mostly undocumented since they are identical to what would be expected
- * from a std::numeric_limits implementation.
+ * using this type.
  */
 struct LimitsOfUInt128Impl
 {
-    constexpr static bool is_specialized                = true;
-    constexpr static bool is_signed                     = false;
-    constexpr static bool is_integer                    = true;
-    constexpr static bool is_exact                      = true;
-    constexpr static bool has_infinity                  = false;
-    constexpr static bool has_quiet_NaN                 = false;
-    constexpr static bool has_signalign_NaN             = false;
-    constexpr static std::float_denorm_style has_denorm = std::denorm_absent;
-    constexpr static bool has_denorm_loss               = false;
-    constexpr static std::float_round_style round_style = std::round_toward_zero;
-    constexpr static bool is_iec559                     = false;
-    constexpr static bool is_bounded                    = true;
-    constexpr static bool is_modulo                     = true;
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::is_specialized.
+     *
+     * This type is intended to be a specialization of std::numeric_limits, so this is true.
+     */
+    constexpr static bool is_specialized = true;
 
-    constexpr static int digits           = std::numeric_limits<unsigned char>::digits * sizeof(__int128_t);
-    constexpr static int digits10         = static_cast<int>(static_cast<double>(digits) * Detail::log10_2);
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::is_signed.
+     *
+     * The __uint128_t type is unsigned, so this is false.
+     */
+    constexpr static bool is_signed = false;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::is_integer.
+     *
+     * The __uint128_t type is an integer, so this is true.
+     */
+    constexpr static bool is_integer = true;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::is_exact.
+     *
+     * The __uint128_t type always uses exact values, so this is true.
+     */
+    constexpr static bool is_exact = true;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::has_infinity.
+     *
+     * The __uint128_t type does not have any representation of infinity, so this is false.
+     */
+    constexpr static bool has_infinity = false;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::has_quiet_NaN.
+     *
+     * The __uint128_t type does not have any representation for a quiet NaN, so this is false.
+     */
+    constexpr static bool has_quiet_NaN = false;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::has_signaling_NaN.
+     *
+     * The __uint128_t type does not have any representation for a signaling NaN, so this is false.
+     */
+    constexpr static bool has_signalign_NaN = false;
+
+    /*!
+     * \internal
+     *
+     * Enumeration value corresponding with std::numeric_limits<T>::has_denorm.
+     *
+     * The __uint128_t type does not have a denormalized state, so this is std::denorm_absent.
+     */
+    constexpr static std::float_denorm_style has_denorm = std::denorm_absent;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::has_denorm_loss.
+     *
+     * The __uint128_t type does not have a denormalized state, so this is false.
+     */
+    constexpr static bool has_denorm_loss = false;
+
+    /*!
+     * \internal
+     *
+     * Enumeration value corresponding with std::numeric_limits<T>::round_style.
+     *
+     * The __uint128_t type, like all integer types, simply ignores any remainder after a division operation. This
+     * effectively means rounding toward zero, which is what every C++ standard integer type is set to in
+     * std::numeric_limits<T>.
+     */
+    constexpr static std::float_round_style round_style = std::round_toward_zero;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::is_iec559.
+     *
+     * The __uint128_t type is not an IEC 559 (or IEEE 754) floating point type, so this is false.
+     */
+    constexpr static bool is_iec559 = false;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::is_bounded.
+     *
+     * The __uint128_t type, like all integer types, has a minimum and maximum representable value, so this is true.
+     */
+    constexpr static bool is_bounded = true;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::is_modulo.
+     *
+     * The __uint128_t type, like all unsigned integer types, supports wraparound on overflow, so this is true.
+     */
+    constexpr static bool is_modulo = true;
+
+    /*!
+     * \internal
+     *
+     * Integer value corresponding with std::numeric_limits<T>::digits.
+     *
+     * The digits values in std::numeric_limits are always a count of the number of binary digits rather than decimal
+     * digits, so this is just 128 in every compiler that has this type.
+     */
+    constexpr static int digits = std::numeric_limits<unsigned char>::digits * sizeof(__uint128_t);
+
+    /*!
+     * \internal
+     *
+     * Integer value corresponding with std::numeric_limits<T>::digits10.
+     *
+     * The __uint128_t type has a sufficient number of binary digits to represent at most a 38 digit decimal value, so
+     * this should return 38. This does not imply that the __uint128_t type can represent all 38 digit decimal values,
+     * but it does imply that it can represent all values with less than 38 decimal digits.
+     */
+    constexpr static int digits10 = static_cast<int>(static_cast<double>(digits) * Constant::log10_2);
+
+    /*!
+     * \internal
+     *
+     * Integer value corresponding with std::numeric_limits<T>::max_digits10.
+     *
+     * The __uint128_t type, like all integer types, does not need a n
+     */
     constexpr static int max_digits10     = 0;
     constexpr static int radix            = 2;
     constexpr static int min_exponent     = 0;
     constexpr static int min_exponent10   = 0;
     constexpr static int max_exponent     = 0;
     constexpr static int max_exponent10   = 0;
-    constexpr static bool traps           = true;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::traps.
+     */
+    constexpr static bool traps = true;
+
+    /*!
+     * \internal
+     *
+     * Boolean value corresponding with std::numeric_limits<T>::tinyness_before.
+     */
     constexpr static bool tinyness_before = false;
 
+    /*!
+     * \internal
+     *
+     * Returns the minimum value of a __uint128_t.
+     *
+     * All unsigned integers inherently have the minimum (or lowest) value of 0, so this returns 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t min() noexcept
     {
         return {};
     }
 
+    /*!
+     * \internal
+     *
+     * Returns the lowest value of a __uint128_t.
+     *
+     * All unsigned integers inherently have the lowest (or minimum) value of 0, so this returns 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t lowest() noexcept
     {
         return min();
@@ -135,31 +296,86 @@ struct LimitsOfUInt128Impl
         return ~__uint128_t{};
     }
 
+    /*!
+     * \internal
+     *
+     * Returns an epsilon value of this type.
+     *
+     * Since the __uint128_t type does not have an epsilon value, this just returns 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t epsilon() noexcept
     {
         return {};
     }
 
+    /*!
+     * \internal
+     *
+     * Returns a rounding error value of this type.
+     *
+     * Since the __uint128_t type, like all integer types, simply cuts-off any remainder in division operations, the
+     * returned "rounding error" is 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t round_error() noexcept
     {
         return {};
     }
 
+    /*!
+     * \internal
+     *
+     * Returns an infinity value of this type.
+     *
+     * Since the __uint128_t type does not have an infinity value, this just returns 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t infinity() noexcept
     {
         return {};
     }
 
+    /*!
+     * \internal
+     *
+     * Returns a quiet NaN of this type.
+     *
+     * Since the __uint128_t type does not have a quiet NaN, this just returns 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t quiet_NaN() noexcept
     {
         return {};
     }
 
+    /*!
+     * \internal
+     *
+     * Returns a signaling NaN of this type.
+     *
+     * Since the __uint128_t type does not have a signaling NaN, this just returns 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t signaling_NaN() noexcept
     {
         return {};
     }
 
+    /*!
+     * \internal
+     *
+     * Returns a denormalized minimum of this type.
+     *
+     * Since the __uint128_t type does not have a denormalized min, this just returns 0.
+     *
+     * \return 0, as a __uint128_t value.
+     */
     [[nodiscard]] consteval static __uint128_t denorm_min() noexcept
     {
         return {};
@@ -193,7 +409,7 @@ struct LimitsOfInt128Impl
     constexpr static bool is_modulo                     = std::numeric_limits<std::int_least64_t>::is_modulo;
 
     constexpr static int digits           = std::numeric_limits<unsigned char>::digits * sizeof(__int128_t) - 1;
-    constexpr static int digits10         = static_cast<int>(static_cast<double>(digits) * Detail::log10_2);
+    constexpr static int digits10         = static_cast<int>(static_cast<double>(digits) * Constant::log10_2);
     constexpr static int max_digits10     = 0;
     constexpr static int radix            = 2;
     constexpr static int min_exponent     = 0;
@@ -319,52 +535,19 @@ template <class T>
 using Limits = Detail::LimitsFinder<T>::limits;
 
 /*!
- * An Unknown or Invalid number of bytes to use.
+ * Namespace for types that distinguish the platform at compile time.
  *
- * There is no actual buffer of bytes or set of data of Limits<size_t>::max(), so this value is used instead to identify
- * an amount that is invalid or otherwise unknown or unknowable. This is the case when a connection has not finished
- * sending data or the data comes from a user source or separate application.
- */
-[[maybe_unused]] constexpr size_t amountUnknown = Limits<size_t>::max();
-
-/*!
- * Namespace for types that distinguish the platform at compile time. These are useful for if constexpr and other more
- * modern C++ capabilities that are not dependent on preprocessor defines.
+ * These are useful for if constexpr and other more modern C++ capabilities that are not dependent on preprocessor
+ * defines. This namespace includes platform information such as the operating system, the processor ISA being used, the
+ * limits on data types for the platform, and more. Generally something within this namespace can be used to decide how
+ * you should approach a set of code best for that target platform.
  *
- * This namespace includes platform information such as the operating system, the processor ISA being used, the types of
- * data available on the platform, and more. Generally something within this namespace can be used to decide how you
- * should approach a set of code best for that target platform.
+ * Unlike values in the Constant namespace that are effectively guaranteed to never change, the values in this namespace
+ * could be different depending on the target platform or processor architecture, which is why they are under a
+ * different namespace.
  */
 namespace Platform
 {
-
-/*!
- * The number of bits in a byte.
- *
- * Some platforms may have differently sized bytes, and this can be used when that matters. The type used by
- * std::numeric_limits<T> cannot be std::byte because of a limitation where std::numeric_limits<std::byte> is not
- * defined so cannot be used in constexpr expressions.
- */
-[[maybe_unused]] constexpr int bitsInByte = Limits<unsigned char>::digits;
-
-/*!
- * A byte where all of the bits are set to 1.
- *
- * This is useful when you want a byte that is representative of a "full" byte, or a byte with all of the bits set to 1
- * (or 'on'). This can be both shorter and more descriptive than the alternative used in the initializer.
- *
- * The type used by std::numeric_limits<T> cannot be std::byte because of a limitation where
- * std::numeric_limits<std::byte> is not defined so cannot be used in constexpr expressions.
- */
-[[maybe_unused]] constexpr byte fullByte = std::bit_cast<byte>(Limits<unsigned char>::max());
-
-/*!
- * A byte where all of the bits are set to 0.
- *
- * This is useful when you want a byte that is representative of an "empty" byte, or a byte with none of the bits set to
- * 1 (or 'on'). This is a bit more descriptive than simply using `byte{0}`.
- */
-[[maybe_unused]] constexpr byte emptyByte = byte{ 0 };
 
 /*!
  * The lowest (minimum) value of an i8 integer.
@@ -772,28 +955,29 @@ namespace Platform
  *
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool windows = false
-// God I wish there was something better than this unholy construction. Unfortunately this really is the shortest way I
-// can come to in order to express something that is true or false based on a preprocessor define.
+[[maybe_unused]] constexpr bool windows =
 #if defined(KH_WINDOWS)
-                                          or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_LINUX.
  *
  * \copydetails KirHut::Platform::windows
  *
- * This cannot simply be named "linux" because of an existing C preprocessor define.
+ * This cannot simply be named "linux" because of an existing C preprocessor define. Because it is GCC that does this, a
+ * GNU project compiler, and only when using GNU extensions, I called this "linuxos" to troll Richard Stallman.
  *
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool gnulinux = false
+[[maybe_unused]] constexpr bool linuxos =
 #if defined(KH_LINUX)
-                                           or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_BSD.
@@ -801,11 +985,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool bsd = false
+[[maybe_unused]] constexpr bool bsd =
 #if defined(KH_BSD)
-                                      or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_APPLE.
@@ -813,11 +998,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool apple = false
+[[maybe_unused]] constexpr bool apple =
 #if defined(KH_APPLE)
-                                        or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_MACOS.
@@ -825,11 +1011,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool macOS = false
+[[maybe_unused]] constexpr bool macOS =
 #if defined(KH_MACOS)
-                                        or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_WASM.
@@ -837,11 +1024,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool wasm = false
+[[maybe_unused]] constexpr bool wasm =
 #if defined(KH_WASM)
-                                       or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_IPHONE.
@@ -851,11 +1039,12 @@ namespace Platform
  * \note This includes iPadOS! As of right now there is no need to distinguish them, but this may change in the future.
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool iPhone = false
+[[maybe_unused]] constexpr bool iPhone =
 #if defined(KH_IPHONE)
-                                         or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_ANDROID.
@@ -863,11 +1052,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool android = false
+[[maybe_unused]] constexpr bool android =
 #if defined(KH_ANDROID)
-                                          or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_MOBILE.
@@ -875,11 +1065,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool mobile = false
+[[maybe_unused]] constexpr bool mobile =
 #if defined(KH_MOBILE)
-                                         or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_DESKTOP.
@@ -887,11 +1078,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool desktop = false
+[[maybe_unused]] constexpr bool desktop =
 #if defined(KH_DESKTOP)
-                                          or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_X64.
@@ -899,11 +1091,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool x64 = false
+[[maybe_unused]] constexpr bool x64 =
 #if defined(KH_X64)
-                                      or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_X32.
@@ -911,11 +1104,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool x32 = false
+[[maybe_unused]] constexpr bool x32 =
 #if defined(KH_X32)
-                                      or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_X86.
@@ -923,11 +1117,12 @@ namespace Platform
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool x86 = false
+[[maybe_unused]] constexpr bool x86 =
 #if defined(KH_X86)
-                                      or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Check if the current platform being built for is a big endian platform.
@@ -954,16 +1149,6 @@ namespace Platform
  * basically another name for std::endian::native, but within the KirHut::Platform namespace.
  */
 [[maybe_unused]] constexpr std::endian Endianness = std::endian::native;
-
-/*!
- * Check if the current build environment supports 128-bit signed integers or not.
- */
-[[maybe_unused]] constexpr bool hasI128 = Detail::has128bit();
-
-/*!
- * Check if the current build environment supports 128-bit unsigned integers or not.
- */
-[[maybe_unused]] constexpr bool hasU128 = Detail::has128bit();
 
 /*!
  * Check if the current platform i8 integer bit length is specifically 7 bits long.
@@ -1074,7 +1259,7 @@ namespace Platform
  * requires that a byte can contain at least as much as 8 bits of data, so this should effectively always be true in all
  * cases this library supports. You should never need to check this, but it is here for pedantic completeness.
  */
-[[maybe_unused]] constexpr bool reallyHas8BitTypes = i8Is8Bits && u8Is8Bits;
+[[maybe_unused]] constexpr bool reallyHas8BitTypes = i8Is8Bits and u8Is8Bits;
 
 /*!
  * Check if the current platform supports 16 bit integers.
@@ -1083,7 +1268,7 @@ namespace Platform
  * value informs you if the platform does have 16-bit integers or not. This value is therefore always there, even on
  * platforms where there are not 16 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool reallyHas16BitTypes = i16Is16Bits && u16Is16Bits;
+[[maybe_unused]] constexpr bool reallyHas16BitTypes = i16Is16Bits and u16Is16Bits;
 
 /*!
  * Check if the current platform supports 32 bit integers.
@@ -1092,7 +1277,7 @@ namespace Platform
  * value informs you if the platform does have 32-bit integers or not. This value is therefore always there, even on
  * platforms where there are not 32 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool reallyHas32BitTypes = i32Is32Bits && u32Is32Bits;
+[[maybe_unused]] constexpr bool reallyHas32BitTypes = i32Is32Bits and u32Is32Bits;
 
 /*!
  * Check if the current platform supports 64 bit integers.
@@ -1101,7 +1286,7 @@ namespace Platform
  * value informs you if the platform does have 64-bit integers or not. This value is therefore always there, even on
  * platforms where there are not 64 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool reallyHas64BitTypes = i64Is64Bits && u64Is64Bits;
+[[maybe_unused]] constexpr bool reallyHas64BitTypes = i64Is64Bits and u64Is64Bits;
 
 /*!
  * Check if the current platform supports 128 bit integers.
@@ -1110,7 +1295,7 @@ namespace Platform
  * value informs you if the platform does have 128-bit integers or not. This value is therefore always there, even on
  * platforms where there are not 128 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool reallyHas128BitTypes = i128Is128Bits && u128Is128Bits;
+[[maybe_unused]] constexpr bool reallyHas128BitTypes = i128Is128Bits and u128Is128Bits;
 
 /*!
  * Check if the current platform supports signed 32 and 64 bit integers.
@@ -1119,21 +1304,21 @@ namespace Platform
  * instead this value informs you if the platform does have 32 and 64 bit integers. This value is therefore always
  * there, even on platforms where there are not 32 and 64 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool i3264Are3264Bits = i32Is32Bits && i64Is64Bits;
+[[maybe_unused]] constexpr bool i3264Are3264Bits = i32Is32Bits and i64Is64Bits;
 
 /*!
  * Check if the current platform supports unsigned 32 and 64 bit integers.
  *
  * \copydetails i3264Are3264Bits
  */
-[[maybe_unused]] constexpr bool u3264Are3264Bits = u32Is32Bits && u64Is64Bits;
+[[maybe_unused]] constexpr bool u3264Are3264Bits = u32Is32Bits and u64Is64Bits;
 
 /*!
  * Check if the current platform supports 32 and 64 bit integers.
  *
  * \copydetails i3264Are3264Bits
  */
-[[maybe_unused]] constexpr bool reallyHas3264BitTypes = reallyHas32BitTypes && reallyHas64BitTypes;
+[[maybe_unused]] constexpr bool reallyHas3264BitTypes = reallyHas32BitTypes and reallyHas64BitTypes;
 
 /*!
  * Check if the current platform supports signed 16, 32, and 64 bit integers.
@@ -1142,26 +1327,31 @@ namespace Platform
  * instead this value informs you if the platform does have 8, 16, 32, and 64 bit integers. This value is therefore
  * always there, even on platforms where there are not 8, 16, 32, and 64 bit integers. In that case, its value is false.
  */
-[[maybe_unused]] constexpr bool i163264Are163264Bits = i3264Are3264Bits && i16Is16Bits;
+[[maybe_unused]] constexpr bool i163264Are163264Bits = i3264Are3264Bits and i16Is16Bits;
 
 /*!
  * Check if the current platform supports unsigned 16, 32, and 64 bit integers.
  *
  * \copydetails i163264Are163264Bits
  */
-[[maybe_unused]] constexpr bool u163264Are163264Bits = u3264Are3264Bits && u16Is16Bits;
+[[maybe_unused]] constexpr bool u163264Are163264Bits = u3264Are3264Bits and u16Is16Bits;
 
 /*!
  * Check if the current platform supports 16, 32, and 64 bit integers.
  *
  * \copydetails i163264Are163264Bits
  */
-[[maybe_unused]] constexpr bool reallyHas163264BitTypes = reallyHas3264BitTypes && reallyHas16BitTypes;
+[[maybe_unused]] constexpr bool reallyHas163264BitTypes = reallyHas3264BitTypes and reallyHas16BitTypes;
 
 } // namespace Platform
 
 /*!
  * Namespace for Build information regarding libKirHut.
+ *
+ * This namespace contains information about the build environment for libKirHut, rather than information about the
+ * platform or just outright constant data. This means that the values here are constant for the build of the library,
+ * but may change based on the build options given to the library rather than platform information, so even on the same
+ * platform the values of this may be different between two builds of libKirHut.
  */
 namespace Build
 {
@@ -1172,11 +1362,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool debug = false
+[[maybe_unused]] constexpr bool debug =
 #if defined(KH_DEBUG)
-                                        or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_RELEASE.
@@ -1184,23 +1375,28 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool release = false
+[[maybe_unused]] constexpr bool release =
 #if defined(KH_RELEASE)
-                                          or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_GCC.
  *
  * \copydetails KirHut::Platform::windows
+ *
+ * This includes MinGW as that is also a GCC compiler.
+ *
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool gcc = false
+[[maybe_unused]] constexpr bool gcc =
 #if defined(KH_COMPILED_WITH_GCC)
-                                      or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_MSVC.
@@ -1208,11 +1404,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool msvc = false
+[[maybe_unused]] constexpr bool msvc =
 #if defined(KH_COMPILED_WITH_MSVC)
-                                       or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_ICX.
@@ -1220,11 +1417,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool intel = false
+[[maybe_unused]] constexpr bool intel =
 #if defined(KH_COMPILED_WITH_ICX)
-                                        or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_CLANG.
@@ -1232,11 +1430,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool clang = false
+[[maybe_unused]] constexpr bool clang =
 #if defined(KH_COMPILED_WITH_CLANG)
-                                        or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_APPLECLANG.
@@ -1244,11 +1443,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool appleClang = false
+[[maybe_unused]] constexpr bool appleClang =
 #if defined(KH_COMPILED_WITH_APPLECLANG)
-                                             or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_IBMXL.
@@ -1256,11 +1456,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool openxl = false
+[[maybe_unused]] constexpr bool openxl =
 #if defined(KH_COMPILED_WITH_IBMXL)
-                                         or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_CUDA_ENABLED.
@@ -1268,11 +1469,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool cuda = false
+[[maybe_unused]] constexpr bool cuda =
 #if defined(KH_CUDA_ENABLED)
-                                       or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_ARMCLANG.
@@ -1280,11 +1482,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool armClang = false
+[[maybe_unused]] constexpr bool armClang =
 #if defined(KH_COMPILED_WITH_ARMCLANG)
-                                           or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_CRAY.
@@ -1292,11 +1495,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool cray = false
+[[maybe_unused]] constexpr bool cray =
 #if defined(KH_COMPILED_WITH_CRAY)
-                                       or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_NVHPC.
@@ -1304,11 +1508,12 @@ namespace Build
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool nvcxx = false
+[[maybe_unused]] constexpr bool nvcxx =
 #if defined(KH_COMPILED_WITH_NVHPC)
-                                        or true
+    true;
+#else
+    false;
 #endif
-    ;
 
 /*!
  * Non Preprocessor equivalent to #KH_COMPILED_WITH_UNKNOWN.
@@ -1317,24 +1522,43 @@ namespace Build
  * \hideinitializer
  */
 [[maybe_unused]] constexpr bool unknownCompiler =
-    not(gcc or msvc or clang or intel or appleClang or openxl or armClang or nvcxx or cray);
+#if defined(KH_COMPILED_WITH_UNKNOWN)
+    true;
+#else
+    false;
+#endif
 
 /*!
- * \brief compilerDisplayString
- */
-[[maybe_unused]] constexpr auto compilerDisplayString = KH_COMPILER_DISPLAY_STRING;
-
-/*!
- * Non Preprocessor equivalent to #KH_CLANG_GCC_COMPATIBLE.
+ * Non Preprocessor equivalent to #KH_CLANG_GNUC_COMPATIBLE.
  *
  * \copydetails KirHut::Platform::windows
  * \hideinitializer
  */
-[[maybe_unused]] constexpr bool gccCompatible = false
-#if defined(KH_CLANG_GCC_COMPATIBLE)
-                                                or true
+[[maybe_unused]] constexpr bool gccCompatible =
+#if defined(KH_CLANG_GNUC_COMPATIBLE)
+    true;
+#else
+    false;
 #endif
-    ;
+
+/*!
+ * Non Preprocessor equivalent to #KH_COMPILER_DISPLAY_STRING.
+ *
+ * This is always defined and is used to break out the compiler display string as a constexpr string_view. This can be
+ * useful for reporting what compiler was used in the case of an exception or other issue that may be compiler
+ * dependent.
+ */
+[[maybe_unused]] constexpr std::string_view compilerDisplayString = KH_COMPILER_DISPLAY_STRING;
+
+/*!
+ * Check if the current build environment supports 128-bit signed integers or not.
+ */
+[[maybe_unused]] constexpr bool hasI128 = Detail::has128bit();
+
+/*!
+ * Check if the current build environment supports 128-bit unsigned integers or not.
+ */
+[[maybe_unused]] constexpr bool hasU128 = Detail::has128bit();
 
 } // namespace Build
 

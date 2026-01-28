@@ -159,15 +159,15 @@ std::FILE *EphemeralFile::release() noexcept
 TEST_CASE("IO::vprint() writes to ostream", "[print][io_vprint]")
 {
     std::ostringstream oss;
-    auto args = FMT::make_format_args("World");
-    IO::vprint(oss, "Hello, {}!", args);
+    auto world = FMT::make_format_args("World");
+    IO::vprint(oss, "Hello, {}!", world);
     REQUIRE(oss.str() == "Hello, World!");
 }
 
 TEST_CASE("IO::print() writes to ostream", "[print][io_print]")
 {
     std::ostringstream oss;
-    string_view world = "World"sv;
+    auto world = "World"sv;
     IO::print(oss, "Hello, {}!", world);
     REQUIRE(oss.str() == "Hello, World!");
 }
@@ -192,8 +192,8 @@ TEST_CASE("IO::println() appends newline to ostream", "[print][io_println]")
 TEST_CASE("IO::vprint() writes to FILE*", "[print][io_vprint]")
 {
     EphemeralFile tmp;
-    auto num     = 3.14;
-    auto args    = FMT::make_format_args(num);
+    auto num  = 3.14;
+    auto args = FMT::make_format_args(num);
     IO::vprint(tmp.get(), "Pi={}", args);
     std::fflush(tmp.get());
 

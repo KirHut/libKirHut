@@ -70,12 +70,6 @@ namespace IO
 /*!
  * Formats \p form using the passed in \p args, and then outputs that result to the passed in \p stream.
  *
- * If \p stream is a nullptr, then this method will actually do nothing at all (including perform the formatting). This
- * means that if \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an
- * invalid format string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the
- * \p form or \p args are invalid for each other, will throw std::system_error if there is a failure to write to the
- * underlying stream, and will throw std::bad_alloc when there is an allocation failure.
- *
  * This function will attempt to perform UTF-8 transcoding to the appropriate output format for the terminal. Namely,
  * this method will detect if you pass in stdout or stderr as \p stream, and if you do, it will divert the text to an
  * appropriate UTF-8 transcoding output file. Otherwise, it will simply write the output bytes directly to the given
@@ -83,6 +77,12 @@ namespace IO
  * attempts beyond directly checking if \p stream is stdout or stderr, since this method is assumed to be output to a
  * file or network destination, and in those cases precise control of the output is preferable to automatic character
  * encoding conversions.
+ *
+ * If \p stream is a nullptr, then this method will actually do nothing at all (including perform the formatting). This
+ * means that if \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an
+ * invalid format string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the
+ * \p form or \p args are invalid for each other, will throw std::system_error if there is a failure to write to the
+ * underlying stream, and will throw std::bad_alloc when there is an allocation failure.
  *
  * If this library is compiled with {fmt} support, this method will always call the
  * fmt::vprint(std::FILE*,fmt::string_view,fmt::format_args) overload, otherwise it depends on if this library is
@@ -111,12 +111,6 @@ KH_EXPORT void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_ar
 /*!
  * Formats \p form using the passed in \p args, and then outputs that result to the passed in \p stream.
  *
- * If \p stream is a nullptr, then this method will actually do nothing at all (including perform the formatting). This
- * means that if \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an
- * invalid format string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the
- * \p form or \p args are invalid for each other, will throw std::system_error if there is a failure to write to the
- * underlying stream, and will throw std::bad_alloc when there is an allocation failure.
- *
  * This function will attempt to perform UTF-8 transcoding to the appropriate output format for the terminal. Namely,
  * this method will detect if you pass in stdout or stderr as \p stream, and if you do, it will divert the text to an
  * appropriate UTF-8 transcoding output file. Otherwise, it will simply write the output bytes directly to the given
@@ -124,6 +118,12 @@ KH_EXPORT void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_ar
  * attempts beyond directly checking if \p stream is stdout or stderr, since this method is assumed to be output to a
  * file or network destination, and in those cases precise control of the output is preferable to automatic character
  * encoding conversions.
+ *
+ * If \p stream is a nullptr, then this method will actually do nothing at all (including perform the formatting). This
+ * means that if \p stream is nullptr, this method is guaranteed not to throw an exception, even if \p form is an
+ * invalid format string. Much like std::vprint_unicode in C++23, this method will throw FMT::format_error if the
+ * \p form or \p args are invalid for each other, will throw std::system_error if there is a failure to write to the
+ * underlying stream, and will throw std::bad_alloc when there is an allocation failure.
  *
  * If this library is compiled with {fmt} support, this method will always call the
  * fmt::vprint(std::FILE*,fmt::string_view,fmt::format_args) overload, otherwise it depends on if this library is
@@ -143,10 +143,9 @@ KH_EXPORT void vprintln(std::FILE *stream, FMT::string_view form, FMT::format_ar
 KH_EXPORT void vprint(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
 
 /*!
- * \brief vprintln
- * \param stream
- * \param form
- * \param args
+ * Formats \p form using the passed in \p args, and then outputs that result, and a newline, to the passed in \p stream.
+ *
+ * \copydetails KirHut::IO::vprint(std::ostream&,FMT::string_view,FMT::format_args const&)
  */
 KH_EXPORT void vprintln(std::ostream &stream, FMT::string_view form, FMT::format_args const &args);
 

@@ -70,7 +70,22 @@ struct Error;
 namespace Detail
 {
 
-KH_EXPORT std::string tryGetStackTrace() KH_THROWS_BADALLOC;
+/*!
+ * \internal
+ *
+ * Attempts to generate a stack trace and returns it as a string.
+ *
+ * This will return an empty string if it fails to generate a stack trace. This will happen if the library is built with
+ * C++20 and not C++23, as C++23 is when std::stacktrace was added. This is used by the Error constructor to get a stack
+ * trace if it is possible.
+ *
+ * This function is marked noexcept, as it will handle the case of failing to allocate memory for std::string by
+ * returning an empty string instead. That is assuming that the process wasn't killed due to an allocation failure,
+ * which could happen, but this method would also not throw an exception in that case.
+ *
+ * \return A string of the stack trace, or an empty string if it couldn't be generated.
+ */
+KH_EXPORT std::string tryGetStackTrace() noexcept;
 
 /*!
  * \internal
@@ -84,12 +99,12 @@ struct ErrorState final
 
     string info, trace;
 
-    explicit inline ErrorState(string_view in) KH_THROWS_BADALLOC : info(in), trace(Detail::tryGetStackTrace())
+    explicit inline ErrorState(string_view in) : info(in), trace(Detail::tryGetStackTrace())
     {
         // No further implementation.
     }
 
-    explicit inline ErrorState(char const *in) KH_THROWS_BADALLOC : info(in), trace(Detail::tryGetStackTrace())
+    explicit inline ErrorState(char const *in) : info(in), trace(Detail::tryGetStackTrace())
     {
         // No further implementation.
     }
@@ -241,7 +256,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \throws std::bad_alloc May be thrown if allocation for the underlying message, std::shared_ptr, or stack trace
      * fails.
      */
-    inline explicit Error(string_view info = string_view()) KH_THROWS_BADALLOC : Parent(info), GenericError(this)
+    inline explicit Error(string_view info = string_view()) : Parent(info), GenericError(this)
     {
         // No further implementation.
     }
@@ -268,7 +283,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \throws std::bad_alloc May be thrown if allocation for the underlying message, std::shared_ptr, or stack trace
      * fails.
      */
-    inline explicit Error(char const *info) KH_THROWS_BADALLOC : Error(string_view{ info })
+    inline explicit Error(char const *info) : Error(string_view{ info })
     {
         // No further implementation.
     }
@@ -288,7 +303,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \param info A string_view to the data returned by info() and what().
      * \throws std::bad_alloc May be thrown if allocation for the underlying std::shared_ptr or stack trace fails.
      */
-    inline Error(string &&info) KH_THROWS_BADALLOC : Parent(std::move(info)), GenericError(this)
+    inline Error(string &&info) : Parent(std::move(info)), GenericError(this)
     {
         // No further implementation.
     }
@@ -300,7 +315,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \param args
      */
     template <typename Arg_T, typename... Arg_Ts>
-    inline Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args) KH_THROWS_BADALLOC :
+    inline Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args) :
         Error(Flags::runtime, str.get(), FMT::make_format_args(firstArg, args...))
     {
         // No further implementation.

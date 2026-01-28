@@ -42,7 +42,7 @@ KH_INLINE_NAMESPACE_V1
  * \tparam Int_T A std::integral type that the underlying \p bitSize bits will be used to represent.
  * \tparam bitSize The number of binary digits (or "bits") to represent the given \p Int_T, including the sign bit.
  */
-template <std::integral Int_T, size_t bitSize>
+template <std::integral Int_T, unsigned int bitSize>
 struct BitField
 {
     /*!
@@ -70,7 +70,7 @@ struct BitField
      * a given integer can fit in a particular BitField, using something like this:
      *
      * ~~~
-     * return (integer < 0 ? ~integer : integer) & ~BitField<Field>::max() == 0;
+     * return (integer < 0 ? ~integer : integer) bitand ~BitField<Field>::max() == 0;
      * ~~~
      *
      * A value that returns true from the previous expression will never throw an exception from a call to
@@ -87,7 +87,7 @@ struct BitField
      *
      * \return The \p bitSize non-type parameter of this template.
      */
-    consteval static size_t bits() noexcept;
+    consteval static unsigned int bits() noexcept;
 
     /*!
      * Returns the number of digits available in this BitField.
@@ -96,17 +96,17 @@ struct BitField
      *
      * \return The number of binary integer digits used in the given BitField.
      */
-    consteval static size_t digits() noexcept;
+    consteval static unsigned int digits() noexcept;
 
-    static_assert(not std::is_same_v<Int, bool> or bits() == 1, "A boolean BitField is always one bit in size.");
-    static_assert(bits() <= sizeof(Int) * Platform::bitsInByte, "The given bitSize is too large.");
-    static_assert(bits() > (std::is_signed_v<Int> ? 1 : 0), "The given bitSize is too small.");
+    static_assert(not std::is_same_v<Int, bool> or bits() == 1u, "A boolean BitField is always one bit in size.");
+    static_assert(bits() <= bitsOf<Int>(), "The given bitSize is too large.");
+    static_assert(bits() > (std::is_signed_v<Int> ? 1u : 0u), "The given bitSize is too small.");
 };
 
-template <std::integral Int_T, size_t bitSize>
+template <std::integral Int_T, unsigned int bitSize>
 consteval Int_T BitField<Int_T, bitSize>::min() noexcept
 {
-    if constexpr (std::is_same_v<bool, Int> or std::is_unsigned_v<Int> or bits() == sizeof(Int) * Platform::bitsInByte)
+    if constexpr (std::is_same_v<bool, Int> or std::is_unsigned_v<Int> or bits() == bitsOf<Int>())
     {
         return Limits<Int>::min();
     }
@@ -116,10 +116,10 @@ consteval Int_T BitField<Int_T, bitSize>::min() noexcept
     }
 }
 
-template <std::integral Int_T, size_t bitSize>
+template <std::integral Int_T, unsigned int bitSize>
 consteval Int_T BitField<Int_T, bitSize>::max() noexcept
 {
-    if constexpr (std::is_same_v<bool, Int> or bits() == sizeof(Int) * Platform::bitsInByte)
+    if constexpr (std::is_same_v<bool, Int> or bits() == bitsOf<Int>())
     {
         return Limits<Int>::max();
     }
@@ -129,16 +129,16 @@ consteval Int_T BitField<Int_T, bitSize>::max() noexcept
     }
 }
 
-template <std::integral Int_T, size_t bitSize>
-consteval size_t BitField<Int_T, bitSize>::bits() noexcept
+template <std::integral Int_T, unsigned int bitSize>
+consteval unsigned int BitField<Int_T, bitSize>::bits() noexcept
 {
     return bitSize;
 }
 
-template <std::integral Int_T, size_t bitSize>
-consteval size_t BitField<Int_T, bitSize>::digits() noexcept
+template <std::integral Int_T, unsigned int bitSize>
+consteval unsigned int BitField<Int_T, bitSize>::digits() noexcept
 {
-    return bits() - (std::is_signed_v<Int> ? 1 : 0);
+    return bits() - (std::is_signed_v<Int> ? 1u : 0u);
 }
 
 /*!
@@ -169,7 +169,7 @@ template <size_t bits>
 using I8 = BitField<i8, bits>;
 
 /*!
- * BitField alias for the u8 signed integer type.
+ * BitField alias for the u8 unsigned integer type.
  *
  * This type may be a maximum of 8 bits in length.
  *
@@ -189,7 +189,7 @@ template <size_t bits>
 using I16 = BitField<i16, bits>;
 
 /*!
- * BitField alias for the u16 signed integer type.
+ * BitField alias for the u16 unsigned integer type.
  *
  * This type may be a maximum of 16 bits in length.
  *
@@ -209,7 +209,7 @@ template <size_t bits>
 using I32 = BitField<i32, bits>;
 
 /*!
- * BitField alias for the u32 signed integer type.
+ * BitField alias for the u32 unsigned integer type.
  *
  * This type may be a maximum of 32 bits in length.
  *
@@ -229,7 +229,7 @@ template <size_t bits>
 using I64 = BitField<i64, bits>;
 
 /*!
- * BitField alias for the u64 signed integer type.
+ * BitField alias for the u64 unsigned integer type.
  *
  * This type may be a maximum of 64 bits in length.
  *
@@ -237,6 +237,26 @@ using I64 = BitField<i64, bits>;
  */
 template <size_t bits>
 using U64 = BitField<u64, bits>;
+
+/*!
+ * BitField alias for the standard signed integer type.
+ *
+ * This type may be a maximum of bitsOf<int>() bits in length. The given \p bits includes the sign bit.
+ *
+ * \tparam bits The number of bits to use to represent the int value.
+ */
+template <size_t bits>
+using Int = BitField<int, bits>;
+
+/*!
+ * BitField alias for the standard unsigned integer type.
+ *
+ * This type may be a maximum of bitsOf<unsigned int>() bits in length.
+ *
+ * \tparam bits The number of bits to use to represent the unsigned int value.
+ */
+template <size_t bits>
+using UInt = BitField<unsigned int, bits>;
 
 } // namespace BF
 
@@ -318,6 +338,21 @@ struct FieldTraits
     constexpr static bool canFit(std::same_as<type> auto toTest) noexcept;
 };
 
+/*!
+ * \internal
+ *
+ * A Basic traits template specialization for when there is only a single field type remaining.
+ *
+ * The Fields as described here are some kind of BitField type that this object is then providing information about for
+ * that BitField in a list. There is some information that a BitField itself cannot know, like where it is located in
+ * bits for a given list of field. This specialization will return the values as specified by Field_T or will return a
+ * default value if \p index is greater than 0. This object's consteval methods must return some kind of valid response,
+ * even when this object is misused, and the response is almost always just 0. This makes using FieldTraits without
+ * being certain of the index value dangerous, which is why this class is kept internal and not exposed to users.
+ *
+ * \tparam index The index of the field to use (which should be 0, or all functions will respond with 0).
+ * \tparam Field_T The only field in the list of fields, which is where everything is returned from.
+ */
 template <size_t index, BitFieldType Field_T>
 struct FieldTraits<index, Field_T>
 {
@@ -423,7 +458,7 @@ consteval int FieldTraits<index, Field_T, Field_Ts...>::digits() noexcept
 template <size_t index, BitFieldType Field_T>
 consteval size_t FieldTraits<index, Field_T>::digits() noexcept
 {
-    return Field_T::digits();
+    return index == 0 ? Field_T::digits() : 0;
 }
 
 template <size_t index, BitFieldType Field_T, BitFieldType... Field_Ts>
@@ -506,117 +541,27 @@ public:
 
     using Block = Block_T;
 
-    constexpr BasicPackedTuple() noexcept = default;
+    constexpr BasicPackedTuple() noexcept;
 
-    constexpr BasicPackedTuple(typename Field_T::Int first, typename Field_Ts::Int... rest) :
-        BasicPackedTuple(std::tuple{ first, rest... })
-    {
-        // No further implementation.
-    }
+    constexpr BasicPackedTuple(typename Field_T::Int first, typename Field_Ts::Int... rest);
 
-    constexpr BasicPackedTuple(std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &beginState)
-    {
-        tupleInit<0>(beginState);
-    }
+    constexpr BasicPackedTuple(std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &beginState);
 
     template <size_t index>
     requires(index <= sizeof...(Field_Ts))
-    constexpr FieldType<index> get() const noexcept
-    {
-        constexpr FieldLocation fieldInfo = getLocation<index>();
-
-        Block_T frontBlock = (data.at(fieldInfo.blockIndex) & fieldInfo.frontMask) >> fieldInfo.front;
-        if constexpr (fieldInfo.backMask)
-        {
-            frontBlock |= (fieldInfo.backMask & data.at(fieldInfo.blockIndex + 1)) << (blockBits() - fieldInfo.front);
-        }
-
-        if constexpr (std::is_signed_v<FieldType<index>>)
-        {
-            if constexpr (FieldTraits<index>::bits() == blockBits())
-            {
-                return std::bit_cast<FieldType<index>>(frontBlock);
-            }
-
-            constexpr Block_T signBit = static_cast<Block_T>(1) << (FieldTraits<index>::bits() - 1);
-            if (frontBlock & signBit)
-            {
-                frontBlock |= std::numeric_limits<Block_T>::max() << FieldTraits<index>::bits();
-            }
-
-            return static_cast<FieldType<index>>(std::bit_cast<std::make_signed_t<Block_T>>(frontBlock));
-        }
-        else
-        {
-            return static_cast<FieldType<index>>(frontBlock);
-        }
-    }
+    constexpr FieldType<index> get() const noexcept;
 
     template <size_t index>
     requires(index <= sizeof...(Field_Ts))
-    constexpr void set(FieldType<index> newVal)
-    {
-        constexpr FieldLocation fieldInfo = getLocation<index>();
-
-        if (not FieldTraits<index>::canFit(newVal))
-        {
-            throw newVal;
-        }
-
-        Block_T &block = data.at(fieldInfo.blockIndex);
-        if constexpr (std::same_as<FieldType<index>, bool>)
-        {
-            constexpr Block_T newBitMask = ~(static_cast<Block_T>(1) << fieldInfo.front);
-
-            Block_T newBit = static_cast<Block_T>(newVal) << fieldInfo.front;
-            block          = (block & newBitMask) | newBit;
-        }
-        else
-        {
-            Block_T input = static_cast<Block_T>(std::bit_cast<std::make_unsigned_t<FieldType<index>>>(newVal));
-
-            if constexpr (fieldInfo.backMask)
-            {
-                Block_T &backBlock = data.at(fieldInfo.blockIndex + 1);
-                backBlock          = (backBlock & ~fieldInfo.backMask) | (input >> (blockBits() - fieldInfo.front));
-            }
-
-            block = (block & ~fieldInfo.frontMask) | ((input << fieldInfo.front) & fieldInfo.frontMask);
-        }
-    }
+    constexpr void set(FieldType<index> newVal);
 
     template <size_t index>
     requires(index <= sizeof...(Field_Ts))
-    constexpr void setTruncate(FieldType<index> newVal) noexcept
-    {
-        if constexpr (not std::same_as<FieldType<index>, bool>)
-        {
-            newVal = newVal < 0 ? newVal | ~FieldTraits<index>::max() : newVal & FieldTraits<index>::max();
-        }
-
-        set<index>(newVal);
-    }
+    constexpr void setTruncate(FieldType<index> newVal) noexcept;
 
     template <size_t index>
     requires(index <= sizeof...(Field_Ts))
-    constexpr void setSaturate(FieldType<index> newVal) noexcept
-    {
-        if (newVal > FieldTraits<index>::max())
-        {
-            newVal = FieldTraits<index>::max();
-        }
-
-        // We do *not* put this in an else block to make this function branch free on x86 and ARM.
-        if constexpr (std::is_signed_v<FieldType<index>>)
-        {
-            if (newVal < FieldTraits<index>::min())
-            {
-                newVal = FieldTraits<index>::min();
-            }
-        }
-
-        set<index>(newVal);
-    }
+    constexpr void setSaturate(FieldType<index> newVal) noexcept;
 
     static_assert(not std::same_as<Block, bool>);
     static_assert(sizeof(Block) >= sizeof(typename Field_T::Int) and
@@ -624,24 +569,7 @@ public:
 
 private:
     template <size_t index>
-    consteval static FieldLocation getLocation() noexcept
-    {
-        constexpr size_t loc       = FieldTraits<index>::bitLocation();
-        constexpr size_t endLoc    = loc + FieldTraits<index>::bits();
-        constexpr size_t maskShift = blockBits() - FieldTraits<index>::bits();
-        constexpr size_t blockLoc  = loc % blockBits();
-
-        constexpr auto temp = static_cast<int>(blockLoc + FieldTraits<index>::bits()) -
-                              static_cast<int>(sizeof(Block_T) * Platform::bitsInByte);
-        constexpr size_t backMaskWidth = temp < 0 ? 0 : temp;
-
-        return { .blockIndex = loc / blockBits(),
-                 .front      = blockLoc,
-                 .back       = endLoc % blockBits(),
-                 .frontMask  = static_cast<Block_T>(Limits<Block_T>::max() >> maskShift << blockLoc),
-                 .backMask   = static_cast<Block_T>(
-                     backMaskWidth ? Limits<Block_T>::max() >> (blockBits() - backMaskWidth) : 0) };
-    }
+    consteval static FieldLocation getLocation() noexcept;
 
     /*!
      * \internal
@@ -656,18 +584,7 @@ private:
      * \param initTuple
      */
     template <size_t index>
-    constexpr void tupleInit(std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &initTuple)
-    {
-        if constexpr (index >= std::tuple_size_v<std::remove_cvref_t<decltype(initTuple)>>)
-        {
-            return;
-        }
-        else
-        {
-            set<index>(std::get<index>(initTuple));
-            tupleInit<index + 1>(initTuple);
-        }
-    }
+    constexpr void tupleInit(std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &initTuple);
 
     /*!
      * \internal
@@ -676,11 +593,145 @@ private:
      *
      * This just returns `sizeof(Block_T) * Platform::bitsInByte`.
      */
-    consteval static size_t blockBits() noexcept
-    {
-        return sizeof(Block_T) * Platform::bitsInByte;
-    }
+    consteval static size_t blockBits() noexcept;
 };
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+constexpr BasicPackedTuple<Block_T, Field_T, Field_Ts...>::BasicPackedTuple() noexcept = default;
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+constexpr BasicPackedTuple<Block_T, Field_T, Field_Ts...>::BasicPackedTuple(typename Field_T::Int first,
+                                                                            typename Field_Ts::Int... rest)
+{
+    tupleInit<0>(std::tuple{ first, rest... });
+}
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+constexpr BasicPackedTuple<Block_T, Field_T, Field_Ts...>::BasicPackedTuple(
+    std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &beginState)
+{
+    tupleInit<0>(beginState);
+}
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+template <size_t index>
+requires(index <= sizeof...(Field_Ts))
+constexpr BasicPackedTuple<Block_T, Field_T, Field_Ts...>::FieldType<index>
+BasicPackedTuple<Block_T, Field_T, Field_Ts...>::get() const noexcept
+{
+    constexpr FieldLocation fieldInfo = getLocation<index>();
+
+    Block_T frontBlock = (data.at(fieldInfo.blockIndex) bitand fieldInfo.frontMask) >> fieldInfo.front;
+    if constexpr (fieldInfo.backMask)
+    {
+        frontBlock |= (fieldInfo.backMask bitand data.at(fieldInfo.blockIndex + 1)) << (blockBits() - fieldInfo.front);
+    }
+
+    if constexpr (std::is_signed_v<FieldType<index>>)
+    {
+        if constexpr (FieldTraits<index>::bits() == blockBits())
+        {
+            return std::bit_cast<FieldType<index>>(frontBlock);
+        }
+
+        constexpr Block_T signBit = static_cast<Block_T>(1) << (FieldTraits<index>::bits() - 1);
+        if (frontBlock bitand signBit)
+        {
+            frontBlock |= std::numeric_limits<Block_T>::max() << FieldTraits<index>::bits();
+        }
+
+        return static_cast<FieldType<index>>(std::bit_cast<std::make_signed_t<Block_T>>(frontBlock));
+    }
+    else
+    {
+        return static_cast<FieldType<index>>(frontBlock);
+    }
+}
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+template <size_t index>
+requires(index <= sizeof...(Field_Ts))
+constexpr void BasicPackedTuple<Block_T, Field_T, Field_Ts...>::set(FieldType<index> newVal)
+{
+    constexpr FieldLocation fieldInfo = getLocation<index>();
+
+    if (not FieldTraits<index>::canFit(newVal))
+    {
+        throw newVal;
+    }
+
+    Block_T &block = data.at(fieldInfo.blockIndex);
+    if constexpr (std::same_as<FieldType<index>, bool>)
+    {
+        constexpr Block_T newBitMask = ~(static_cast<Block_T>(1) << fieldInfo.front);
+
+        Block_T newBit = static_cast<Block_T>(newVal) << fieldInfo.front;
+        block          = (block bitand newBitMask) bitor newBit;
+    }
+    else
+    {
+        Block_T input = static_cast<Block_T>(std::bit_cast<std::make_unsigned_t<FieldType<index>>>(newVal));
+
+        if constexpr (fieldInfo.backMask)
+        {
+            Block_T &backBlock = data.at(fieldInfo.blockIndex + 1);
+            backBlock = (backBlock bitand ~fieldInfo.backMask) bitor (input >> (blockBits() - fieldInfo.front));
+        }
+
+        block = (block bitand ~fieldInfo.frontMask) bitor ((input << fieldInfo.front) bitand fieldInfo.frontMask);
+    }
+}
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+template <size_t index>
+requires(index <= sizeof...(Field_Ts))
+constexpr void BasicPackedTuple<Block_T, Field_T, Field_Ts...>::setTruncate(FieldType<index> newVal) noexcept
+{
+    if constexpr (not std::same_as<FieldType<index>, bool>)
+    {
+        newVal = newVal < 0 ? newVal bitor ~FieldTraits<index>::max() : newVal bitand FieldTraits<index>::max();
+    }
+
+    set<index>(newVal);
+}
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+template <size_t index>
+requires(index <= sizeof...(Field_Ts))
+constexpr void BasicPackedTuple<Block_T, Field_T, Field_Ts...>::setSaturate(FieldType<index> newVal) noexcept
+{
+    if (newVal > FieldTraits<index>::max())
+    {
+        newVal = FieldTraits<index>::max();
+    }
+
+    // We do *not* put this in an else block to make this function branch free on x86 and ARM.
+    if constexpr (std::is_signed_v<FieldType<index>>)
+    {
+        if (newVal < FieldTraits<index>::min())
+        {
+            newVal = FieldTraits<index>::min();
+        }
+    }
+
+    set<index>(newVal);
+}
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+template <size_t index>
+constexpr void BasicPackedTuple<Block_T, Field_T, Field_Ts...>::tupleInit(
+    std::tuple<typename Field_T::Int, typename Field_Ts::Int...> const &initTuple)
+{
+    if constexpr (index >= std::tuple_size_v<std::remove_cvref_t<decltype(initTuple)>>)
+    {
+        return;
+    }
+    else
+    {
+        set<index>(std::get<index>(initTuple));
+        tupleInit<index + 1>(initTuple);
+    }
+}
 
 template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
 consteval size_t BasicPackedTuple<Block_T, Field_T, Field_Ts...>::blocksNeeded() noexcept
@@ -689,8 +740,41 @@ consteval size_t BasicPackedTuple<Block_T, Field_T, Field_Ts...>::blocksNeeded()
     return byteAmount / sizeof(Block_T) + (byteAmount % sizeof(Block_T) ? 1 : 0);
 };
 
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+consteval size_t BasicPackedTuple<Block_T, Field_T, Field_Ts...>::blockBits() noexcept
+{
+    return sizeof(Block_T) * Constant::bitsInByte;
+}
+
+template <std::unsigned_integral Block_T, BitFieldType Field_T, BitFieldType... Field_Ts>
+template <size_t index>
+consteval BasicPackedTuple<Block_T, Field_T, Field_Ts...>::FieldLocation
+BasicPackedTuple<Block_T, Field_T, Field_Ts...>::getLocation() noexcept
+{
+    constexpr size_t loc       = FieldTraits<index>::bitLocation();
+    constexpr size_t endLoc    = loc + FieldTraits<index>::bits();
+    constexpr size_t maskShift = blockBits() - FieldTraits<index>::bits();
+    constexpr size_t blockLoc  = loc % blockBits();
+
+    constexpr auto temp = static_cast<int>(blockLoc + FieldTraits<index>::bits()) -
+                          static_cast<int>(sizeof(Block_T) * Constant::bitsInByte);
+    constexpr size_t backMaskWidth = temp < 0 ? 0 : temp;
+
+    return { .blockIndex = loc / blockBits(),
+             .front      = blockLoc,
+             .back       = endLoc % blockBits(),
+             .frontMask  = static_cast<Block_T>(shl(shr(Limits<Block_T>::max(), maskShift), blockLoc)),
+             .backMask =
+                 static_cast<Block_T>(backMaskWidth ? shr(Limits<Block_T>::max(), blockBits() - backMaskWidth) : 0) };
+}
+
 /*!
+ * The 8-bit BasicPackedTuple type alias.
  *
+ * The PackedTuple8 is useful when you desperately need your packed tuple to fit precisely in the number of bytes that
+ * it requires and you only really need to have types that are at most 8 bits large. You could theoretically have larger
+ * values than this by using multiple 8 bit values and bitwise or them together to get your result value. This
+ * functionality may also be added to BasicPackedTuple at a later time.
  */
 template <BitFieldType Field_T, BitFieldType... Field_Ts>
 using PackedTuple8 = BasicPackedTuple<u8, Field_T, Field_Ts...>;

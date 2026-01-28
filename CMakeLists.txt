@@ -44,7 +44,7 @@ string(CONCAT KH_MUST_HAVE_32_64_STRING
 include(CMakeDependentOption)
 
 option(KH_MUST_HAVE_16_32_64 "${KH_MUST_HAVE_16_32_64_STRING}" OFF)
-option(KH_MUST_HAVE_32_64 "${KH_MUST_HAVE_32_64_STRING}" OFF)
+option(KH_MUST_HAVE_32_64 "${KH_MUST_HAVE_32_64_STRING}" ON)
 option(KH_MUST_HAVE_16BIT_TYPES "Require that the platform has 16 bit integers." OFF)
 option(KH_MUST_HAVE_32BIT_TYPES "Require that the platform has 32 bit integers." OFF)
 option(KH_MUST_HAVE_64BIT_TYPES "Require that the platform has 64 bit integers." OFF)
@@ -52,7 +52,7 @@ option(KH_MUST_HAVE_64BIT_TYPES "Require that the platform has 64 bit integers."
 option(KH_USES_FMT "Build libKirHut with {fmt} dependency instead of std::format." ON)
 option(KH_BUILD_TESTS "Build the tests for this library (requires KH_ALLOW_FETCHCONTENT)." ${KH_BUILD_TESTS_DEFAULT})
 option(BUILD_SHARED_LIBS "Build this library (and its dependencies) as shared libraries." ON)
-option(KH_ALLOW_FETCHCONTENT "Allow libKirHut to download {fmt} using FetchContent." ON)
+option(KH_ALLOW_FETCHCONTENT "Allow libKirHut to download dependencies using FetchContent." ON)
 option(KH_NO_BADALLOC "Remove support for throwing or catching std::bad_alloc." OFF)
 option(KH_NO_EXCEPTIONS "Removes exception support entirely, along with the Error type (implies KH_NO_BADALLOC)." OFF)
 option(KH_INCLUDE_TERMINAL_PRINT "Include UTF-8 C++23 style printing support in KirHut::IO." ON)
@@ -85,7 +85,7 @@ if(Doxygen_FOUND)
     add_subdirectory(docs)
 else()
     message(STATUS
-        "Doxygen not found on the build host, so the documentation target and options will not be available."
+        "Doxygen not found on the build host, so libKirHut's documentation target and options will not be available."
     )
 endif()
 

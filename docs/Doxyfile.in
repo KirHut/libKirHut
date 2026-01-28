@@ -2501,27 +2501,7 @@ SKIP_FUNCTION_MACROS   = YES
 # the path). If a tag file is not located in the directory in which Doxygen is
 # run, you must also specify the path to the tagfile here.
 
-TAGFILES               = tags/cppreference-doxygen-web.tag.xml=https://en.cppreference.com/w/ \
-                         tags/qdoc.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qmake.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtconcurrent.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtcore.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtdbus.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtgui.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtnetwork.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtprintsupport.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtremoteobjects.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtscxml.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtserialbus.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtsql.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtstatemachine.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtsvg.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qttestlib.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtwebchannel.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtwebengine.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtwebsockets.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtwidgets.tags=https://doc.qt.io/qt-6.5/ \
-                         tags/qtxml.tags=https://doc.qt.io/qt-6.5/
+TAGFILES               = tags/cppreference-doxygen-web.tag.xml=https://en.cppreference.com/w/
 
 # When a file name is specified after GENERATE_TAGFILE, Doxygen will create a
 # tag file that is based on the input files it reads. See section "Linking to

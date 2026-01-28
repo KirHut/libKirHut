@@ -71,11 +71,9 @@
  * KirHut namespace implicitly:
  * - std::byte
  * - std::array
- * - std::bit_cast
- * - std::get
+ * - std::bitset
  * - std::make_shared
  * - std::make_unique
- * - std::pair
  * - std::span
  * - std::string
  * - std::string_view
@@ -90,12 +88,9 @@ namespace KirHut
 
 //! \cond
 using std::array;
-using std::bit_cast;
 using std::bitset;
-using std::get;
 using std::make_shared;
 using std::make_unique;
-using std::pair;
 using std::span;
 using std::string;
 using std::string_view;
@@ -214,7 +209,15 @@ namespace Flags
 [[maybe_unused]] constexpr CopyFlag copy = CopyFlag::copy;
 
 /*!
- * \brief runtime
+ * A flag type that is used to select the "runtime" override of a particular method, usually a constructor.
+ *
+ * What a "runtime override" means, and when this is appropriate to use for your methods or constructors, is dependent
+ * on what you are trying to do. If you want to allow a class that performs compile-time checking to ignore that
+ * compile-time checking and instead check some value at runtime instead of compile-time, you would use this type to
+ * signify that to the constructor/method. This library uses this type to omit compile-time checking of strings passed
+ * to a checked object constructor.
+ *
+ * This is just RuntimeFlag::runtime, in a more intuitive location.
  */
 [[maybe_unused]] constexpr RuntimeFlag runtime = RuntimeFlag::runtime;
 
@@ -254,19 +257,77 @@ template <typename T>
 } // namespace Flags
 
 /*!
- * Constant expression of the number of bytes needed to hold a given number of bits.
+ * Returns the number of bytes needed to hold a given number of bits.
  *
  * For basically all processors supported by KirHut, the value is just the number passed in divided by 8, plus one if
- * there are any additional bits. This is because nearly all processors use an 8 bit byte. There is the extremely vague
- * possibility of using something with a differently sized number of bytes, so this function protects against that,
- * while also labeling the purpose of some given magic number.
+ * there are any additional bits. This is because nearly all processors use an 8 bit byte. This library is designed to
+ * potentially support building on very alternative hardware configurations, so this function does corretly calculate
+ * the number of bytes for a given number of bits, so long as Platform::bitsInByte is correctly updated to this value
+ * (it should be on all conforming compilers).
  *
  * \param numBits The number of bits that need to fit in the number of returned bytes.
  * \return The number of bytes that will completely contain the number of bits passed as \p numBits.
  */
-[[nodiscard]] constexpr ue32 bytesNeededForBits(ue32 numBits) noexcept
+[[nodiscard]] constexpr unsigned int bytesNeededForBits(unsigned int numBits) noexcept
 {
-    return (numBits + Platform::bitsInByte - 1) / Platform::bitsInByte;
+    return (numBits + Constant::bitsInByte - 1) / Constant::bitsInByte;
+}
+
+/*!
+ * Returns the number of bytes needed to hold a given number of bits.
+ *
+ * For basically all processors supported by KirHut, the value is just the number passed in divided by 8, plus one if
+ * there are any additional bits. This is because nearly all processors use an 8 bit byte. This library is designed to
+ * potentially support building on very alternative hardware configurations, so this function does corretly calculate
+ * the number of bytes for a given number of bits, so long as Platform::bitsInByte is correctly updated to this value
+ * (it should be on all conforming compilers).
+ *
+ * \note If the number of bytes passed has an amount of bits that exceeds the value that can fit into an unsigned int on
+ * your target platform, this function will truncate the top bits to fit in the return value, losing those binary
+ * digits. You should not pass in a value that exceeds Limits<unsigned int>::max() / Platform::bitsInByte if you want to
+ * have an accurate return result, though this will not invoke undefined behavior.
+ *
+ * \param numBits The number of bits that need to fit in the number of returned bytes.
+ * \return The number of bytes that will completely contain the number of bits passed as \p numBits.
+ */
+[[nodiscard]] constexpr unsigned int numBitsInBytes(unsigned int numBytes) noexcept
+{
+    return numBytes * Constant::bitsInByte;
+}
+
+/*!
+ * Returns the number of bits in the passed template type T.
+ *
+ * This is preferred over using sizeof() and multiplying by Platform::bitsInByte because it is both more concise and
+ * more explanatory than the mathematical expression. The version of this method where you pass a value as an argument
+ * is a better option if you can do that, since it more closely matches the interface of sizeof(). Unfortunately, since
+ * this is a function and not a language operator, you cannot pass a type as a value to bitsOf, and it must instead be
+ * passed as a template argument.
+ *
+ * \tparam T Any valid C++ type. This must be explicitly specified.
+ * \return The number of bits it takes on the compiled for platform to represent type T.
+ */
+template <typename T>
+[[nodiscard]] consteval unsigned int bitsOf()
+{
+    return numBitsInBytes(sizeof(T));
+}
+
+/*!
+ * Returns the number of bits in the passed \p object type.
+ *
+ * This is preferred over using sizeof() and multiplying by Platform::bitsInByte because it is both more concise and
+ * more explanatory than the mathematical expression. You should prefer using this version as the type of \p object is
+ * inferred, which more closely matches the sizeof() operator. Unfortunately, since this is a function and not a
+ * language operator, you cannot pass a type as a value directly to bitsOf, and it must instead be passed as a template
+ * argument.
+ *
+ * \param object Any valid C++ value at all.
+ * \return The number of bits it takes on the compiled for platform to represent \p object.
+ */
+[[nodiscard]] consteval unsigned int bitsOf(auto &object)
+{
+    return numBitsInBytes(sizeof(object));
 }
 
 /*!
@@ -278,6 +339,7 @@ template <typename T>
  * This is just a simple wrapper around the std::as_bytes or as_writable_bytes functions. As such, it is impossible to
  * implement these functions as constexpr.
  *
+ * \tparam T Literally any type that a reference to is passed in as \p object. This should be inferred.
  * \param object Any value or object type whatsoever.
  * \return A std::span viewing the underlying byte data of the \p object.
  */
@@ -380,7 +442,9 @@ template <std::signed_integral Int_T>
  * unless you have some genuine requirement to get a signed integer value.
  *
  * Unlike abs(), this function is designed to support unsigned integers as well, simply returning them as passed. This
- * function is designed to prevent integer promotions in that case. KirHut::uabs() is what std::abs() should have been.
+ * function is designed to prevent integer promotions in that case.
+ *
+ * KirHut::uabs() is what std::abs() should have been.
  *
  * \param number An integer to get the unsigned absolute value of.
  * \return The absolute value of \p number, as an unsigned value.
@@ -399,23 +463,6 @@ template <std::signed_integral Int_T>
 [[nodiscard]] constexpr auto uabs(std::unsigned_integral auto number) noexcept -> decltype(number)
 {
     return number;
-}
-
-template <Integral Int_T>
-[[nodiscard]] constexpr Int_T shiftMask(size_t shiftedBytes) noexcept
-{
-    if (shiftedBytes == 0)
-    {
-        return 0;
-    }
-
-    auto width = std::bit_width(std::bit_ceil(shiftedBytes)) + 2;
-    if (Limits<Int_T>::digits >= width)
-    {
-        return Limits<Int_T>::max();
-    }
-
-    return Limits<Int_T>::max() >> (Limits<Int_T>::digits - width);
 }
 
 /*!
@@ -446,7 +493,7 @@ template <Integral Int_T>
  */
 [[nodiscard]] constexpr auto shl(Integral auto value, unsigned int amount) noexcept -> decltype(value)
 {
-    return amount < sizeof(value) * Platform::bitsInByte ? value << amount : 0;
+    return amount < sizeof(value) * Constant::bitsInByte ? value << amount : 0;
 }
 
 /*!
@@ -479,7 +526,7 @@ template <Integral Int_T>
 [[nodiscard]] constexpr auto shr(Integral auto value, unsigned int amount) noexcept -> decltype(value)
 {
     auto const bottom = static_cast<decltype(value)>(value < 0 ? -1 : 0);
-    return amount < sizeof(value) * Platform::bitsInByte ? value >> amount : bottom;
+    return amount < sizeof(value) * Constant::bitsInByte ? value >> amount : bottom;
 }
 
 /*!
@@ -525,8 +572,7 @@ template <Integral Int_T>
 #endif
     }
 
-    constexpr int shiftAmount = Platform::bitsInByte;
-    return shl(bytes, shiftAmount) | shr(bytes, shiftAmount);
+    return shl(bytes, Constant::bitsInByte) bitor shr(bytes, Constant::bitsInByte);
 }
 
 /*!
@@ -557,15 +603,15 @@ template <Integral Int_T>
 #endif
     }
 
-    constexpr unsigned int outerShift = Platform::bitsInByte * 3;
-    constexpr unsigned int innerShift = Platform::bitsInByte * 1;
+    constexpr unsigned int outerShift = Constant::bitsInByte * 3;
+    constexpr unsigned int innerShift = Constant::bitsInByte * 1;
     constexpr u32 bitMask             = 0xFF;
 
     // clang-format off
-    return shl(bytes & shl(bitMask, Platform::bitsInByte * 0), outerShift) |
-           shl(bytes & shl(bitMask, Platform::bitsInByte * 1), innerShift) |
-           shr(bytes & shl(bitMask, Platform::bitsInByte * 2), innerShift) |
-           shr(bytes & shl(bitMask, Platform::bitsInByte * 3), outerShift);
+    return shl(bytes bitand shl(bitMask, Constant::bitsInByte * 0), outerShift) bitor
+           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 1), innerShift) bitor
+           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 2), innerShift) bitor
+           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 3), outerShift);
     // clang-format on
 }
 
@@ -597,21 +643,21 @@ template <Integral Int_T>
 #endif
     }
 
-    constexpr unsigned int outerShift    = Platform::bitsInByte * 7;
-    constexpr unsigned int midOuterShift = Platform::bitsInByte * 5;
-    constexpr unsigned int midInnerShift = Platform::bitsInByte * 3;
-    constexpr unsigned int innerShift    = Platform::bitsInByte * 1;
+    constexpr unsigned int outerShift    = Constant::bitsInByte * 7;
+    constexpr unsigned int midOuterShift = Constant::bitsInByte * 5;
+    constexpr unsigned int midInnerShift = Constant::bitsInByte * 3;
+    constexpr unsigned int innerShift    = Constant::bitsInByte * 1;
     constexpr u64 bitMask                = 0xFF;
 
     // clang-format off
-    return shl(bytes & shl(bitMask, Platform::bitsInByte * 0), outerShift)    |
-           shl(bytes & shl(bitMask, Platform::bitsInByte * 1), midOuterShift) |
-           shl(bytes & shl(bitMask, Platform::bitsInByte * 2), midInnerShift) |
-           shl(bytes & shl(bitMask, Platform::bitsInByte * 3), innerShift)    |
-           shr(bytes & shl(bitMask, Platform::bitsInByte * 4), innerShift)    |
-           shr(bytes & shl(bitMask, Platform::bitsInByte * 5), midInnerShift) |
-           shr(bytes & shl(bitMask, Platform::bitsInByte * 6), midOuterShift) |
-           shr(bytes & shl(bitMask, Platform::bitsInByte * 7), outerShift);
+    return shl(bytes bitand shl(bitMask, Constant::bitsInByte * 0), outerShift)    bitor
+           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 1), midOuterShift) bitor
+           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 2), midInnerShift) bitor
+           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 3), innerShift)    bitor
+           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 4), innerShift)    bitor
+           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 5), midInnerShift) bitor
+           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 6), midOuterShift) bitor
+           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 7), outerShift);
     // clang-format on
 }
 
@@ -796,13 +842,21 @@ consteval bool emptyTest() noexcept
  *
  * Actual implementation function for all the fromBigEndian/fromLittleEndian public functions.
  *
- * This function has two separate behavior branches for constant evaluation vs non-constant evaluation, so it must be
- * tested under both conditions.
+ * This function has two primary behavior branches: The runtime pointer implementation, and the backup universal
+ * implementation. The runtime pointer implementation uses std::memcpy to copy the data from \p source to the returned
+ * Numeric value if \p source is a pointer and this function is not constant evaluated. Otherwise, this function will
+ * manually iterate through the \p source contiguous iterator. In all cases, the length is compile-time predictable,
+ * and every modern compiler this has been tested on will emit only a single copy for the returned Num_T value and a
+ * bswap operation if necessary to convert from the source endianness. This seems to include when \p source is not a
+ * pointer type, since std::contiguous_iterator guarantees contiguous memory.
  *
- * \tparam Num_T
- * \tparam sourceEndianness
- * \param source
- * \return
+ * This implementation **does not** use std::copy because std::copy is under the <algorithm> header, and KirHut's
+ * base.hpp header may not include <algorithm>.
+ *
+ * \tparam Num_T The Numeric type to return from this operation. The user usually selects this.
+ * \tparam sourceEndianness The endianness of the source data as a std::endian type.
+ * \param source A std::contiguous_iterator to the source data. The iterator must be over a ByteType.
+ * \return The bytes pointed at by \p source interpreted as a \p Num_T, using whichever chosen \p sourceEndianness.
  */
 template <Numeric Num_T, std::endian sourceEndianness>
 [[nodiscard]] constexpr Num_T fromEndian(std::contiguous_iterator auto source) noexcept
@@ -830,7 +884,7 @@ template <Numeric Num_T, std::endian sourceEndianness>
             // We do a bit_cast to unsigned first because the bytes in source may be signed, so static_cast could change
             // the binary representation if we don't first bit_cast to u8.
             auto temp = std::bit_cast<u8>(*source++);
-            ret |= static_cast<ExactUIntOf<Num_T>>(temp) << (i * Platform::bitsInByte);
+            ret |= static_cast<ExactUIntOf<Num_T>>(temp) << (i * Constant::bitsInByte);
         }
     }
 
@@ -879,7 +933,7 @@ constexpr auto toEndian(Numeric auto value, std::contiguous_iterator auto dest) 
 
     for (size_t i = 0; i < returnTypeSize; ++i)
     {
-        u8 temp = static_cast<u8>(bits >> (i * Platform::bitsInByte));
+        u8 temp = static_cast<u8>(bits >> (i * Constant::bitsInByte));
         *dest++ = std::bit_cast<Byte_T>(temp);
     }
 
@@ -889,17 +943,28 @@ constexpr auto toEndian(Numeric auto value, std::contiguous_iterator auto dest) 
 /*!
  * \internal
  *
- * \brief throwTooSmallSpan
- * \param message
+ * Throw an IllegalArgument exception because the destination span of a given write operation is too small.
+ *
+ * This simply takes the message passed as a string_view and throws an IllegalArgument exception with that message.
+ *
+ * \param message The message to pass to the IllegalArgument exception.
  */
 [[noreturn]] KH_EXPORT void throwTooSmallSpan(string_view message);
 
 /*!
  * \internal
  *
- * \brief convertTest
- * \param args
- * \return
+ * Constant function test to check if a given \p Tested_T can be implicitly constructed from the given \p Arg_Ts.
+ *
+ * This "function" is only useful in the context of a requires clause, otherwise you'd just use the \p Tested_T object
+ * constructor directly. This allows you to check in a requires clause if the given arguments in \p args can be
+ * implicitly converted into the given \p Tested_T. If it can be, this will compile successfully, and if not, this will
+ * fail to compile, which is useful in the context of a requires clause.
+ *
+ * \tparam Tested_T The type we're checking can be constructed from \p args. Must be explicitly given.
+ * \tparam Arg_Ts The types of the \p args passed. This should be inferred.
+ * \param args The actual arguments, usually not a runtime value since this is only done in requires clauses.
+ * \return Nothing, ideally, since this is only used in requires clauses.
  */
 template <typename Tested_T, typename... Arg_Ts>
 constexpr Tested_T convertTest(Arg_Ts &&...args)
@@ -920,7 +985,7 @@ template <typename Var_T, typename T, size_t indexPos>
 
     if constexpr (indexPos >= std::variant_size_v<UnqualVar>)
     {
-        return indexPos;
+        return Constant::amountUnknown;
     }
     else
     {
@@ -1130,14 +1195,27 @@ template <typename Has_T, typename Var_T>
 concept TypeOptionOf = Detail::HasTypeOption<Var_T, Has_T>;
 
 /*!
- * \brief varIndex
- * \param var
+ * Get the index number of a particular type in the passed in Var or std::variant.
+ *
+ * For some reason, there's no way to get a constant index value of a given type in a given std::variant in the C++
+ * standard library. I haven't the faintest idea why, but this function overcomes that limitation by providing said
+ * required functionality when you are taking a std::variant as a template argument and may not know which index a given
+ * type is in.
+ *
+ * Further, you can use this to check if a given std::variant even has a particular type by checking if this returns
+ * Constant::amountUnknown. If it does, then the given type was not found in the Var or std::variant and your template
+ * should respond accordingly.
+ *
+ * This function is marked consteval since it should always be performed at compile time.
+ *
+ * \tparam T The type you are looking for in the Var or std::variant.
+ * \param var The variant to check for which
  * \return
  */
-template <typename Var_T>
+template <typename T>
 [[nodiscard]] consteval size_t varIndex(InstanceOf<Var, std::variant> auto const &var)
 {
-    return Detail::varIndex<decltype(var), Var_T>();
+    return Detail::varIndex<decltype(var), T>();
 }
 
 /*!
