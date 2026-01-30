@@ -1,0 +1,19 @@
+name: libKirHut CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: linux
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show environment
+        run: |
+          uname -a
+          g++ --version || true
+          cmake --version || true

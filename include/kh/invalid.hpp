@@ -70,7 +70,7 @@ struct MessageViewWhy
      */
     constexpr static bool isQuickCopy = true;
 
-    /*!
+    /*
      * Comparison operator overload for MessageViewWhy type.
      *
      * This is defined as `= default`, so it will just perform a direct comparison of the why value followed by a
@@ -80,7 +80,7 @@ struct MessageViewWhy
      *
      * \param other Another MessageViewWhy object to compare this one to.
      */
-    constexpr auto operator<=>(MessageViewWhy const &other) const noexcept;
+    // constexpr auto operator<=>(MessageViewWhy const &other) const noexcept;
 
     /*!
      * Returns this object's WhyInvalid type.
@@ -101,8 +101,8 @@ struct MessageViewWhy
     constexpr std::basic_string_view<CharType> getInvalidInfo() const noexcept;
 };
 
-template <typename Char_T>
-constexpr auto MessageViewWhy<Char_T>::operator<=>(MessageViewWhy const &other) const noexcept = default;
+// template <typename Char_T>
+// constexpr auto MessageViewWhy<Char_T>::operator<=>(MessageViewWhy const &other) const noexcept = default;
 
 template <typename Char_T>
 constexpr WhyInvalid MessageViewWhy<Char_T>::getWhyInvalid() const noexcept

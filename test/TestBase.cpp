@@ -313,7 +313,7 @@ TEMPLATE_TEST_CASE("Using shl() method in all conditions", "[base][utility][shl]
 {
     constexpr TestType zero = 0;
     constexpr TestType test = alternatingBits<TestType>();
-    constexpr auto maxShift = static_cast<unsigned int>(sizeof(TestType) * Platform::bitsInByte);
+    constexpr auto maxShift = static_cast<unsigned int>(sizeof(TestType) * Constant::bitsInByte);
 
     SECTION("Test each shift position")
     {
@@ -345,7 +345,7 @@ TEMPLATE_TEST_CASE("Using shr() method in all conditions", "[base][utility][shr]
 {
     constexpr TestType zero = 0;
     constexpr TestType test = alternatingBits<TestType>();
-    constexpr auto maxShift = static_cast<unsigned int>(sizeof(TestType) * Platform::bitsInByte);
+    constexpr auto maxShift = static_cast<unsigned int>(sizeof(TestType) * Constant::bitsInByte);
 
     SECTION("Test each shift position")
     {
@@ -1046,7 +1046,7 @@ TEST_CASE("varIndex function returns correct index for std::variant and Var", "[
     SECTION("Returns sentinel index (variant_size) for types not present")
     {
         constexpr auto missing = varIndex<long>(v1);
-        STATIC_REQUIRE(missing == std::variant_size_v<V1>);
+        STATIC_REQUIRE(missing == Constant::amountUnknown);
         constexpr auto also_missing = varIndex<int>(v2);
         STATIC_REQUIRE_FALSE(also_missing < std::variant_size_v<V2>);
     }
@@ -1066,7 +1066,7 @@ consteval std::pair<UInt_T, std::array<byte, sizeof(UInt_T)>> bePair() noexcept
     unsigned char beByte = 0x01;
     for (int pos = 0; pos < sizeof(UInt_T); ++pos)
     {
-        front |= static_cast<UInt_T>(beByte) << (sizeof(UInt_T) - pos - 1) * Platform::bitsInByte;
+        front |= static_cast<UInt_T>(beByte) << (sizeof(UInt_T) - pos - 1) * Constant::bitsInByte;
         back[pos] = static_cast<byte>(beByte);
         beByte += 0x22;
     }
@@ -1111,7 +1111,7 @@ consteval std::pair<UInt_T, std::array<byte, sizeof(UInt_T)>> lePair() noexcept
     unsigned char beByte = 0x01;
     for (int pos = 0; pos < sizeof(UInt_T); ++pos)
     {
-        front |= static_cast<UInt_T>(beByte) << pos * Platform::bitsInByte;
+        front |= static_cast<UInt_T>(beByte) << pos * Constant::bitsInByte;
         back[pos] = static_cast<byte>(beByte);
         beByte += 0x22;
     }

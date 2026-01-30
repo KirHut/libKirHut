@@ -1125,6 +1125,19 @@ namespace Platform
 #endif
 
 /*!
+ * Non Preprocessor equivalent to #KH_IA64.
+ *
+ * \copydetails KirHut::Platform::windows
+ * \hideinitializer
+ */
+[[maybe_unused]] constexpr bool ia64 =
+#if defined(KH_IA64)
+    true;
+#else
+    false;
+#endif
+
+/*!
  * Check if the current platform being built for is a big endian platform.
  *
  * This library does not support platforms that do not either define this or the inverse to be true. Simply put, if this

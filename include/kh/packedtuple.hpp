@@ -165,7 +165,7 @@ using Bool = BitField<bool, 1>;
  *
  * \tparam bits The number of bits to use to represent the i8 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using I8 = BitField<i8, bits>;
 
 /*!
@@ -175,7 +175,7 @@ using I8 = BitField<i8, bits>;
  *
  * \tparam bits The number of bits to use to represent the u8 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using U8 = BitField<u8, bits>;
 
 /*!
@@ -185,7 +185,7 @@ using U8 = BitField<u8, bits>;
  *
  * \tparam bits The number of bits to use to represent the i16 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using I16 = BitField<i16, bits>;
 
 /*!
@@ -195,7 +195,7 @@ using I16 = BitField<i16, bits>;
  *
  * \tparam bits The number of bits to use to represent the u16 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using U16 = BitField<u16, bits>;
 
 /*!
@@ -205,7 +205,7 @@ using U16 = BitField<u16, bits>;
  *
  * \tparam bits The number of bits to use to represent the i32 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using I32 = BitField<i32, bits>;
 
 /*!
@@ -215,7 +215,7 @@ using I32 = BitField<i32, bits>;
  *
  * \tparam bits The number of bits to use to represent the u32 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using U32 = BitField<u32, bits>;
 
 /*!
@@ -225,7 +225,7 @@ using U32 = BitField<u32, bits>;
  *
  * \tparam bits The number of bits to use to represent the i64 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using I64 = BitField<i64, bits>;
 
 /*!
@@ -235,7 +235,7 @@ using I64 = BitField<i64, bits>;
  *
  * \tparam bits The number of bits to use to represent the u64 value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using U64 = BitField<u64, bits>;
 
 /*!
@@ -245,7 +245,7 @@ using U64 = BitField<u64, bits>;
  *
  * \tparam bits The number of bits to use to represent the int value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using Int = BitField<int, bits>;
 
 /*!
@@ -255,7 +255,7 @@ using Int = BitField<int, bits>;
  *
  * \tparam bits The number of bits to use to represent the unsigned int value.
  */
-template <size_t bits>
+template <unsigned int bits>
 using UInt = BitField<unsigned int, bits>;
 
 } // namespace BF
@@ -266,7 +266,7 @@ namespace Detail
 template <typename Wrong_T>
 constexpr bool isBitField = false;
 
-template <std::integral Int_T, size_t bits>
+template <std::integral Int_T, unsigned int bits>
 constexpr bool isBitField<BitField<Int_T, bits>> = true;
 
 template <typename BitField_T>
