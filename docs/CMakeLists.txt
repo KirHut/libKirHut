@@ -77,11 +77,11 @@ else()
     set(KH_DOCS_ALL_FLAG)
 endif()
 
-doxygen_add_docs(docs
+doxygen_add_docs(libKirHut.docs
     ${PROJECT_SOURCE_DIR}/include
     ${KH_DOCS_ALL_FLAG}
     CONFIG_FILE ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
     COMMENT "Generating documentation with Doxygen."
 )
 
-set_target_properties(docs PROPERTIES FOLDER "Documentation" VERBATIM TRUE)
+set_target_properties(libKirHut.docs PROPERTIES FOLDER "Documentation" VERBATIM TRUE)

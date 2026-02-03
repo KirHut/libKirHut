@@ -6,7 +6,7 @@
 cmake_minimum_required(VERSION 3.27)
 
 project(libKirHut
-    VERSION 0.5.0
+    VERSION 0.5.1
     DESCRIPTION "The KirHut Software Company Foundational C++ Development Library"
     HOMEPAGE_URL "https://www.kirhut.com/libKirHut"
     LANGUAGES CXX

@@ -19,8 +19,6 @@
 ***********************************************************************************************************************/
 #pragma once
 
-#include <limits>
-#include <bit>
 #include <string_view>
 
 #include "kh/global.hpp"

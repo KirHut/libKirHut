@@ -1259,6 +1259,12 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 #include <cstdint>
 #include <cstddef>
 #include <type_traits>
+#include <limits>
+#include <bit>
+
+#if defined(KH_COMPILED_WITH_MSVC)
+# include <compare> // IWYU pragma: keep
+#endif
 
 #if defined(KH_USE_128BIT_TYPES)
 # include <cmath>
@@ -1896,6 +1902,12 @@ enum class WhyInvalid
 [[nodiscard]] constexpr int exitCode(WhyInvalid why) noexcept
 {
     return static_cast<int>(why);
+}
+
+[[nodiscard]] constexpr auto operator<=>(WhyInvalid first, WhyInvalid second)
+{
+    using Underlying_T = std::underlying_type_t<WhyInvalid>;
+    return static_cast<Underlying_T>(first) <=> static_cast<Underlying_T>(second);
 }
 
 KH_END_INLINE_NAMESPACE

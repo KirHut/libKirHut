@@ -70,7 +70,7 @@ struct MessageViewWhy
      */
     constexpr static bool isQuickCopy = true;
 
-    /*
+    /*!
      * Comparison operator overload for MessageViewWhy type.
      *
      * This is defined as `= default`, so it will just perform a direct comparison of the why value followed by a
@@ -78,9 +78,15 @@ struct MessageViewWhy
      * header, so all MessageViewWhy objects are sorted based first on the why, then based on alphabetical order of the
      * info message when they both have the same underlying why.
      *
+     * \internal
+     * Unlike all other methods, comparison operator = default methods *must* be implemented in the class body and not
+     * after it! This is because of a compiler bug in GCC that fails to synthesize the operator correctly unless it is
+     * in the object body.
+     * \endinternal
+     *
      * \param other Another MessageViewWhy object to compare this one to.
      */
-    // constexpr auto operator<=>(MessageViewWhy const &other) const noexcept;
+    constexpr auto operator<=>(MessageViewWhy const &other) const noexcept = default;
 
     /*!
      * Returns this object's WhyInvalid type.
@@ -101,6 +107,7 @@ struct MessageViewWhy
     constexpr std::basic_string_view<CharType> getInvalidInfo() const noexcept;
 };
 
+// This can't be implemented here because of a GCC compiler bug!
 // template <typename Char_T>
 // constexpr auto MessageViewWhy<Char_T>::operator<=>(MessageViewWhy const &other) const noexcept = default;
 
@@ -293,11 +300,14 @@ struct GetWhyInvalidImpl
      * \return
      */
     template <typename Why_T>
-    constexpr WhyInvalid operator()(Why_T const &why) const noexcept
-    {
-        return getWhyInvalid(why);
-    }
+    constexpr WhyInvalid operator()(Why_T const &why) const noexcept;
 };
+
+template <typename Why_T>
+constexpr WhyInvalid GetWhyInvalidImpl::operator()(Why_T const &why) const noexcept
+{
+    return getWhyInvalid(why);
+}
 
 /*!
  * \internal
@@ -313,11 +323,14 @@ struct GetInvalidInfoImpl
      * \param why
      */
     template <typename Why_T>
-    constexpr auto operator()(Why_T const &why) const noexcept -> decltype(getInvalidInfo(why))
-    {
-        return getInvalidInfo(why);
-    }
+    constexpr auto operator()(Why_T const &why) const noexcept -> decltype(getInvalidInfo(why));
 };
+
+template <typename Why_T>
+constexpr auto GetInvalidInfoImpl::operator()(Why_T const &why) const noexcept -> decltype(getInvalidInfo(why))
+{
+    return getInvalidInfo(why);
+}
 
 /*!
  * \internal
@@ -589,12 +602,8 @@ public:
      * \throws any exception that is thrown by the according constructor of Why_T (WhyInvalid has none).
      */
     template <typename... Arg_Ts>
-    inline explicit(sizeof...(Arg_Ts) < 2) BasicInvalid(Arg_Ts &&...args)
-        requires(std::is_constructible_v<Why_T, Arg_Ts...>)
-        : data(make_shared<Why_T>(std::forward<Arg_Ts>(args)...))
-    {
-        // No further implementation.
-    }
+    inline explicit(sizeof...(Arg_Ts) == 1) BasicInvalid(Arg_Ts &&...args)
+        requires(std::is_constructible_v<Why_T, Arg_Ts...>);
 
     /*!
      * Construct a BasicInvalid with a mandatory \p why value by copy.
@@ -613,11 +622,7 @@ public:
      * \throws std::bad_alloc If this constructor fails to allocate memory for the underlying std::shared_ptr.
      * \throws any exception that is thrown by the copy constructor of Why_T (WhyInvalid has none).
      */
-    inline explicit BasicInvalid(Why_T const &why) requires(std::is_copy_constructible_v<Why_T>)
-        : data(make_shared<Why_T>(why))
-    {
-        // No further implementation.
-    }
+    inline explicit BasicInvalid(Why_T const &why) requires(std::is_copy_constructible_v<Why_T>);
 
     /*!
      * Constructor with or without a message and a mandatory \p why value.
@@ -631,11 +636,7 @@ public:
      * \throws std::bad_alloc If this constructor fails to allocate memory for the underlying std::shared_ptr.
      * \throws any exception that is thrown by the move constructor of Why_T (WhyInvalid has none).
      */
-    inline explicit BasicInvalid(Why_T &&why) requires(std::is_move_constructible_v<Why_T>)
-        : data(make_shared<Why_T>(std::move(why)))
-    {
-        // No further implementation.
-    }
+    inline explicit BasicInvalid(Why_T &&why) requires(std::is_move_constructible_v<Why_T>);
 
     /*!
      * Equality operator for complex BasicInvalid types.
@@ -652,15 +653,7 @@ public:
      * \param other The other BasicInvalid you are comparing this one to.
      * \return Whether or not this BasicInvalid is equal to \p other.
      */
-    inline bool operator==(BasicInvalid const &other) const noexcept
-    {
-        if (data and other.data)
-        {
-            return *data == *other.data;
-        }
-
-        return data == other.data;
-    }
+    [[nodiscard]] inline bool operator==(BasicInvalid const &other) const noexcept;
 
     /*!
      * Get the reason for this BasicInvalid object's creation.
@@ -671,15 +664,7 @@ public:
      *
      * \return A reason why this BasicInvalid object was created.
      */
-    [[nodiscard]] inline WhyInvalid why() const noexcept
-    {
-        if (Why_T const *internal = whyData())
-        {
-            return getWhyInvalid(*internal);
-        }
-
-        return WhyInvalid::DataRemoved;
-    }
+    [[nodiscard]] inline WhyInvalid why() const noexcept;
 
     /*!
      * Get the info contained in this Invalid object.
@@ -691,15 +676,7 @@ public:
      *
      * \return A string_view of the info in this Invalid object.
      */
-    [[nodiscard]] inline std::basic_string_view<CharType> info() const noexcept
-    {
-        if (Why_T const *internal = whyData())
-        {
-            return getInvalidInfo(*internal);
-        }
-
-        return "";
-    }
+    [[nodiscard]] inline std::basic_string_view<CharType> info() const noexcept;
 
     /*!
      * Constant expression flag for BasicInvalid types to distinguish between simple BasicInvalids and complex ones.
@@ -729,19 +706,80 @@ protected:
      *
      * \return The internal Why_T type stored by this BasicInvalid.
      */
-    [[nodiscard]] inline Why_T *whyData() noexcept
-    {
-        return data.get();
-    }
+    [[nodiscard]] inline Why_T *whyData() noexcept;
 
     /*!
      * \copydoc whyData()
      */
-    [[nodiscard]] inline Why_T const *whyData() const noexcept
-    {
-        return data.get();
-    }
+    [[nodiscard]] inline Why_T const *whyData() const noexcept;
 };
+
+template <ValidWhyType Why_T>
+template <typename... Arg_Ts>
+inline BasicInvalid<Why_T>::BasicInvalid(Arg_Ts &&...args) requires(std::is_constructible_v<Why_T, Arg_Ts...>)
+    : data(make_shared<Why_T>(std::forward<Arg_Ts>(args)...))
+{
+    // No further implementation.
+}
+
+template <ValidWhyType Why_T>
+inline BasicInvalid<Why_T>::BasicInvalid(Why_T const &why) requires(std::is_copy_constructible_v<Why_T>)
+    : data(make_shared<Why_T>(why))
+{
+    // No further implementation.
+}
+
+template <ValidWhyType Why_T>
+inline BasicInvalid<Why_T>::BasicInvalid(Why_T &&why) requires(std::is_move_constructible_v<Why_T>)
+    : data(make_shared<Why_T>(std::move(why)))
+{
+    // No further implementation.
+}
+
+template <ValidWhyType Why_T>
+inline bool BasicInvalid<Why_T>::operator==(BasicInvalid const &other) const noexcept
+{
+    if (data and other.data)
+    {
+        return *data == *other.data;
+    }
+
+    return data == other.data;
+}
+
+template <ValidWhyType Why_T>
+inline WhyInvalid BasicInvalid<Why_T>::why() const noexcept
+{
+    if (Why_T const *internal = whyData())
+    {
+        return getWhyInvalid(*internal);
+    }
+
+    return WhyInvalid::DataRemoved;
+}
+
+template <ValidWhyType Why_T>
+inline std::basic_string_view<typename BasicInvalid<Why_T>::CharType> BasicInvalid<Why_T>::info() const noexcept
+{
+    if (Why_T const *internal = whyData())
+    {
+        return getInvalidInfo(*internal);
+    }
+
+    return "";
+}
+
+template <ValidWhyType Why_T>
+inline Why_T *BasicInvalid<Why_T>::whyData() noexcept
+{
+    return data.get();
+}
+
+template <ValidWhyType Why_T>
+inline Why_T const *BasicInvalid<Why_T>::whyData() const noexcept
+{
+    return data.get();
+}
 
 /*!
  * \brief The BasicInvalid class
@@ -767,12 +805,8 @@ public:
      * \param args
      */
     template <typename... Arg_Ts>
-    constexpr explicit BasicInvalid(Arg_Ts &&...args) noexcept(std::is_nothrow_constructible_v<Why_T, Arg_Ts...>)
-        requires(std::is_constructible_v<Why_T, Arg_Ts...>)
-        : data{ std::forward<Arg_Ts>(args)... }
-    {
-        // No further implementation.
-    }
+    constexpr explicit(sizeof...(Arg_Ts) == 1) BasicInvalid(Arg_Ts &&...args)
+        noexcept(std::is_nothrow_constructible_v<Why_T, Arg_Ts...>) requires(std::is_constructible_v<Why_T, Arg_Ts...>);
 
     /*!
      * Constructor with a mandatory \p why value that is copied.
@@ -782,12 +816,9 @@ public:
      * and methods.
      *
      * \param why A Why_T state (usually a WhyInvalid) of what caused the BasicInvalid to be raised or returned.
-     * \throws any exception that is thrown by the copy constructor of WHY (WhyInvalid has none).
+     * \throws any exception that is thrown by the copy constructor of Why_T (WhyInvalid has none).
      */
-    constexpr explicit BasicInvalid(Why_T const &why) noexcept : data(why)
-    {
-        // No further implementation.
-    }
+    constexpr explicit BasicInvalid(Why_T const &why) noexcept(std::is_nothrow_copy_constructible_v<Why_T>);
 
     /*!
      * Constructor with a mandatory \p why value that is moved.
@@ -799,10 +830,7 @@ public:
      * \param why A Why_T state (usually a WhyInvalid) of what caused the BasicInvalid to be raised or returned.
      * \throws any exception that is thrown by the move constructor of WHY (WhyInvalid has none).
      */
-    constexpr explicit BasicInvalid(Why_T &&why) noexcept : data(std::move(why))
-    {
-        // No further implementation.
-    }
+    constexpr explicit BasicInvalid(Why_T &&why) noexcept;
 
     /*!
      * Equality operator for complex BasicInvalid types.
@@ -816,10 +844,16 @@ public:
      * BasicInvalid objects. The only way to create an "empty" BasicInvalid is to create one with an instance of the
      * object in it, then move it to another BasicInvalid using the move constructor or assignment operator.
      *
+     * \internal
+     * Unlike all other methods, comparison operator = default methods *must* be implemented in the class body and not
+     * after it! This is because of a compiler bug in GCC that fails to synthesize the operator correctly unless it is
+     * in the object body.
+     * \endinternal
+     *
      * \param other The other BasicInvalid you are comparing this one to.
      * \return Whether or not this BasicInvalid is equal to \p other.
      */
-    constexpr bool operator==(BasicInvalid const &other) const noexcept = default;
+    [[nodiscard]] constexpr bool operator==(BasicInvalid const &other) const noexcept = default;
 
     /*!
      * Get the reason for this Invalid object's creation.
@@ -830,19 +864,13 @@ public:
      *
      * \return A reason why this Invalid object was created.
      */
-    [[nodiscard]] constexpr WhyInvalid why() const noexcept
-    {
-        return getWhyInvalid(data);
-    }
+    [[nodiscard]] constexpr WhyInvalid why() const noexcept;
 
     /*!
      * \brief info
      * \return
      */
-    [[nodiscard]] constexpr std::basic_string_view<CharType> info() const noexcept
-    {
-        return getInvalidInfo(data);
-    }
+    [[nodiscard]] constexpr std::basic_string_view<CharType> info() const noexcept;
 
 protected:
     /*!
@@ -854,19 +882,63 @@ protected:
      *
      * \return A reason why this Invalid object was created.
      */
-    [[nodiscard]] constexpr Why_T *whyData() noexcept
-    {
-        return &data;
-    }
+    [[nodiscard]] constexpr Why_T *whyData() noexcept;
 
     /*!
      * \copydoc whyData()
      */
-    [[nodiscard]] constexpr std::add_const_t<Why_T> *whyData() const noexcept
-    {
-        return &data;
-    }
+    [[nodiscard]] constexpr std::add_const_t<Why_T> *whyData() const noexcept;
 };
+
+template <QuickWhyType Why_T>
+template <typename... Arg_Ts>
+constexpr BasicInvalid<Why_T>::BasicInvalid(Arg_Ts &&...args)
+    noexcept(std::is_nothrow_constructible_v<Why_T, Arg_Ts...>) requires(std::is_constructible_v<Why_T, Arg_Ts...>)
+    : data{ std::forward<Arg_Ts>(args)... }
+{
+    // No further implementation.
+}
+
+template <QuickWhyType Why_T>
+constexpr BasicInvalid<Why_T>::BasicInvalid(Why_T const &why) noexcept(std::is_nothrow_copy_constructible_v<Why_T>) :
+    data(why)
+{
+    // No further implementation.
+}
+
+template <QuickWhyType Why_T>
+constexpr BasicInvalid<Why_T>::BasicInvalid(Why_T &&why) noexcept : data(std::move(why))
+{
+    // No further implementation.
+}
+
+// This can't be implemented here because of a GCC compiler bug!
+// template <QuickWhyType Why_T>
+// constexpr bool BasicInvalid<Why_T>::operator==(BasicInvalid const &other) const noexcept = default;
+
+template <QuickWhyType Why_T>
+constexpr WhyInvalid BasicInvalid<Why_T>::why() const noexcept
+{
+    return getWhyInvalid(data);
+}
+
+template <QuickWhyType Why_T>
+constexpr std::basic_string_view<typename BasicInvalid<Why_T>::CharType> BasicInvalid<Why_T>::info() const noexcept
+{
+    return getInvalidInfo(data);
+}
+
+template <QuickWhyType Why_T>
+constexpr Why_T *BasicInvalid<Why_T>::whyData() noexcept
+{
+    return &data;
+}
+
+template <QuickWhyType Why_T>
+constexpr std::add_const_t<Why_T> *BasicInvalid<Why_T>::whyData() const noexcept
+{
+    return &data;
+}
 
 /*!
  * A template alias of BasicInvalid using a MessageViewWhy as the Why type.
@@ -958,6 +1030,13 @@ class MaybeInv;
 template <typename Function, typename FirstArg, typename... Args>
 concept MaybeTransform = std::invocable<Function, FirstArg, Args...> and
                          InstanceOf<std::invoke_result_t<Function, FirstArg, Args...>, MaybeInv>;
+
+template <typename Contained_T, typename Invalid_T>
+class MaybeInv;
+
+template <typename Contained_T, typename Invalid_T>
+constexpr void swap(MaybeInv<Contained_T, Invalid_T> &m1, MaybeInv<Contained_T, Invalid_T> &m2)
+    noexcept(std::is_nothrow_swappable_v<Contained_T>);
 
 /*!
  * A class that resembles std::expected in C++23 but is slightly simpler.
@@ -1076,11 +1155,7 @@ public:
      * \param goodData Valid data to return from a function or method returning MaybeInv.
      * \throws ... Any exception thrown by the copy constructor for \p goodData.
      */
-    constexpr MaybeInv(Contained_T const &goodData) noexcept(std::is_nothrow_copy_constructible_v<Contained_T>) :
-        data(goodData)
-    {
-        // No further implementation.
-    }
+    constexpr MaybeInv(Contained_T const &goodData) noexcept(std::is_nothrow_copy_constructible_v<Contained_T>);
 
     /*!
      * Good object rvalue reference constructor.
@@ -1094,11 +1169,7 @@ public:
      * \param goodData An rvalue reference to valid data to return from a function or method returning MaybeInv.
      * \throws ... Any exception thrown by the move constructor for \p goodData.
      */
-    constexpr MaybeInv(Contained_T &&goodData) noexcept(std::is_nothrow_move_constructible_v<Contained_T>) :
-        data(std::move(goodData))
-    {
-        // No further implementation.
-    }
+    constexpr MaybeInv(Contained_T &&goodData) noexcept(std::is_nothrow_move_constructible_v<Contained_T>);
 
     /*!
      * Good object in-place constructor.
@@ -1111,14 +1182,10 @@ public:
      * \param flag The Flags::emplace signifier to perform in-place construction.
      * \param ...args The arguments to pass to the constructor for the contained type of this MaybeInv.
      */
-    template <typename... Args>
-    requires std::constructible_from<Contained_T, Args...>
-    constexpr explicit(sizeof...(Args) == 0) MaybeInv([[maybe_unused]] EmplaceFlag flag, Args &&...args)
-        noexcept(std::is_nothrow_constructible_v<Contained_T, Args...>) :
-        data(inpT, forward<Args>(args)...)
-    {
-        // No further implementation.
-    }
+    template <typename... Arg_Ts>
+    requires std::constructible_from<Contained_T, Arg_Ts...>
+    constexpr explicit(sizeof...(Arg_Ts) == 0) MaybeInv([[maybe_unused]] EmplaceFlag flag, Arg_Ts &&...args)
+        noexcept(std::is_nothrow_constructible_v<Contained_T, Arg_Ts...>);
 
     /*!
      * Invalid object copying constructor.
@@ -1133,10 +1200,7 @@ public:
      * \param inv Invalid lvalue object to copy from for the MaybeInv's internal Invalid object.
      * \throws std::bad_alloc If allocating the new Invalid object fails.
      */
-    constexpr explicit MaybeInv(Invalid_T const &inv) : data(inv)
-    {
-        // No further implementation.
-    }
+    constexpr explicit MaybeInv(Invalid_T const &inv);
 
     /*!
      * Invalid object rvalue reference constructor.
@@ -1148,10 +1212,7 @@ public:
      *
      * \param inv An Invalid object rvalue reference to return from a function or method returning MaybeInv.
      */
-    constexpr MaybeInv(Invalid_T &&inv) noexcept : data(std::move(inv))
-    {
-        // No further implementation.
-    }
+    constexpr MaybeInv(Invalid_T &&inv) noexcept;
 
     /*!
      * Invalid MaybeInv constructor without a string message.
@@ -1159,10 +1220,7 @@ public:
      * This constructor is useful for when you need to
      * \param why
      */
-    constexpr explicit MaybeInv(WhyInvalid why) noexcept : data(inpInvalid, why)
-    {
-        // No further implementation.
-    }
+    constexpr explicit MaybeInv(WhyInvalid why) noexcept;
 
     /*!
      * Invalid MaybeInv constructor with a message as an rvalue reference.
@@ -1175,10 +1233,7 @@ public:
      * \param why A WhyInvalid enumeration of what actually caused the Invalid return value.
      * \param message A message to log into the error log, or to display to the user after translation.
      */
-    constexpr MaybeInv(WhyInvalid why, string &&message) noexcept : data(inpInvalid, why, std::move(message))
-    {
-        // No further implementation.
-    }
+    constexpr MaybeInv(WhyInvalid why, string &&message) noexcept;
 
     /*!
      * Constructor with a message that will be copied from a constant source.
@@ -1192,10 +1247,7 @@ public:
      * \param message A message to log into the error log, or to display to the user after translation.
      * \throws std::bad_alloc If copying the \p message fails to allocate memory.
      */
-    constexpr MaybeInv(WhyInvalid why, char const *message) : data(inpInvalid, why, message)
-    {
-        // No further implementation.
-    }
+    constexpr MaybeInv(WhyInvalid why, char const *message);
 
     /*!
      * Constructor with a message that will be copied from a constant source.
@@ -1209,10 +1261,7 @@ public:
      * \param message A message to log into the error log, or to display to the user after translation.
      * \throws std::bad_alloc If copying the \p message fails to allocate memory.
      */
-    constexpr MaybeInv(WhyInvalid why, string_view message) : data(inpInvalid, why, message)
-    {
-        // No further implementation.
-    }
+    constexpr MaybeInv(WhyInvalid why, string_view message);
 
     /*!
      * Method to check if the MaybeInv has valid data or not.
@@ -1222,10 +1271,7 @@ public:
      *
      * \return A boolean indicating whether or not the data is valid.
      */
-    [[nodiscard]] constexpr bool isValid() const noexcept
-    {
-        return std::holds_alternative<Contained_T>(data);
-    }
+    [[nodiscard]] constexpr bool isValid() const noexcept;
 
     /*!
      * Returns the results of isValid() when MaybeInv is coerced to a bool.
@@ -1235,10 +1281,7 @@ public:
      *
      * \return A boolean indicating whether or not the data is valid.
      */
-    constexpr operator bool() const noexcept
-    {
-        return isValid();
-    }
+    constexpr operator bool() const noexcept;
 
     /*!
      * Return the valid data enclosed in this MaybeInv, or a nullptr if this object contains an Invalid.
@@ -1253,18 +1296,12 @@ public:
      *
      * \return A pointer to the contained valid data, or nullptr if there is not valid data.
      */
-    [[nodiscard]] constexpr Contained_T const *get() const noexcept
-    {
-        return std::get_if<Contained_T>(&data);
-    }
+    [[nodiscard]] constexpr Contained_T const *get() const noexcept;
 
     /*!
      * \copydoc get()const noexcept
      */
-    [[nodiscard]] constexpr Contained_T *get() noexcept
-    {
-        return std::get_if<Contained_T>(&data);
-    }
+    [[nodiscard]] constexpr Contained_T *get() noexcept;
 
     /*!
      * Take the object out of this method, providing an alternate object if there is no valid data.
@@ -1278,13 +1315,7 @@ public:
      * \return The data in this object, returned using an rvalue reference to move the value, or the alternate if the
      * data is not valid.
      */
-    [[nodiscard]] constexpr Contained_T take(Contained_T &&alt) noexcept(safeMove)
-    {
-        Invalidator cleaner(data);
-
-        // Trust in RVO. This should result in only one move construction.
-        return isValid() ? std::move(*get()) : std::move(alt);
-    }
+    [[nodiscard]] constexpr Contained_T take(Contained_T &&alt) noexcept(safeMove);
 
     /*!
      * Take the object out of this method, and fatally crash if no such object exists.
@@ -1302,19 +1333,7 @@ public:
      * \throws ... Any exception thrown by the move constructor for type Contained_T.
      * \return The data in this object, returned after move construction out of this object.
      */
-    [[nodiscard]] constexpr Contained_T take()
-    {
-        if (isValid())
-        {
-            Invalidator cleaner(data);
-
-            // Trust in RVO. This should result in only one move construction.
-            return std::move(*get());
-        }
-
-        // This shouldn't happen if the object isn't invalid. Never call this method on an Invalid MaybeInv.
-        Detail::throwNoValidData(*failure());
-    }
+    [[nodiscard]] constexpr Contained_T take();
 
     /*!
      * Return a const pointer to the Invalid object used in this object, or nullptr if the MaybeInv contains valid data.
@@ -1325,10 +1344,7 @@ public:
      *
      * \return A pointer to an Invalid object if this object contains that, or nullptr otherwise.
      */
-    [[nodiscard]] constexpr Invalid const *failure() const noexcept
-    {
-        return std::get_if<Invalid>(&data);
-    }
+    [[nodiscard]] constexpr Invalid const *failure() const noexcept;
 
     /*!
      * Monadic transform method that returns a modified MaybeInv with a different type as returned by \p function.
@@ -1337,14 +1353,9 @@ public:
      * \param args
      * \return A MaybeInv of the type returned by \p function. It may be initialized with this MaybeInv's Invalid.
      */
-    template <typename... Args>
-    constexpr auto then(MaybeTransform<Contained_T const &, Args...> auto &function, Args &&...args)
-        const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Contained_T const &, Args &&...>
-    {
-        using RetType =
-            std::invoke_result_t<std::remove_reference_t<decltype(function)>, Contained_T const &, Args &&...>;
-        return isValid() ? function(*get(), std::forward<Args>(args)...) : RetType{ Invalid{ *failure() } };
-    }
+    template <typename... Arg_Ts>
+    constexpr auto then(MaybeTransform<Contained_T const &, Arg_Ts...> auto &function, Arg_Ts &&...args)
+        const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Contained_T const &, Arg_Ts &&...>;
 
     /*!
      * Monadic transform method that returns a modified MaybeInv with a different type as returned by \p function.
@@ -1355,14 +1366,9 @@ public:
      */
     template <typename... Arg_Ts, MaybeTransform<Contained_T &&, Arg_Ts...> Function_T>
     constexpr auto
-    then(Function_T &function, Arg_Ts &&...args) &&
-        noexcept(safeMove and std::is_nothrow_invocable_v<Function_T, Contained_T &&, Arg_Ts...>)
-        -> std::invoke_result_t<Function_T, Contained_T &&, Arg_Ts...>
-    {
-        using RetType = std::invoke_result_t<Function_T, Contained_T &&, Arg_Ts...>;
-        return isValid() ? function(std::move(take()), std::forward<Arg_Ts>(args)...)
-                         : RetType{ std::move(*failure()) };
-    }
+    then(Function_T &function,
+         Arg_Ts &&...args) && noexcept(safeMove and std::is_nothrow_invocable_v<Function_T, Contained_T &&, Arg_Ts...>)
+        -> std::invoke_result_t<Function_T, Contained_T &&, Arg_Ts...>;
 
     /*!
      * Monadic response method that always returns itself as this does not make a modified version of the MaybeInv.
@@ -1373,16 +1379,8 @@ public:
      * \param args
      * \return
      */
-    template <typename... Args>
-    constexpr MaybeInv<Contained_T> &orElse(std::invocable<Args &&...> auto &function, Args &&...args)
-    {
-        if (!isValid())
-        {
-            function(forward<Args>(args)...);
-        }
-
-        return *this;
-    }
+    template <typename... Arg_Ts>
+    constexpr MaybeInv<Contained_T> &orElse(std::invocable<Arg_Ts &&...> auto &function, Arg_Ts &&...args);
 
     /*!
      * Monadic transform method that returns a modified MaybeInv, either with a new Invalid, or in a good state.
@@ -1399,31 +1397,9 @@ public:
      * \param args
      * \return The result of calling \p function on the failure() object and \p args, or unchanged if it hasn't failed.
      */
-    template <typename... Args>
-    constexpr auto orElse(MaybeTransform<Invalid const &, Args &&...> auto &function, Args &&...args)
-        const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Invalid const &, Args &&...>
-    {
-        using RetType = decltype(function(*failure(), forward<Args>(args)...));
-        return !isValid() ? function(*failure(), forward<Args>(args)...) : RetType{ *this };
-    }
-
-    /*!
-     * Swap for MaybeInv types that swaps the contained information.
-     *
-     * This includes if one of them is an Invalid, if both are Invalid, or if neither are. They will be swapped
-     * in the way that you would imagine, so if \p m1 is an Invalid and \p m2 is not, after the swap \p m2 will be
-     * invalid and \p m1 will not be. The valid data will also be swapped.
-     *
-     * This can only be done on MaybeInv types that contain the same type, not any that contain different types.
-     *
-     * \param m1 First MaybeInv argument.
-     * \param m2 Second MaybeInv argument.
-     */
-    friend constexpr void swap(MaybeInv &m1, MaybeInv &m2) noexcept(std::is_nothrow_swappable_v<Contained_T>)
-    {
-        using std::swap;
-        swap(m1.data, m2.data);
-    }
+    template <typename... Arg_Ts>
+    constexpr auto orElse(MaybeTransform<Invalid const &, Arg_Ts &&...> auto &function, Arg_Ts &&...args)
+        const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Invalid const &, Arg_Ts &&...>;
 
     /*!
      * Constexpr boolean indicating if the Contained_T is nothrow move constructible.
@@ -1450,23 +1426,214 @@ private:
 
     struct Invalidator
     {
-        Invalidator(Data &d) : dat(d)
-        {
-            // No further implementation.
-        }
+        Invalidator(Data &d);
 
-        ~Invalidator() noexcept
-        {
-            dat = Invalid{ WhyInvalid::DataRemoved };
-        }
+        ~Invalidator() noexcept;
 
         Data &dat;
     };
+
+    friend constexpr void swap<>(MaybeInv &m1, MaybeInv &m2) noexcept(std::is_nothrow_swappable_v<Contained_T>);
 
     static_assert(not std::is_reference_v<Contained_T>, "MaybeInv cannot contain a reference type.");
     static_assert(not std::is_function_v<Contained_T>,
                   "MaybeInv cannot contain a function type. Return a function object instead.");
 };
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(Contained_T const &goodData)
+    noexcept(std::is_nothrow_copy_constructible_v<Contained_T>) :
+    data(goodData)
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(Contained_T &&goodData)
+    noexcept(std::is_nothrow_move_constructible_v<Contained_T>) :
+    data(std::move(goodData))
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+template <typename... Arg_Ts>
+requires std::constructible_from<Contained_T, Arg_Ts...>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv([[maybe_unused]] EmplaceFlag flag, Arg_Ts &&...args)
+    noexcept(std::is_nothrow_constructible_v<Contained_T, Arg_Ts...>) :
+    data(inpT, forward<Arg_Ts>(args)...)
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(Invalid_T const &inv) : data(inv)
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(Invalid_T &&inv) noexcept : data(std::move(inv))
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(WhyInvalid why) noexcept : data(inpInvalid, why)
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(WhyInvalid why, string &&message) noexcept :
+    data(inpInvalid, why, std::move(message))
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(WhyInvalid why, char const *message) :
+    data(inpInvalid, why, message)
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::MaybeInv(WhyInvalid why, string_view message) :
+    data(inpInvalid, why, message)
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr bool MaybeInv<Contained_T, Invalid_T>::isValid() const noexcept
+{
+    return std::holds_alternative<Contained_T>(data);
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr MaybeInv<Contained_T, Invalid_T>::operator bool() const noexcept
+{
+    return isValid();
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr Contained_T const *MaybeInv<Contained_T, Invalid_T>::get() const noexcept
+{
+    return std::get_if<Contained_T>(&data);
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr Contained_T *MaybeInv<Contained_T, Invalid_T>::get() noexcept
+{
+    return std::get_if<Contained_T>(&data);
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr Contained_T MaybeInv<Contained_T, Invalid_T>::take(Contained_T &&alt) noexcept(safeMove)
+{
+    Invalidator cleaner(data);
+
+    // Trust in RVO. This should result in only one move construction.
+    return isValid() ? std::move(*get()) : std::move(alt);
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr Contained_T MaybeInv<Contained_T, Invalid_T>::take()
+{
+    if (isValid())
+    {
+        Invalidator cleaner(data);
+
+        // Trust in RVO. This should result in only one move construction.
+        return std::move(*get());
+    }
+
+    // This shouldn't happen if the object isn't invalid. Never call this method on an Invalid MaybeInv.
+    Detail::throwNoValidData(*failure());
+}
+
+template <typename Contained_T, typename Invalid_T>
+constexpr Invalid const *MaybeInv<Contained_T, Invalid_T>::failure() const noexcept
+{
+    return std::get_if<Invalid>(&data);
+}
+
+template <typename Contained_T, typename Invalid_T>
+template <typename... Arg_Ts>
+constexpr auto MaybeInv<Contained_T, Invalid_T>::then(MaybeTransform<Contained_T const &, Arg_Ts...> auto &function,
+                                                      Arg_Ts &&...args)
+    const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Contained_T const &, Arg_Ts &&...>
+{
+    using RetType =
+        std::invoke_result_t<std::remove_reference_t<decltype(function)>, Contained_T const &, Arg_Ts &&...>;
+    return isValid() ? function(*get(), std::forward<Arg_Ts>(args)...) : RetType{ Invalid{ *failure() } };
+}
+
+template <typename Contained_T, typename Invalid_T>
+template <typename... Arg_Ts, MaybeTransform<Contained_T &&, Arg_Ts...> Function_T>
+constexpr auto MaybeInv<Contained_T, Invalid_T>::then(Function_T &function, Arg_Ts &&...args) && noexcept(
+    safeMove and std::is_nothrow_invocable_v<Function_T, Contained_T &&, Arg_Ts...>)
+    -> std::invoke_result_t<Function_T, Contained_T &&, Arg_Ts...>
+{
+    using RetType = std::invoke_result_t<Function_T, Contained_T &&, Arg_Ts...>;
+    return isValid() ? function(std::move(take()), std::forward<Arg_Ts>(args)...) : RetType{ std::move(*failure()) };
+}
+
+template <typename Contained_T, typename Invalid_T>
+template <typename... Arg_Ts>
+constexpr MaybeInv<Contained_T> &MaybeInv<Contained_T, Invalid_T>::orElse(std::invocable<Arg_Ts &&...> auto &function,
+                                                                          Arg_Ts &&...args)
+{
+    if (!isValid())
+    {
+        function(forward<Arg_Ts>(args)...);
+    }
+
+    return *this;
+}
+
+template <typename Contained_T, typename Invalid_T>
+template <typename... Arg_Ts>
+constexpr auto MaybeInv<Contained_T, Invalid_T>::orElse(MaybeTransform<Invalid const &, Arg_Ts &&...> auto &function,
+                                                        Arg_Ts &&...args)
+    const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Invalid const &, Arg_Ts &&...>
+{
+    using RetType = decltype(function(*failure(), forward<Arg_Ts>(args)...));
+    return !isValid() ? function(*failure(), forward<Arg_Ts>(args)...) : RetType{ *this };
+}
+
+template <typename Contained_T, typename Invalid_T>
+MaybeInv<Contained_T, Invalid_T>::Invalidator::Invalidator(Data &d) : dat(d)
+{
+    // No further implementation.
+}
+
+template <typename Contained_T, typename Invalid_T>
+MaybeInv<Contained_T, Invalid_T>::Invalidator::~Invalidator() noexcept
+{
+    dat = Invalid{ WhyInvalid::DataRemoved };
+}
+
+/*!
+ * Swap for MaybeInv types that swaps the contained information.
+ *
+ * This includes if one of them is an Invalid, if both are Invalid, or if neither are. They will be swapped
+ * in the way that you would imagine, so if \p m1 is an Invalid and \p m2 is not, after the swap \p m2 will be
+ * invalid and \p m1 will not be. The valid data will also be swapped.
+ *
+ * This can only be done on MaybeInv types that contain the same type, not any that contain different types.
+ *
+ * \param m1 First MaybeInv argument.
+ * \param m2 Second MaybeInv argument.
+ */
+template <typename Contained_T, typename Invalid_T>
+constexpr void swap(MaybeInv<Contained_T, Invalid_T> &m1, MaybeInv<Contained_T, Invalid_T> &m2)
+    noexcept(std::is_nothrow_swappable_v<Contained_T>)
+{
+    using std::swap;
+    swap(m1.data, m2.data);
+}
 
 KH_END_INLINE_NAMESPACE
 
