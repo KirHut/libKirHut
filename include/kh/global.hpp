@@ -463,38 +463,12 @@
  */
 
 /*!
- * \def KH_NO_BADALLOC
- *
- * Preprocessor flag to build libKirHut without support for throwing std::bad_alloc exceptions.
- *
- * The std::bad_alloc exception is a particularly finicky and troublesome part of the exception specification. Namely,
- * there is very little correct behavior for a program to do in the face of a failure to allocate memory other than to
- * simply immediately terminate. Further, the usual case for most hosted operating systems is to simply lie about not
- * having sufficient memory space, and to cause a segmentation fault or simply run an OOM killing process to kill
- * another process or application to get the sufficient memory. With this being the case, there is hardly ever any
- * useful purpose in trying to prevent crashes from memory allocation issues.
- *
- * The Qt library effectively already actually does this, because it unconditionally marks multiple methods that
- * allocate memory as noexcept, meaning the only supported function in the face of std::bad_alloc is to call
- * std::terminate(). This library, instead, allows the builder to select if this library supports throwing
- * std::bad_alloc using this flag, and otherwise will behave like Qt, where the only supported action due to
- * std::bad_alloc is to immediately call std::terminate(). This does have the benefit of marking several additional
- * functions and methods in this library as noexcept, namely any function or method that only throws std::bad_alloc.
- *
- * The use of #KH_NO_EXCEPTIONS implies that this is also defined, even if that option was not passed in as a CMake
- * build option.
- */
-
-/*!
  * \def KH_NO_EXCEPTIONS
  *
  * Preprocessor flag to build libKirHut without support for throwing any exceptions at all.
  *
  * This will cause all functions and methods to stop throwing exceptions, and they will usually instead either fallback
- * to an alternative or simply crash the application. Unlike with #KH_NO_BADALLOC, this will **not** mark all functions
- * and methods in this library as noexcept!
- *
- * As a consequence of building libKirHut with this flag, the #KH_NO_BADALLOC flag is overridden and defined as 1.
+ * to an alternative or simply crash the application.
  */
 
 /*!
@@ -731,6 +705,18 @@
  * - Open Watcom C++ Compiler: It barely supports C++98, and will never update.
  * - PathScale C++ Compiler: Company is defunct, hasn't had an update in over a decade, and isn't C++20.
  * - PGI C++ Compiler: Technically now the NVidia HPC SDK Compiler, so it is supported.
+ */
+
+/*!
+ * \def KH_COMPILER_DISPLAY_STRING
+ *
+ * Preprocessor define with the complete "display string" (name and complete version number) of the compiler used to
+ * compile libKirHut.
+ *
+ * This should always be defined, even if #KH_COMPILED_WITH_UNKNOWN is true. This should have a complete compiler info
+ * string, including complete version number and build information, as directly provided by the compiler. CMake is
+ * responsible for extracting this information and providing it to the library, but libKirHut also simply requires
+ * CMake to build at all.
  */
 
 //! \}
@@ -1135,6 +1121,7 @@ static_assert(KH_OVERRIDE_PLATFORM_SAFETY,
 # define KH_COMPILED_WITH_APPLECLANG
 # define KH_COMPILED_WITH_ICX
 # define KH_COMPILED_WITH_NVHPC
+# define KH_COMPILED_WITH_NVIDIA
 # define KH_COMPILED_WITH_IBMXL
 # define KH_COMPILED_WITH_ARMCLANG
 # define KH_COMPILED_WITH_CRAY

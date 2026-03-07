@@ -73,9 +73,13 @@ configure_file(Doxyfile.in Doxyfile @ONLY)
 
 if(KH_BUILD_DOCS)
     set(KH_DOCS_ALL_FLAG ALL)
+    set(KH_DOCS_EXCLUDE_FLAG)
 else()
     set(KH_DOCS_ALL_FLAG)
+    set(KH_DOCS_EXCLUDE_FLAG EXCLUDE_FROM_ALL)
 endif()
+
+include(GNUInstallDirs)
 
 doxygen_add_docs(libKirHut.docs
     ${PROJECT_SOURCE_DIR}/include
@@ -84,4 +88,9 @@ doxygen_add_docs(libKirHut.docs
     COMMENT "Generating documentation with Doxygen."
 )
 
-set_target_properties(libKirHut.docs PROPERTIES FOLDER "Documentation" VERBATIM TRUE)
+install(DIRECTORY
+    "${CMAKE_CURRENT_BINARY_DIR}/html/"
+    TYPE DOC
+    COMPONENT Documentation
+    ${KH_DOCS_EXCLUDE_FLAG}
+)

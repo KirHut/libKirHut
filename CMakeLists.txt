@@ -5,14 +5,22 @@
 
 cmake_minimum_required(VERSION 3.27)
 
+# Prevent building in the source tree
+if ("${CMAKE_BINARY_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
+    message(STATUS "libKirHut prevents in-source builds by default, since this is likely not what you intended.")
+    message(STATUS "Use the command `cmake . -B <build-dir>` to set a separate build directory for the library to")
+    message(STATUS "build to.")
+    message(FATAL_ERROR "In-source builds of libKirHut are prohibited.")
+endif()
+
 project(libKirHut
-    VERSION 0.5.1
+    VERSION 0.6.0
     DESCRIPTION "The KirHut Software Company Foundational C++ Development Library"
     HOMEPAGE_URL "https://www.kirhut.com/libKirHut"
     LANGUAGES CXX
 )
 
-list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(KHCompilerInfo)
 
@@ -57,6 +65,7 @@ option(KH_NO_BADALLOC "Remove support for throwing or catching std::bad_alloc." 
 option(KH_NO_EXCEPTIONS "Removes exception support entirely, along with the Error type (implies KH_NO_BADALLOC)." OFF)
 option(KH_INCLUDE_TERMINAL_PRINT "Include UTF-8 C++23 style printing support in KirHut::IO." ON)
 option(KH_OVERRIDE_PLATFORM_SAFETY "Ignore unsupported platform checks during compile time checking (dangerous)." OFF)
+option(CMAKE_EXPORT_PACKAGE_REGISTRY "Register the libKirHut package in the user's package repository." OFF)
 cmake_dependent_option(KH_USE_128BIT_TYPES
     "Use 128 bit types on platforms that support it."
     ON
@@ -80,6 +89,15 @@ if(KH_ALLOW_FETCHCONTENT)
     include(FetchContent)
 endif()
 
+# Ensure all runtime binaries (executables and DLLs) are placed in a single
+# directory per build tree. This simplifies test execution and runtime
+# dependency discovery, especially for shared-library builds.
+#
+# Users or superprojects may override this if they require a different layout.
+if(NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
 find_package(Doxygen QUIET)
 if(Doxygen_FOUND)
     add_subdirectory(docs)
@@ -93,7 +111,7 @@ if(KH_USES_FMT)
     if(KH_ALLOW_FETCHCONTENT)
         set(KH_FMT_PACKAGE_ARGS CONFIG QUIET)
     else()
-        set(KH_FMT_PACKAGE_ARGS REQUIRED)
+        set(KH_FMT_PACKAGE_ARGS CONFIG REQUIRED)
     endif()
 
     find_package(fmt 9 ${KH_FMT_PACKAGE_ARGS})
@@ -110,13 +128,8 @@ if(KH_USES_FMT)
         FetchContent_MakeAvailable(fmt)
         target_compile_features(fmt PUBLIC cxx_std_20)
 
-        # Install will put the libraries in the appropriate folder with the application, but this is for convenience of
-        # the developer when building without installing.
         set_target_properties(fmt
             PROPERTIES
-                ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-                LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-                RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
                 POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
         )
     endif()
@@ -158,53 +171,105 @@ list(TRANSFORM libKirHut_HEADERS PREPEND "include/kh/")
 
 add_subdirectory(extern)
 
-add_library(libKirHut
+set(libKirHut_TARGET_NAME libKirHut)
+
+add_library(${libKirHut_TARGET_NAME}
     ${libKirHut_HEADERS}
     ${libKirHut_SOURCES}
+    $<TARGET_OBJECTS:KirHut::libKirHutExternal>
 )
-add_library(KirHut::libKirHut ALIAS libKirHut)
-set_target_properties(libKirHut
+add_library(KirHut::${libKirHut_TARGET_NAME} ALIAS ${libKirHut_TARGET_NAME})
+set_target_properties(${libKirHut_TARGET_NAME}
     PROPERTIES
         OUTPUT_NAME "KirHut"
         C_VISIBILITY_PRESET hidden
         CXX_VISIBILITY_PRESET hidden
-        ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-        LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
         POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
 )
 
 if(MINGW AND BUILD_SHARED_LIBS)
     # This is an ugly hack for MinGW because of a long unresolved bug.
     # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109380
-    target_link_options(libKirHut PRIVATE LINKER:--export-all-symbols)
+    target_link_options(${libKirHut_TARGET_NAME} PRIVATE LINKER:--export-all-symbols)
 endif()
+
+include(GNUInstallDirs)
 
 set(libKirHut_PUBLIC_LIBRARIES
     $<$<BOOL:${KH_USES_FMT}>:fmt::fmt>
 )
 
-add_library(libKirHutInterface INTERFACE)
-
-target_include_directories(libKirHutInterface INTERFACE "include" "${CMAKE_CURRENT_BINARY_DIR}/include")
-target_link_libraries(libKirHutInterface INTERFACE ${libKirHut_PUBLIC_LIBRARIES})
+target_include_directories(${libKirHut_TARGET_NAME} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(${libKirHut_TARGET_NAME} PUBLIC ${libKirHut_PUBLIC_LIBRARIES})
 
 # Do NOT use CMAKE_CXX_STANDARD! This library supports building for newer versions than C++20, and could have a slightly
 # different API and ABI in those cases. This allows the library builder to set a C++ version, while also requiring at
 # least C++20 support.
-target_compile_features(libKirHutInterface INTERFACE cxx_std_20)
+target_compile_features(${libKirHut_TARGET_NAME} PUBLIC cxx_std_20)
 
 if(KH_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-target_link_libraries(libKirHut PUBLIC libKirHutInterface)
-target_link_libraries(libKirHut PRIVATE KirHut::libKirHutExternal)
+target_include_directories(${libKirHut_TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/extern/include")
 
 configure_file(cmake/config.hpp.in include/kh/config.hpp @ONLY)
 
 include(GenerateExportHeader)
-generate_export_header(libKirHut
+generate_export_header(${libKirHut_TARGET_NAME}
     BASE_NAME kh
     EXPORT_FILE_NAME include/kh/export.hpp
 )
+
+set(KH_INSTALL_CMAKEDIR
+    ${CMAKE_INSTALL_LIBDIR}/cmake/${libKirHut_TARGET_NAME}
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/libKirHutConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/libKirHutConfig.cmake"
+    INSTALL_DESTINATION ${KH_INSTALL_CMAKEDIR}
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/libKirHutConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+include(InstallRequiredSystemLibraries)
+
+install(TARGETS ${libKirHut_TARGET_NAME}
+    EXPORT libKirHutTargets
+)
+
+install(DIRECTORY
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/"
+    TYPE INCLUDE
+)
+
+install(EXPORT libKirHutTargets
+    FILE libKirHutTargets.cmake
+    NAMESPACE KirHut::
+    DESTINATION ${KH_INSTALL_CMAKEDIR}
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/libKirHutConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/libKirHutConfigVersion.cmake"
+    DESTINATION ${KH_INSTALL_CMAKEDIR}
+)
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/${libKirHut_TARGET_NAME}"
+)
+
+list(POP_BACK CMAKE_MODULE_PATH)

@@ -274,21 +274,21 @@ template <typename T>
 }
 
 /*!
- * Returns the number of bytes needed to hold a given number of bits.
+ * Returns the number of bits that a given amount of bytes will contain.
  *
- * For basically all processors supported by KirHut, the value is just the number passed in divided by 8, plus one if
- * there are any additional bits. This is because nearly all processors use an 8 bit byte. This library is designed to
- * potentially support building on very alternative hardware configurations, so this function does corretly calculate
- * the number of bytes for a given number of bits, so long as Platform::bitsInByte is correctly updated to this value
- * (it should be on all conforming compilers).
+ * For basically all processors supported by KirHut, the value is just the number passed in multiplied by 8. This is
+ * because nearly all processors use an 8 bit byte. This library is designed to potentially support building on very
+ * alternative hardware configurations, so this function does correctly calculate the number of bits for a given number
+ * of bytes, so long as Constant::bitsInByte is correctly updated to this value (it should be on all conforming
+ * compilers).
  *
  * \note If the number of bytes passed has an amount of bits that exceeds the value that can fit into an unsigned int on
  * your target platform, this function will truncate the top bits to fit in the return value, losing those binary
- * digits. You should not pass in a value that exceeds Limits<unsigned int>::max() / Platform::bitsInByte if you want to
+ * digits. You should not pass in a value that exceeds Limits<unsigned int>::max() / Constant::bitsInByte if you want to
  * have an accurate return result, though this will not invoke undefined behavior.
  *
- * \param numBits The number of bits that need to fit in the number of returned bytes.
- * \return The number of bytes that will completely contain the number of bits passed as \p numBits.
+ * \param numBytes The number of bytes to multiply by Constant::bitsInByte.
+ * \return The number of bits that are available in the given \p numBytes.
  */
 [[nodiscard]] constexpr unsigned int numBitsInBytes(unsigned int numBytes) noexcept
 {
@@ -1242,7 +1242,7 @@ template <typename T>
  * the buffer area for conversion.
  *
  * \tparam Num_T An integer or floating point type you wish to interpret the \p source as the big endian value of.
- * \param source A pointer to a buffer of bytes at least sizeof(T) large.
+ * \param source A std::contiguous_iterator to a buffer of bytes at least sizeof(T) large.
  * \return The bytes under \p source interpreted as a big endian \p Num_T type.
  */
 template <Numeric Num_T>
@@ -1296,7 +1296,7 @@ template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
 }
 
 /*!
- * \copydoc fromBigEndian(span<Byte_T const,size>)
+ * \copydoc fromBigEndian(span<Byte_T const,fixedSize>)
  */
 template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
 [[nodiscard]] constexpr Num_T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)

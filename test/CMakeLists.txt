@@ -24,18 +24,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 target_compile_features(Catch2 PUBLIC cxx_std_20)
 target_compile_features(Catch2WithMain PUBLIC cxx_std_20)
-set_target_properties(Catch2
-    PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-        LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-)
-set_target_properties(Catch2WithMain
-    PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-        LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}"
-)
 
 list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
 
@@ -66,22 +54,9 @@ add_executable(KHTestBed ${TESTS_TO_EXECUTE})
 target_compile_features(KHTestBed PUBLIC cxx_std_20)
 target_link_libraries(KHTestBed
     PUBLIC
-        KirHut::libKirHut
-        libKirHutInterface
+        KirHut::${libKirHut_TARGET_NAME}
         KirHut::libKirHutExternal
         Catch2::Catch2WithMain
 )
 
-# catch_discover_tests doesn't automatically know where Qt libraries are, and conventionally, Qt uses CMAKE_PREFIX_PATH
-# to inform the CMake file where Qt's libraries are found. This conveys that information to catch_discover_tests().
-if(CMAKE_PREFIX_PATH)
-    set(KH_QT_DL_PATHS "${CMAKE_PREFIX_PATH}/bin")
-else()
-    set(KH_QT_DL_PATHS)
-endif()
-
-catch_discover_tests(KHTestBed
-    DL_PATHS
-        ${PROJECT_BINARY_DIR}
-        ${KH_QT_DL_PATHS}
-)
+catch_discover_tests(KHTestBed)
