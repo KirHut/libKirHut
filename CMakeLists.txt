@@ -2,6 +2,15 @@
 ## CMake Main File
 ##
 ## Copyright © KirHut Software Company
+##
+## Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+## the License. You may obtain a copy of the License at
+##
+##   http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+## an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+## specific language governing permissions and limitations under the License.
 
 cmake_minimum_required(VERSION 3.27)
 
@@ -14,7 +23,7 @@ if ("${CMAKE_BINARY_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
 endif()
 
 project(libKirHut
-    VERSION 0.6.0
+    VERSION 0.6.1
     DESCRIPTION "The KirHut Software Company Foundational C++ Development Library"
     HOMEPAGE_URL "https://www.kirhut.com/libKirHut"
     LANGUAGES CXX
@@ -23,18 +32,22 @@ project(libKirHut
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(KHCompilerInfo)
+include(CheckCXXSourceCompiles)
 
 kh_find_compiler_info()
 
-if(KH_CLANG_GNUC_COMPATIBLE AND CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(KH_SUPPORTS_128_TYPES ON)
-else()
-    set(KH_SUPPORTS_128_TYPES OFF)
-endif()
+check_cxx_source_compiles([[
+#include <type_traits>
+static_assert(std::is_integral_v<__int128>);
+int main() { return 0; }
+]] KH_SUPPORTS_128_TYPES)
 
-if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+if("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
     set(KH_BUILD_TESTS_DEFAULT ON)
-    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>")
+    # This is necessary because clang-cl doesn't support EditAndContinue.
+    if("${KH_COMPILER_SHORTNAME}" STREQUAL "MSVC")
+        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>")
+    endif()
 else()
     set(KH_BUILD_TESTS_DEFAULT OFF)
 endif()
@@ -67,7 +80,7 @@ option(KH_INCLUDE_TERMINAL_PRINT "Include UTF-8 C++23 style printing support in 
 option(KH_OVERRIDE_PLATFORM_SAFETY "Ignore unsupported platform checks during compile time checking (dangerous)." OFF)
 option(CMAKE_EXPORT_PACKAGE_REGISTRY "Register the libKirHut package in the user's package repository." OFF)
 cmake_dependent_option(KH_USE_128BIT_TYPES
-    "Use 128 bit types on platforms that support it."
+    "Use 128 bit types on compilers and platforms that support it."
     ON
     KH_SUPPORTS_128_TYPES
     OFF
@@ -187,6 +200,9 @@ set_target_properties(${libKirHut_TARGET_NAME}
         POSITION_INDEPENDENT_CODE ${BUILD_SHARED_LIBS}
 )
 
+# TODO: This if statement applies this "fix" on all compilers that use the MinGW ABI, including Clang on Windows.
+# However, Clang does not have the same bug that GCC MinGW itself does, so this should not be applied unless it is
+# specifically compiling with GCC MinGW. I will need to prevent this in the future.
 if(MINGW AND BUILD_SHARED_LIBS)
     # This is an ugly hack for MinGW because of a long unresolved bug.
     # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109380
@@ -268,6 +284,7 @@ install(FILES
 
 install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    "${CMAKE_CURRENT_SOURCE_DIR}/NOTICE"
     "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
     DESTINATION "${CMAKE_INSTALL_DATADIR}/${libKirHut_TARGET_NAME}"
 )

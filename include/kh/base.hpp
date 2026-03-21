@@ -3,19 +3,14 @@
 ** kh/base.hpp
 ** Copyright © KirHut Software Company
 **
-** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
-** conditions found in the BSD 3-Clause License are met.
+** Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+** the License. You may obtain a copy of the License at
 **
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
-** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**   http://www.apache.org/licenses/LICENSE-2.0
 **
-** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
-** <https://opensource.org/license/bsd-3-clause>.
+** Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+** an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+** specific language governing permissions and limitations under the License.
 ***********************************************************************************************************************/
 #pragma once
 
@@ -50,6 +45,18 @@
 # include <cstring>
 #endif
 
+#if defined(__cpp_lib_unreachable)
+# include <utility>
+#elif not defined(KH_COMPILED_WITH_MSVC)
+# if defined(__has_builtin)
+#  if not __has_builtin(__builtin_unreachable)
+#   include <cstdlib>
+#  endif
+# else
+#  include <cstdlib>
+# endif
+#endif
+
 /*!
  * The primary namespace for all KirHut software, including libraries, applications, and plugins.
  *
@@ -74,6 +81,8 @@
  * - std::bitset
  * - std::make_shared
  * - std::make_unique
+ * - std::rotl
+ * - std::rotr
  * - std::span
  * - std::string
  * - std::string_view
@@ -91,6 +100,8 @@ using std::array;
 using std::bitset;
 using std::make_shared;
 using std::make_unique;
+using std::rotl;
+using std::rotr;
 using std::span;
 using std::string;
 using std::string_view;
@@ -376,7 +387,12 @@ concept Numeric = std::is_arithmetic_v<T> and not std::is_same_v<T, bool>;
  * it is frequently better to remove them.
  */
 template <typename T>
-concept Integral = std::is_integral_v<T> and not std::is_same_v<T, bool>;
+concept Integral = (std::is_integral_v<T>
+#if defined(KH_PRIV_DOCS) or defined(KH_USE_128BIT_TYPES)
+                    or std::is_same_v<T, __int128_t> or std::is_same_v<T, __uint128_t>
+#endif
+                    ) and
+                   not std::is_same_v<T, bool>;
 
 /*!
  * Concept to identify if a type is one of a set of distinct types.
@@ -530,6 +546,145 @@ template <std::signed_integral Int_T>
 }
 
 /*!
+ * Detect if summing the two passed integers \p left and \p right would result in a signed integer overflow.
+ *
+ * This function is implemented by performing the addition of the two values after casting them to an unsigned integer,
+ * which supports integer overflow safely, then detects if the results of that addition would have caused an overflow.
+ * The logic used by this function is branchless, so it should be safe to use in a tight loop without efficiency issues.
+ *
+ * \param left The signed integer value at the left hand side of a sum computation.
+ * \param right The signed integer value at the right hand side of a sum computation.
+ * \return Whether or not the sum would result in undefined behavior (namely an overflow).
+ */
+template <std::signed_integral Int_T>
+[[nodiscard]] constexpr bool wouldSumCauseUB(Int_T left, Int_T right) noexcept
+{
+    if constexpr (sizeof(Int_T) < sizeof(int))
+    {
+        return false;
+    }
+
+#if defined(__has_builtin)
+# if __has_builtin(__builtin_add_overflow)
+    return __builtin_add_overflow_p(left, right, left);
+# endif
+#endif
+
+    using UInt_T       = std::make_unsigned_t<Int_T>;
+    Int_T const result = static_cast<Int_T>(static_cast<UInt_T>(left) + static_cast<UInt_T>(right));
+    return (left ^ result) & (right ^ result) & Limits<Int_T>::min();
+}
+
+/*!
+ * Detect if the difference of the two passed integers \p left and \p right would result in a signed integer overflow.
+ *
+ * This function is implemented by performing the subtraction of the two values after casting them to an unsigned
+ * integer, which supports integer overflow safely, then detects if the results of that difference would have caused an
+ * overflow. The logic used by this function is branchless, so it should be safe to use in a tight loop without
+ * efficiency issues.
+ *
+ * \param left The signed integer value at the left hand side of a difference computation.
+ * \param right The signed integer value at the right hand side of a difference computation.
+ * \return Whether or not the difference would result in undefined behavior (namely an overflow).
+ */
+template <std::signed_integral Int_T>
+[[nodiscard]] constexpr bool wouldDifferenceCauseUB(Int_T left, Int_T right) noexcept
+{
+    if constexpr (sizeof(Int_T) < sizeof(int))
+    {
+        return false;
+    }
+
+#if defined(__has_builtin)
+# if __has_builtin(__builtin_sub_overflow)
+    return __builtin_sub_overflow_p(left, right, left);
+# endif
+#endif
+
+    using UInt_T       = std::make_unsigned_t<Int_T>;
+    Int_T const result = static_cast<Int_T>(static_cast<UInt_T>(left) - static_cast<UInt_T>(right));
+    return (left ^ result) & (right ^ result) & Limits<Int_T>::min();
+}
+
+/*!
+ * Detect if the product of the two passed integers \p left and \p right would result in a signed integer overflow.
+ *
+ * This function is implemented as a series of if statements (meaning it is branchy) that test certain conditions, and
+ * possibly an integer division and comparison to check if the multiplication of \p left and \p right will result in an
+ * integer overflow.
+ *
+ * \param left The signed integer value at the left hand side of a product computation.
+ * \param right The signed integer value at the right hand side of a product computation.
+ * \return Whether or not the product would result in undefined behavior (namely an overflow).
+ */
+template <std::signed_integral Int_T>
+[[nodiscard]] constexpr bool wouldProductCauseUB(Int_T left, Int_T right) noexcept
+{
+#if defined(__has_builtin)
+# if __has_builtin(__builtin_mul_overflow)
+    return __builtin_mul_overflow_p(left, right, left);
+# endif
+#endif
+
+    // Ensure right is the smaller of the two values, ignoring sign.
+    if (uabs(left) < uabs(right))
+    {
+        using std::swap;
+        swap(left, right);
+    }
+
+    if ((right & ~1) == 0)
+    {
+        return false;
+    }
+
+    if (right == -1)
+    {
+        return left == Limits<Int_T>::min();
+    }
+
+    if (left > 0)
+    {
+        if (right > 0)
+        {
+            return left > Limits<Int_T>::max() / right;
+        }
+        else
+        {
+            return right < Limits<Int_T>::min() / left;
+        }
+    }
+    else
+    {
+        if (right > 0)
+        {
+            return left < Limits<Int_T>::min() / right;
+        }
+        else
+        {
+            return left < Limits<Int_T>::max() / right;
+        }
+    }
+}
+
+/*!
+ * Detect if the quotient of the two passed integers \p left and \p right would result in any undefined behavior.
+ *
+ * This function is implemented as just two basic checks: checking that \p right is not zero and that, if \p right is
+ * -1, than that \p left is not Limits<Int_T>::min(). These are the only two conditions in which integer division
+ * results in undefined behavior, so there is no need to make the check any more complicated than that.
+ *
+ * \param left The signed integer value at the left hand side of a quotient computation.
+ * \param right The signed integer value at the right hand side of a quotient computation.
+ * \return Whether or not the quotient would result in undefined behavior.
+ */
+template <std::signed_integral Int_T>
+[[nodiscard]] constexpr bool wouldQuotientCauseUB(Int_T left, Int_T right) noexcept
+{
+    return right == 0 or (left == Limits<Int_T>::min() and right == -1);
+}
+
+/*!
  * Constant expression byte swapping function that should always do the most efficient thing.
  *
  * The byteSwap function in libKirHut is meant to work like std::byteswap in C++23 for applications still only using
@@ -598,8 +753,10 @@ template <std::signed_integral Int_T>
     {
 #if defined(KH_COMPILED_WITH_MSVC)
         return _byteswap_ulong(bytes);
-#elif __has_builtin(__builtin_bswap32)
+#elif defined(__has_builtin)
+# if __has_builtin(__builtin_bswap32)
         return __builtin_bswap32(bytes);
+# endif
 #endif
     }
 
@@ -638,8 +795,10 @@ template <std::signed_integral Int_T>
     {
 #if defined(KH_COMPILED_WITH_MSVC)
         return _byteswap_uint64(bytes);
-#elif __has_builtin(__builtin_bswap64)
+#elif defined(__has_builtin)
+# if __has_builtin(__builtin_bswap64)
         return __builtin_bswap64(bytes);
+# endif
 #endif
     }
 
@@ -689,14 +848,16 @@ template <std::signed_integral Int_T>
 
     if (not std::is_constant_evaluated())
     {
-# if __has_builtin(__builtin_bswap128)
+# if defined(__has_builtin)
+#  if __has_builtin(__builtin_bswap128)
         return __builtin_bswap128(bytes);
+#  endif
 # endif
     }
 
     auto firstHalf = static_cast<u64>(bytes >> Platform::bitsInU64);
     auto lastHalf  = static_cast<u64>(bytes);
-    return (static_cast<u128>(byteSwap(lastHalf)) << Platform::bitsInU64) | byteSwap(firstHalf);
+    return (static_cast<u128>(byteSwap(lastHalf)) << Platform::bitsInU64) bitor byteSwap(firstHalf);
 }
 #endif
 
@@ -1465,6 +1626,43 @@ constexpr void toLittleEndian(Numeric auto value, span<Byte_T, fixedSize> dest)
 
     Detail::toEndian<std::endian::little>(value, dest.data());
 }
+
+/*!
+ * \def KH_UNREACHABLE
+ *
+ * A macro that calls the underlying compiler's appropriate "unreachable" functionality, or std::unreachable().
+ *
+ * This should be used to signify to the compiler that a particular branch of code is completely unreachable, and it
+ * should optimize away any code that would be generated to apply to that particular code branch. This can be
+ * particularly useful in switch statements, but there are many other situations this is useful. You are required to
+ * follow this macro up with a semicolon, so using it in code should look like this:
+ *
+ * ~~~
+ * switch (something) {
+ *   case 1: return 1;
+ *   case 2: return 2;
+ *   default: KH_UNREACHABLE();
+ * }
+ * ~~~
+ *
+ * This macro is guaranteed to be defined. However, there is the possibility of a compiler not having support for any
+ * of the different "kinds" of unreachable functions. In that case, it expands to std::abort() to communicate to the
+ * compiler that this is should never validly return control flow from that branch.
+ */
+
+#if defined(__cpp_lib_unreachable)
+# define KH_UNREACHABLE() std::unreachable()
+#elif defined(KH_COMPILED_WITH_MSVC) and not defined(__clang__)
+# define KH_UNREACHABLE() __assume(false)
+#elif defined(__has_builtin)
+# if __has_builtin(__builtin_unreachable)
+#  define KH_UNREACHABLE() __builtin_unreachable()
+# else
+#  define KH_UNREACHABLE() std::abort()
+# endif
+#else
+# define KH_UNREACHABLE() std::abort()
+#endif
 
 /*!
  * Constexpr function that simply returns the compile-time size of the passed-in array.

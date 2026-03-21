@@ -3,19 +3,14 @@
 ** TestRanges.cpp
 ** Copyright © KirHut Software Company
 **
-** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
-** conditions found in the BSD 3-Clause License are met.
+** Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+** the License. You may obtain a copy of the License at
 **
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
-** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**   http://www.apache.org/licenses/LICENSE-2.0
 **
-** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
-** <https://opensource.org/license/bsd-3-clause>.
+** Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+** an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+** specific language governing permissions and limitations under the License.
 ***********************************************************************************************************************/
 #include "kh/ranges.hpp"
 

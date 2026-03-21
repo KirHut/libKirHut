@@ -3,19 +3,14 @@
 ** kh/invalid.hpp
 ** Copyright © KirHut Software Company
 **
-** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
-** conditions found in the BSD 3-Clause License are met.
+** Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+** the License. You may obtain a copy of the License at
 **
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
-** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**   http://www.apache.org/licenses/LICENSE-2.0
 **
-** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
-** <https://opensource.org/license/bsd-3-clause>.
+** Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+** an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+** specific language governing permissions and limitations under the License.
 ***********************************************************************************************************************/
 #pragma once
 
@@ -79,9 +74,9 @@ struct MessageViewWhy
      * info message when they both have the same underlying why.
      *
      * \internal
-     * Unlike all other methods, comparison operator = default methods *must* be implemented in the class body and not
-     * after it! This is because of a compiler bug in GCC that fails to synthesize the operator correctly unless it is
-     * in the object body.
+     * Unlike all other methods, spaceship operator = default methods *must* be implemented in the class body and not
+     * after it! This is because the C++ standard apparently requires the implementation to be set to `= default`
+     * within the class body in order to synthesize the other comparison operators.
      * \endinternal
      *
      * \param other Another MessageViewWhy object to compare this one to.
@@ -106,10 +101,6 @@ struct MessageViewWhy
      */
     constexpr std::basic_string_view<CharType> getInvalidInfo() const noexcept;
 };
-
-// This can't be implemented here because of a GCC compiler bug!
-// template <typename Char_T>
-// constexpr auto MessageViewWhy<Char_T>::operator<=>(MessageViewWhy const &other) const noexcept = default;
 
 template <typename Char_T>
 constexpr WhyInvalid MessageViewWhy<Char_T>::getWhyInvalid() const noexcept
@@ -562,7 +553,7 @@ concept QuickWhyType = ValidWhyType<Why_T> and std::is_nothrow_move_constructibl
  * returning error conditions from Qt Signals and Slots, as exceptions are completely unsupported using Signals and
  * Slots.
  *
- * All of the non-constructor methods of this class are marked as constexpr, and the "simple" template specialization
+ * All of the non-constructor methods of this class are marked as inline, and the "simple" template specialization
  * constructors are all marked constexpr, so the simple template specialization of this class is completely usable in a
  * constexpr context. This allows the creation of functions and methods marked constexpr that return a MaybeInv<T> or
  * Invalid and this would compile.
@@ -716,28 +707,28 @@ protected:
 
 template <ValidWhyType Why_T>
 template <typename... Arg_Ts>
-inline BasicInvalid<Why_T>::BasicInvalid(Arg_Ts &&...args) requires(std::is_constructible_v<Why_T, Arg_Ts...>)
+BasicInvalid<Why_T>::BasicInvalid(Arg_Ts &&...args) requires(std::is_constructible_v<Why_T, Arg_Ts...>)
     : data(make_shared<Why_T>(std::forward<Arg_Ts>(args)...))
 {
     // No further implementation.
 }
 
 template <ValidWhyType Why_T>
-inline BasicInvalid<Why_T>::BasicInvalid(Why_T const &why) requires(std::is_copy_constructible_v<Why_T>)
+BasicInvalid<Why_T>::BasicInvalid(Why_T const &why) requires(std::is_copy_constructible_v<Why_T>)
     : data(make_shared<Why_T>(why))
 {
     // No further implementation.
 }
 
 template <ValidWhyType Why_T>
-inline BasicInvalid<Why_T>::BasicInvalid(Why_T &&why) requires(std::is_move_constructible_v<Why_T>)
+BasicInvalid<Why_T>::BasicInvalid(Why_T &&why) requires(std::is_move_constructible_v<Why_T>)
     : data(make_shared<Why_T>(std::move(why)))
 {
     // No further implementation.
 }
 
 template <ValidWhyType Why_T>
-inline bool BasicInvalid<Why_T>::operator==(BasicInvalid const &other) const noexcept
+bool BasicInvalid<Why_T>::operator==(BasicInvalid const &other) const noexcept
 {
     if (data and other.data)
     {
@@ -748,7 +739,7 @@ inline bool BasicInvalid<Why_T>::operator==(BasicInvalid const &other) const noe
 }
 
 template <ValidWhyType Why_T>
-inline WhyInvalid BasicInvalid<Why_T>::why() const noexcept
+WhyInvalid BasicInvalid<Why_T>::why() const noexcept
 {
     if (Why_T const *internal = whyData())
     {
@@ -759,7 +750,7 @@ inline WhyInvalid BasicInvalid<Why_T>::why() const noexcept
 }
 
 template <ValidWhyType Why_T>
-inline std::basic_string_view<typename BasicInvalid<Why_T>::CharType> BasicInvalid<Why_T>::info() const noexcept
+std::basic_string_view<typename BasicInvalid<Why_T>::CharType> BasicInvalid<Why_T>::info() const noexcept
 {
     if (Why_T const *internal = whyData())
     {
@@ -770,13 +761,13 @@ inline std::basic_string_view<typename BasicInvalid<Why_T>::CharType> BasicInval
 }
 
 template <ValidWhyType Why_T>
-inline Why_T *BasicInvalid<Why_T>::whyData() noexcept
+Why_T *BasicInvalid<Why_T>::whyData() noexcept
 {
     return data.get();
 }
 
 template <ValidWhyType Why_T>
-inline Why_T const *BasicInvalid<Why_T>::whyData() const noexcept
+Why_T const *BasicInvalid<Why_T>::whyData() const noexcept
 {
     return data.get();
 }
@@ -1030,9 +1021,6 @@ class MaybeInv;
 template <typename Function, typename FirstArg, typename... Args>
 concept MaybeTransform = std::invocable<Function, FirstArg, Args...> and
                          InstanceOf<std::invoke_result_t<Function, FirstArg, Args...>, MaybeInv>;
-
-template <typename Contained_T, typename Invalid_T>
-class MaybeInv;
 
 template <typename Contained_T, typename Invalid_T>
 constexpr void swap(MaybeInv<Contained_T, Invalid_T> &m1, MaybeInv<Contained_T, Invalid_T> &m2)

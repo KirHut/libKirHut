@@ -3,19 +3,14 @@
 ** kh/error.hpp
 ** Copyright © KirHut Software Company
 **
-** Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
-** conditions found in the BSD 3-Clause License are met.
+** Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+** the License. You may obtain a copy of the License at
 **
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES,
-** INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-** DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-** SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-** WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**   http://www.apache.org/licenses/LICENSE-2.0
 **
-** You should have received a copy of the BSD 3-Clause license along with this program.  If not, see
-** <https://opensource.org/license/bsd-3-clause>.
+** Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+** an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+** specific language governing permissions and limitations under the License.
 ***********************************************************************************************************************/
 #pragma once
 
@@ -185,13 +180,16 @@ struct GenericError
 
 protected:
     template <typename T>
-    constexpr GenericError([[maybe_unused]] T *child) noexcept
-    {
-        static_assert(Detail::isError<T>);
-    }
+    constexpr GenericError(T *child) noexcept;
 
     GenericError() = delete;
 };
+
+template <typename T>
+constexpr GenericError::GenericError([[maybe_unused]] T *child) noexcept
+{
+    static_assert(Detail::isError<T>);
+}
 
 /*!
  * The Error class is similar to std::exception except that prefers the use of C++17 std::string_view instead of
@@ -256,10 +254,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \throws std::bad_alloc May be thrown if allocation for the underlying message, std::shared_ptr, or stack trace
      * fails.
      */
-    inline explicit Error(string_view info = string_view()) : Parent(info), GenericError(this)
-    {
-        // No further implementation.
-    }
+    explicit Error(string_view info = string_view());
 
     /*!
      * The copying `const char` Error constructor.
@@ -283,13 +278,10 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \throws std::bad_alloc May be thrown if allocation for the underlying message, std::shared_ptr, or stack trace
      * fails.
      */
-    inline explicit Error(char const *info) : Error(string_view{ info })
-    {
-        // No further implementation.
-    }
+    explicit Error(char const *info);
 
     /*!
-     * The std::string move Error constructor.
+     * The std::string moving Error constructor.
      *
      * Generally speaking, unless you pass true to \p copy, this constructor should not be used. You should use the
      * noexcept constructor, however this constructor does support being called with false in the case that you need to
@@ -303,10 +295,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \param info A string_view to the data returned by info() and what().
      * \throws std::bad_alloc May be thrown if allocation for the underlying std::shared_ptr or stack trace fails.
      */
-    inline Error(string &&info) : Parent(std::move(info)), GenericError(this)
-    {
-        // No further implementation.
-    }
+    explicit Error(string &&info);
 
     /*!
      * \brief Error
@@ -315,11 +304,7 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \param args
      */
     template <typename Arg_T, typename... Arg_Ts>
-    inline Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args) :
-        Error(Flags::runtime, str.get(), FMT::make_format_args(firstArg, args...))
-    {
-        // No further implementation.
-    }
+    Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args);
 
     /*!
      * \brief Error
@@ -327,39 +312,25 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      * \param format
      * \param args
      */
-    inline Error([[maybe_unused]] RuntimeFlag rt, FMT::string_view format, FMT::format_args const &args) :
-        Parent(FMT::vformat(format, args)),
-        GenericError(this)
-    {
-        // No further implementation.
-    }
+    Error(RuntimeFlag rt, FMT::string_view format, FMT::format_args const &args);
 
     /*!
      * \brief why
      * \return
      */
-    inline WhyInvalid why() const noexcept override
-    {
-        return Parent::why();
-    }
+    WhyInvalid why() const noexcept override;
 
     /*!
      * \brief info
      * \return
      */
-    inline string_view info() const noexcept override
-    {
-        return Parent::info();
-    }
+    string_view info() const noexcept override;
 
     /*!
      * \brief stackTrace
      * \return
      */
-    inline string_view stackTrace() const noexcept override
-    {
-        return Parent::whyData()->trace;
-    }
+    string_view stackTrace() const noexcept override;
 
     /*!
      * Legacy support for the std::exception::what() method.
@@ -371,14 +342,69 @@ struct Error : public TaggedInvalid<reason, Detail::ErrorState<reason>>, public 
      *
      * \return The same string as info().
      */
-    inline char const *what() const noexcept override
-    {
-        return Parent::info().data();
-    }
+    char const *what() const noexcept override;
 
 private:
     using Parent = TaggedInvalid<reason, Detail::ErrorState<reason>>;
 };
+
+template <WhyInvalid reason>
+Error<reason>::Error(string_view info) : Parent(info), GenericError(this)
+{
+    // No further implementation.
+}
+
+template <WhyInvalid reason>
+Error<reason>::Error(char const *info) : Error(string_view{ info })
+{
+    // No further implementation.
+}
+
+template <WhyInvalid reason>
+Error<reason>::Error(string &&info) : Parent(std::move(info)), GenericError(this)
+{
+    // No further implementation.
+}
+
+template <WhyInvalid reason>
+template <typename Arg_T, typename... Arg_Ts>
+Error<reason>::Error(FMT::format_string<Arg_T, Arg_Ts...> str, Arg_T firstArg, Arg_Ts... args) :
+    Error(Flags::runtime, str.get(), FMT::make_format_args(firstArg, args...))
+{
+    // No further implementation.
+}
+
+template <WhyInvalid reason>
+Error<reason>::Error([[maybe_unused]] RuntimeFlag rt, FMT::string_view format, FMT::format_args const &args) :
+    Parent(FMT::vformat(format, args)),
+    GenericError(this)
+{
+    // No further implementation.
+}
+
+template <WhyInvalid reason>
+WhyInvalid Error<reason>::why() const noexcept
+{
+    return Parent::why();
+}
+
+template <WhyInvalid reason>
+string_view Error<reason>::info() const noexcept
+{
+    return Parent::info();
+}
+
+template <WhyInvalid reason>
+string_view Error<reason>::stackTrace() const noexcept
+{
+    return Parent::whyData()->trace;
+}
+
+template <WhyInvalid reason>
+char const *Error<reason>::what() const noexcept
+{
+    return Parent::info().data();
+}
 
 KH_END_INLINE_NAMESPACE
 
