@@ -34,7 +34,7 @@ constexpr bool constexpr_roundtrip()
 
 TEST_CASE("Basic constant sanity checks for BitFields", "[packedtuple][BitField]")
 {
-    SECTION("BF:Bool sanity checks")
+    SECTION("BF::Bool sanity checks")
     {
         STATIC_REQUIRE(BF::Bool::bits() == 1);
         STATIC_REQUIRE(BF::Bool::digits() == 1);
@@ -43,23 +43,101 @@ TEST_CASE("Basic constant sanity checks for BitFields", "[packedtuple][BitField]
         STATIC_REQUIRE(std::same_as<bool, BF::Bool::Int>);
     }
 
-    STATIC_REQUIRE(BF::U8<8>::bits() == 8);
-    STATIC_REQUIRE(BF::U8<8>::digits() == 8);
-    STATIC_REQUIRE(BF::U8<8>::min() == 0);
-    STATIC_REQUIRE(BF::U8<8>::max() == 255);
-    STATIC_REQUIRE(BF::U8<7>::bits() == 7);
-    STATIC_REQUIRE(BF::U8<7>::digits() == 7);
-    STATIC_REQUIRE(BF::U8<7>::min() == 0);
-    STATIC_REQUIRE(BF::U8<7>::max() == 127);
+    SECTION("BF::U8 sanity checks")
+    {
+        STATIC_REQUIRE(BF::U8<8>::bits() == 8);
+        STATIC_REQUIRE(BF::U8<8>::digits() == 8);
+        STATIC_REQUIRE(BF::U8<8>::min() == 0);
+        STATIC_REQUIRE(BF::U8<8>::max() == 255);
+        STATIC_REQUIRE(BF::U8<7>::bits() == 7);
+        STATIC_REQUIRE(BF::U8<7>::digits() == 7);
+        STATIC_REQUIRE(BF::U8<7>::min() == 0);
+        STATIC_REQUIRE(BF::U8<7>::max() == 127);
+    }
 
-    STATIC_REQUIRE(BF::I8<8>::bits() == 8);
-    STATIC_REQUIRE(BF::I8<8>::digits() == 7);
-    STATIC_REQUIRE(BF::I8<8>::min() == -128);
-    STATIC_REQUIRE(BF::I8<8>::max() == 127);
-    STATIC_REQUIRE(BF::I8<7>::bits() == 7);
-    STATIC_REQUIRE(BF::I8<7>::digits() == 6);
-    STATIC_REQUIRE(BF::I8<7>::min() == -64);
-    STATIC_REQUIRE(BF::I8<7>::max() == 63);
+    SECTION("BF::I8 sanity checks")
+    {
+        STATIC_REQUIRE(BF::I8<8>::bits() == 8);
+        STATIC_REQUIRE(BF::I8<8>::digits() == 7);
+        STATIC_REQUIRE(BF::I8<8>::min() == -128);
+        STATIC_REQUIRE(BF::I8<8>::max() == 127);
+        STATIC_REQUIRE(BF::I8<7>::bits() == 7);
+        STATIC_REQUIRE(BF::I8<7>::digits() == 6);
+        STATIC_REQUIRE(BF::I8<7>::min() == -64);
+        STATIC_REQUIRE(BF::I8<7>::max() == 63);
+    }
+
+    SECTION("BF::U16 sanity checks")
+    {
+        STATIC_REQUIRE(BF::U16<16>::bits() == 16);
+        STATIC_REQUIRE(BF::U16<16>::digits() == 16);
+        STATIC_REQUIRE(BF::U16<16>::min() == 0);
+        STATIC_REQUIRE(BF::U16<16>::max() == Limits<u16>::max());
+        STATIC_REQUIRE(BF::U16<15>::bits() == 15);
+        STATIC_REQUIRE(BF::U16<15>::digits() == 15);
+        STATIC_REQUIRE(BF::U16<15>::min() == 0);
+        STATIC_REQUIRE(BF::U16<15>::max() == Limits<u16>::max() >> 1);
+    }
+
+    SECTION("BF::I16 sanity checks")
+    {
+        STATIC_REQUIRE(BF::I16<16>::bits() == 16);
+        STATIC_REQUIRE(BF::I16<16>::digits() == 15);
+        STATIC_REQUIRE(BF::I16<16>::min() == Limits<i16>::min());
+        STATIC_REQUIRE(BF::I16<16>::max() == Limits<i16>::max());
+        STATIC_REQUIRE(BF::I16<15>::bits() == 15);
+        STATIC_REQUIRE(BF::I16<15>::digits() == 14);
+        STATIC_REQUIRE(BF::I16<15>::min() == Limits<i16>::min() >> 1);
+        STATIC_REQUIRE(BF::I16<15>::max() == Limits<i16>::max() >> 1);
+    }
+
+    SECTION("BF::U32 sanity checks")
+    {
+        STATIC_REQUIRE(BF::U32<32>::bits() == 32);
+        STATIC_REQUIRE(BF::U32<32>::digits() == 32);
+        STATIC_REQUIRE(BF::U32<32>::min() == 0);
+        STATIC_REQUIRE(BF::U32<32>::max() == Limits<u32>::max());
+        STATIC_REQUIRE(BF::U32<31>::bits() == 31);
+        STATIC_REQUIRE(BF::U32<31>::digits() == 31);
+        STATIC_REQUIRE(BF::U32<31>::min() == 0);
+        STATIC_REQUIRE(BF::U32<31>::max() == Limits<u32>::max() >> 1);
+    }
+
+    SECTION("BF::I32 sanity checks")
+    {
+        STATIC_REQUIRE(BF::I32<32>::bits() == 32);
+        STATIC_REQUIRE(BF::I32<32>::digits() == 31);
+        STATIC_REQUIRE(BF::I32<32>::min() == Limits<i32>::min());
+        STATIC_REQUIRE(BF::I32<32>::max() == Limits<i32>::max());
+        STATIC_REQUIRE(BF::I32<31>::bits() == 31);
+        STATIC_REQUIRE(BF::I32<31>::digits() == 30);
+        STATIC_REQUIRE(BF::I32<31>::min() == Limits<i32>::min() >> 1);
+        STATIC_REQUIRE(BF::I32<31>::max() == Limits<i32>::max() >> 1);
+    }
+
+    SECTION("BF::U64 sanity checks")
+    {
+        STATIC_REQUIRE(BF::U64<64>::bits() == 64);
+        STATIC_REQUIRE(BF::U64<64>::digits() == 64);
+        STATIC_REQUIRE(BF::U64<64>::min() == 0);
+        STATIC_REQUIRE(BF::U64<64>::max() == Limits<u64>::max());
+        STATIC_REQUIRE(BF::U64<63>::bits() == 63);
+        STATIC_REQUIRE(BF::U64<63>::digits() == 63);
+        STATIC_REQUIRE(BF::U64<63>::min() == 0);
+        STATIC_REQUIRE(BF::U64<63>::max() == Limits<u64>::max() >> 1);
+    }
+
+    SECTION("BF::I64 sanity checks")
+    {
+        STATIC_REQUIRE(BF::I64<64>::bits() == 64);
+        STATIC_REQUIRE(BF::I64<64>::digits() == 63);
+        STATIC_REQUIRE(BF::I64<64>::min() == Limits<i64>::min());
+        STATIC_REQUIRE(BF::I64<64>::max() == Limits<i64>::max());
+        STATIC_REQUIRE(BF::I64<63>::bits() == 63);
+        STATIC_REQUIRE(BF::I64<63>::digits() == 62);
+        STATIC_REQUIRE(BF::I64<63>::min() == Limits<i64>::min() >> 1);
+        STATIC_REQUIRE(BF::I64<63>::max() == Limits<i64>::max() >> 1);
+    }
 }
 
 TEST_CASE("Basic single-block packing/unpacking", "[packedtuple][PackedTuple]")
@@ -137,6 +215,31 @@ TEST_CASE("Cross-block packing/unpacking signed", "[packedtuple][PackedTuple32]"
     REQUIRE(pack.get<1>() == 123);
 }
 
+TEST_CASE("Little Endian bitwise comparison of different block sized PackedTuples",
+          "[packedtuple][PackedTuple8][PackedTuple64]")
+{
+    using PT8  = PackedTuple8<BF::U64<64>>;
+    using PT64 = PackedTuple64<BF::U64<64>>;
+
+    constexpr PT8 pt8{ 0xFE'ED'FA'CE'CA'FE'BE'EFull };
+    constexpr PT64 pt64{ 0xFE'ED'FA'CE'CA'FE'BE'EFull };
+
+    STATIC_REQUIRE(sizeof(PT8) == sizeof(PT64));
+    STATIC_REQUIRE(pt8 == std::bit_cast<PT8>(pt64));
+}
+
+TEST_CASE("Comparing two PackedTuples using the spaceship operator.", "[packedtuple][PackedTuple]")
+{
+    using PT = PackedTuple<BF::Bool, BF::I8<6>, BF::I64<52>>;
+
+    PT first{ true, 12, 234'567 };
+    PT second{ true, 12, 234'568 };
+
+    REQUIRE(first <=> second == std::strong_ordering::less);
+    REQUIRE(first < second);
+    REQUIRE_FALSE(first > second);
+}
+
 TEST_CASE("Boolean packing in multi-field tuple", "[packedtuple][PackedTuple8]")
 {
     using PT = PackedTuple8<BF::Bool, BF::Bool, BF::Bool, BF::Bool, BF::U8<4>>;
@@ -154,6 +257,22 @@ TEST_CASE("Boolean packing in multi-field tuple", "[packedtuple][PackedTuple8]")
     REQUIRE_FALSE(pack.get<3>());
     REQUIRE(pack.get<4>() == 9U);
     STATIC_REQUIRE(sizeof(PT) == sizeof(u8));
+}
+
+TEST_CASE("PackedTuple8: 64-bit spanning across 9 bytes", "[PackedTuple][Spanning]")
+{
+    using Tuple = PackedTuple8<BF::UInt<4>, BF::U64<64>>;
+
+    STATIC_REQUIRE(sizeof(Tuple) == sizeof(u64) + 1);
+
+    constexpr auto magic     = 0xFE'ED'FA'CE'CA'FE'BE'EFull;
+    constexpr auto test_func = [] {
+        Tuple t;
+        t.set<1>(magic);
+        return t.get<1>();
+    };
+
+    STATIC_REQUIRE(test_func() == magic);
 }
 
 TEST_CASE("Boolean packing in multi-field tuple (constexpr)", "[constexpr][packedtuple][PackedTuple8]")
@@ -204,6 +323,17 @@ TEST_CASE("PackedTuple works in constexpr contexts", "[packedtuple][PackedTuple]
     STATIC_REQUIRE(p.get<1>() == 2047);
     STATIC_REQUIRE(p.get<2>() == -12);
     STATIC_REQUIRE(p.get<3>() == 63);
+}
+
+TEST_CASE("PackedTuple works with structured bindings", "[packedtuple][PackedTuple]")
+{
+    using PT = PackedTuple<BF::I32<17>, BF::U32<15>>;
+
+    PT p{ -512, 192 };
+
+    auto [fst, snd] = p;
+    REQUIRE(fst == -512);
+    REQUIRE(snd == 192);
 }
 
 TEMPLATE_TEST_CASE("PackedTuple cross-block and signed behavior is correct",

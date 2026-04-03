@@ -395,6 +395,26 @@ concept Integral = (std::is_integral_v<T>
                    not std::is_same_v<T, bool>;
 
 /*!
+ * Concept representing an "unsigned integer" type, which means an unsigned integer that is not a bool.
+ *
+ * This matches with any type that returns true from std::is_integral_v<T> and std::unsigned_integral<T>, with the
+ * exception of the bool type, as bools are not considered "integers" for these purposes. Bool types tend to be special
+ * cases in a lot of contexts so it is frequently better to remove them.
+ */
+template <typename T>
+concept UIntegral = Integral<T> and std::unsigned_integral<T>;
+
+/*!
+ * Concept representing an "signed integer" type, which means a signed integer that is not a bool.
+ *
+ * This matches with any type that returns true from std::is_integral_v<T> and std::signed_integral<T>. This would
+ * also preclude bools, which is desired, as Bool tend to be special cases in a lot of contexts so it is frequently
+ * better to remove them.
+ */
+template <typename T>
+concept SIntegral = Integral<T> and std::signed_integral<T>;
+
+/*!
  * Concept to identify if a type is one of a set of distinct types.
  *
  * There are times when you just want a concept to a specific fixed set of types you want to accept, but don't want to
@@ -572,7 +592,7 @@ template <std::signed_integral Int_T>
 
     using UInt_T       = std::make_unsigned_t<Int_T>;
     Int_T const result = static_cast<Int_T>(static_cast<UInt_T>(left) + static_cast<UInt_T>(right));
-    return (left ^ result) & (right ^ result) & Limits<Int_T>::min();
+    return (left ^ result) bitand (right ^ result) bitand Limits<Int_T>::min();
 }
 
 /*!
@@ -603,7 +623,7 @@ template <std::signed_integral Int_T>
 
     using UInt_T       = std::make_unsigned_t<Int_T>;
     Int_T const result = static_cast<Int_T>(static_cast<UInt_T>(left) - static_cast<UInt_T>(right));
-    return (left ^ result) & (right ^ result) & Limits<Int_T>::min();
+    return (left ^ result) bitand (right ^ result) bitand Limits<Int_T>::min();
 }
 
 /*!
@@ -727,7 +747,7 @@ template <std::signed_integral Int_T>
 #endif
     }
 
-    return shl(bytes, Constant::bitsInByte) bitor shr(bytes, Constant::bitsInByte);
+    return (bytes << Constant::bitsInByte) bitor (bytes >> Constant::bitsInByte);
 }
 
 /*!
@@ -765,10 +785,10 @@ template <std::signed_integral Int_T>
     constexpr u32 bitMask             = 0xFF;
 
     // clang-format off
-    return shl(bytes bitand shl(bitMask, Constant::bitsInByte * 0), outerShift) bitor
-           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 1), innerShift) bitor
-           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 2), innerShift) bitor
-           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 3), outerShift);
+    return (bytes bitand (bitMask << Constant::bitsInByte * 0)) << outerShift bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 1)) << innerShift bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 2)) >> innerShift bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 3)) >> outerShift;
     // clang-format on
 }
 
@@ -809,14 +829,14 @@ template <std::signed_integral Int_T>
     constexpr u64 bitMask                = 0xFF;
 
     // clang-format off
-    return shl(bytes bitand shl(bitMask, Constant::bitsInByte * 0), outerShift)    bitor
-           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 1), midOuterShift) bitor
-           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 2), midInnerShift) bitor
-           shl(bytes bitand shl(bitMask, Constant::bitsInByte * 3), innerShift)    bitor
-           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 4), innerShift)    bitor
-           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 5), midInnerShift) bitor
-           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 6), midOuterShift) bitor
-           shr(bytes bitand shl(bitMask, Constant::bitsInByte * 7), outerShift);
+    return (bytes bitand (bitMask << Constant::bitsInByte * 0)) << outerShift    bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 1)) << midOuterShift bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 2)) << midInnerShift bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 3)) << innerShift    bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 4)) >> innerShift    bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 5)) >> midInnerShift bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 6)) >> midOuterShift bitor
+           (bytes bitand (bitMask << Constant::bitsInByte * 7)) >> outerShift;
     // clang-format on
 }
 
@@ -981,13 +1001,31 @@ struct EboFinalChild final
 /*!
  * \internal
  *
- * \brief emptyTest
- * \return
+ * Tests if a given \p Class_T is an Empty class object or not.
+ *
+ * The way this is done depends on the implementation of the class. If the class passed in as a template is a final
+ * class, than it tries using the class as a no_unique_address member value and compares it against another object
+ * without the same member object. If the class is not marked final, this function tries testing it using \p Class_T as
+ * a parent class using the Empty Base Optimization.
+ *
+ * This function checks if the type passed in is a class at all. In all cases, if it is not a class, this function
+ * returns false.
+ *
+ * \tparam Class_T The class type being checked if it is an empty class. Pointers, references, and primitive types are
+ * always false.
+ * \return Whether or not the passed \p Class_T is an empty class.
  */
 template <typename Class_T>
 consteval bool emptyTest() noexcept
 {
     using Normalized = std::remove_cv_t<Class_T>;
+    if (not std::is_class_v<Class_T>)
+    {
+        return false;
+    }
+
+    // This needs to be if constexpr since if it is just an if statement, the compiler will attempt to manifest
+    // Detail::EboChild<Normalized> on a final class which will fail to compile.
     if constexpr (std::is_final_v<Normalized>)
     {
         return sizeof(Detail::NoChild) == sizeof(Detail::EboFinalChild<Normalized>);
@@ -1016,7 +1054,7 @@ consteval bool emptyTest() noexcept
  *
  * \tparam Num_T The Numeric type to return from this operation. The user usually selects this.
  * \tparam sourceEndianness The endianness of the source data as a std::endian type.
- * \param source A std::contiguous_iterator to the source data. The iterator must be over a ByteType.
+ * \param[in] source A std::contiguous_iterator to the source data. The iterator must be over a ByteType.
  * \return The bytes pointed at by \p source interpreted as a \p Num_T, using whichever chosen \p sourceEndianness.
  */
 template <Numeric Num_T, std::endian sourceEndianness>
@@ -1061,7 +1099,7 @@ template <Numeric Num_T, std::endian sourceEndianness>
  * \internal
  *
  * \brief toEndian
- * \param dest
+ * \param[out] dest
  * \return
  */
 template <std::endian destEndianness>
@@ -1124,7 +1162,7 @@ constexpr auto toEndian(Numeric auto value, std::contiguous_iterator auto dest) 
  *
  * \tparam Tested_T The type we're checking can be constructed from \p args. Must be explicitly given.
  * \tparam Arg_Ts The types of the \p args passed. This should be inferred.
- * \param args The actual arguments, usually not a runtime value since this is only done in requires clauses.
+ * \param[in] args The actual arguments, usually not a runtime value since this is only done in requires clauses.
  * \return Nothing, ideally, since this is only used in requires clauses.
  */
 template <typename Tested_T, typename... Arg_Ts>
@@ -1341,7 +1379,11 @@ concept HasTypeOption = Detail::HasTypeOption<Var_T, Has_T> or (Detail::HasTypeO
  * the object.
  *
  * This basically allows easy identification of types that can have the Empty Base Optimization applied to them or used
- * in a [[KH_ATTR_NO_UNIQUE_ADDRESS]] context.
+ * in a [[KH_ATTR_NO_UNIQUE_ADDRESS]] context. This concept allows for ensuring that a class used as a template
+ * argument can indeed be used as an empty class and not take additional data in the implementation. This can also be
+ * used to enable additional optimizations in certain cases.
+ *
+ * \tparam Class_T The type that is being tested to see if it is an empty class.
  */
 template <typename Class_T>
 concept EmptyClass = not std::is_reference_v<Class_T> and sizeof(Class_T) == 1 and Detail::emptyTest<Class_T>();
@@ -1403,7 +1445,7 @@ template <typename T>
  * the buffer area for conversion.
  *
  * \tparam Num_T An integer or floating point type you wish to interpret the \p source as the big endian value of.
- * \param source A std::contiguous_iterator to a buffer of bytes at least sizeof(T) large.
+ * \param[in] source A std::contiguous_iterator to a buffer of bytes at least sizeof(T) large.
  * \return The bytes under \p source interpreted as a big endian \p Num_T type.
  */
 template <Numeric Num_T>
@@ -1437,8 +1479,15 @@ template <Numeric Num_T>
  * static_assert(std::is_same_v<decltype(result), double>);
  * ~~~
  *
+ * If the passed in span is not std::dynamic_extent, this function is guaranteed never to throw an exception. If you
+ * attempt to pass a fixed size std::span type, the compiler will reject that attempt. This function only throws if you
+ * pass in a span with a dynamic_extent and the size is smaller than sizeof(Num_T).
+ *
  * \tparam Num_T An integer or floating point type you wish to interpret the \p source as the big endian value of.
- * \param source A span to a buffer of bytes at least sizeof(T) large.
+ * \tparam Byte_T A that is used to pass into this const span overload. This should be inferred.
+ * \tparam fixedSize The size of the passed in const span. This should be inferred.
+ * \param[in] source A span to a buffer of bytes at least sizeof(T) large.
+ * \throws IllegalArgument If \p source has std::dynamic_extent as an extent and the actual span size is too small.
  * \return The requested Numeric T type.
  */
 template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
@@ -1457,7 +1506,32 @@ template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
 }
 
 /*!
- * \copydoc fromBigEndian(span<Byte_T const,fixedSize>)
+ * Read the data in the first sizeof(Num_T) bytes contained in the \p source span and return it as the given \p Num_T
+ * type.
+ *
+ * This method should be used any time you need to read a big endian integer value from a given \p source buffer. This
+ * version of fromBigEndian should be favored over the pointer version as this version is guaranteed never to result in
+ * undefined behavior. In the case of a buffer being too small at runtime, this function will throw an exception.
+ *
+ * Using this function is as simple as designating the desired Numeric return type, and then providing a span to a
+ * buffer of bytes. The first sizeof(T) bytes in the buffer will be interpreted as a big endian value of type T and
+ * returned to you.
+ *
+ * ~~~
+ * auto result = fromBigEndian<double>(bufferSpan);
+ * static_assert(std::is_same_v<decltype(result), double>);
+ * ~~~
+ *
+ * If the passed in span is not std::dynamic_extent, this function is guaranteed never to throw an exception. If you
+ * attempt to pass a fixed size std::span type, the compiler will reject that attempt. This function only throws if you
+ * pass in a span with a dynamic_extent and the size is smaller than sizeof(Num_T).
+ *
+ * \tparam Num_T An integer or floating point type you wish to interpret the \p source as the big endian value of.
+ * \tparam Byte_T A that is used to pass into this non-const span overload. This should be inferred.
+ * \tparam fixedSize The size of the passed in non-const span. This should be inferred.
+ * \param[in] source A span to a buffer of bytes at least sizeof(T) large.
+ * \throws IllegalArgument If \p source has std::dynamic_extent as an extent and the actual span size is too small.
+ * \return The requested Numeric T type.
  */
 template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
 [[nodiscard]] constexpr Num_T fromBigEndian(span<Byte_T, fixedSize> source) noexcept(fixedSize != std::dynamic_extent)
@@ -1468,7 +1542,7 @@ template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
 
 /*!
  * \brief fromLittleEndian
- * \param source
+ * \param[in] source
  * \return
  */
 template <Numeric Num_T>
@@ -1487,7 +1561,7 @@ template <Numeric Num_T>
 
 /*!
  * \brief fromLittleEndian
- * \param source
+ * \param[in] source
  * \return
  */
 template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
@@ -1507,7 +1581,7 @@ template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
 
 /*!
  * \brief fromLittleEndian
- * \param source
+ * \param[in] source
  * \return
  */
 template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
@@ -1521,7 +1595,7 @@ template <Numeric Num_T, ByteType Byte_T, size_t fixedSize>
  * Accept a Numeric \p value of any kind, and write it to the provided \p dest byte buffer as a big endian value.
  *
  * \param value The Numeric value (a signed or unsigned integer, or a floating point type) to write as big endian.
- * \param dest The buffer to write the big endian data for \p value.
+ * \param[out] dest The buffer to write the big endian data for \p value.
  * \return A pointer to the first byte in \p dest that was **not** written to as a result of this call.
  */
 constexpr auto toBigEndian(Numeric auto value, std::contiguous_iterator auto dest) noexcept -> decltype(dest)
@@ -1555,7 +1629,7 @@ template <Numeric Num_T>
  * Accept a Numeric \p value of any kind, and write it to the provided \p dest span buffer as a big endian value.
  *
  * \param value The numeric value (a signed or unsigned integer, or a floating point type) to write as big endian.
- * \param dest The buffer to write the big endian data for \p value.
+ * \param[out] dest The buffer to write the big endian data for \p value.
  * \throws IllegalArgument If the span passed to this method has std::dynamic_extent but size() < sizeof(value).
  */
 template <ByteType Byte_T, size_t fixedSize>
@@ -1578,7 +1652,7 @@ constexpr void toBigEndian(Numeric auto value, span<Byte_T, fixedSize> dest) noe
 /*!
  * \brief toLittleEndian
  * \param value
- * \param dest
+ * \param[out] dest
  * \return A pointer to the first byte in \p dest that was **not** written to as a result of this call.
  */
 constexpr auto toLittleEndian(Numeric auto value, std::contiguous_iterator auto dest) noexcept -> decltype(dest)
@@ -1608,7 +1682,7 @@ template <Numeric Num_T>
 
 /*!
  * \brief toLittleEndian
- * \param dest
+ * \param[out] dest
  */
 template <ByteType Byte_T, size_t fixedSize>
 constexpr void toLittleEndian(Numeric auto value, span<Byte_T, fixedSize> dest)
@@ -1674,7 +1748,7 @@ constexpr void toLittleEndian(Numeric auto value, span<Byte_T, fixedSize> dest)
  *
  * This function will simply return std::dynamic_extent if the array does not have a compile-time defined size.
  *
- * \param ar The array to get the size of.
+ * \param[in] ar The array to get the size of.
  * \return The second template argument to the array, as a size_t value.
  */
 template <typename T, size_t size>

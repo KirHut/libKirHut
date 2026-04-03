@@ -23,7 +23,7 @@ if ("${CMAKE_BINARY_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
 endif()
 
 project(libKirHut
-    VERSION 0.6.1
+    VERSION 0.7.0
     DESCRIPTION "The KirHut Software Company Foundational C++ Development Library"
     HOMEPAGE_URL "https://www.kirhut.com/libKirHut"
     LANGUAGES CXX

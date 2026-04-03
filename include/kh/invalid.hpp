@@ -137,7 +137,10 @@ namespace Detail
  *
  * Actual function implementation of the KirHut::getWhyInvalid WhyInvalid overload.
  *
- * \copydetails KirHut::getWhyInvalid(WhyInvalid) noexcept
+ * This just returns the same WhyInvalid passed in as the argument.
+ *
+ * \param why The WhyInvalid to return.
+ * \return The WhyInvalid passed in itself.
  */
 constexpr WhyInvalid getWhyInvalid(WhyInvalid why) noexcept
 {
@@ -149,7 +152,16 @@ constexpr WhyInvalid getWhyInvalid(WhyInvalid why) noexcept
  *
  * Actual function implementation of the KirHut::getInvalidInfo WhyInvalid overload.
  *
- * \copydetails KirHut::getInvalidInfo(WhyInvalid) noexcept
+ * This returns a constant string that describes the \p why argument in a generic, American English set of text.
+ *
+ * \note This is implemented as constexpr because it is necessary to keep everything about using a WhyInvalid as
+ * constexpr friendly, however there is a cost. If new enumerations of the WhyInvalid type are added, it will force all
+ * users of this header to be recompiled, since the implementation is in the header itself. This is mostly fine,
+ * however, since just the act of adding a new enum to WhyInvalid forces all users of kh/global.hpp to be recompiled,
+ * which is effectively everything in libKirHut already.
+ *
+ * \param why The WhyInvalid to use as a selector for the returned string.
+ * \return An American English text string describing the \p why argument.
  */
 constexpr string_view getInvalidInfo(WhyInvalid why) noexcept
 {
@@ -303,7 +315,9 @@ constexpr WhyInvalid GetWhyInvalidImpl::operator()(Why_T const &why) const noexc
 /*!
  * \internal
  *
- * \brief The GetInvalidInfoImpl class
+ * Function CPO that delegates an operator() call to the appropriate overload for the passed-in type.
+ *
+ * Bog-standard accessor CPO, see documentation on CPOs for more information on how this works.
  */
 struct GetInvalidInfoImpl
 {
@@ -312,6 +326,7 @@ struct GetInvalidInfoImpl
      *
      * \brief operator ()
      * \param why
+     * \return
      */
     template <typename Why_T>
     constexpr auto operator()(Why_T const &why) const noexcept -> decltype(getInvalidInfo(why));
@@ -350,47 +365,20 @@ struct QuickCopyExtractor<Why_T>
 
 } // namespace Detail
 
-#if defined(KH_PRIV_DOCS)
-/*!
- * The getWhyInvalid accessor function for the WhyInvalid type.
- *
- * This simply returns \p why itself as the result.
- *
- * \param why A WhyInvalid type that is simply returned by this function.
- * \return The same \p why passed as an argument.
- */
-constexpr WhyInvalid getWhyInvalid(WhyInvalid why) noexcept;
-
-/*!
- * \brief getInvalidInfo
- * \param why
- * \return
- */
-constexpr string_view getInvalidInfo(WhyInvalid why) noexcept;
-
-/*!
- * \brief getWhyInvalid
- * \param view
- * \return
- */
-template <typename Char_T>
-constexpr WhyInvalid getWhyInvalid(std::basic_string_view<Char_T> view) noexcept;
-#endif
-
 namespace
 {
 
 /*!
  * \internal
  *
- * \brief getWhyInvalid
+ * A static constant reference of getWhyInvalid() within an anonymous namespace to avoid ODR violation issues.
  */
 constexpr auto const &getWhyInvalid = v1::Detail::staticConstRef<Detail::GetWhyInvalidImpl>;
 
 /*!
  * \internal
  *
- * \brief getInvalidInfo
+ * A static constant reference of getInvalidInfo() within an anonymous namespace to avoid ODR violation issues.
  */
 constexpr auto const &getInvalidInfo = v1::Detail::staticConstRef<Detail::GetInvalidInfoImpl>;
 
@@ -500,6 +488,41 @@ concept ValidWhyType = not std::is_reference_v<T> and not std::is_function_v<T> 
 template <typename Why_T>
 concept QuickWhyType = ValidWhyType<Why_T> and std::is_nothrow_move_constructible_v<Why_T> and
                        std::is_nothrow_copy_constructible_v<Why_T> and WhyTypeTraits<Why_T>::isQuickCopy;
+
+#if defined(KH_PRIV_DOCS)
+/*!
+ * The getWhyInvalid accessor function for any ValidWhyType object.
+ *
+ * This "function" is actually implemented as an object using the Customization Point Object pattern to select the
+ * correct override for a passed in value. This function will, therefore, return the appropriate WhyInvalid from one of
+ * four sources:
+ *
+ * - For WhyInvalid directly, it just returns the WhyInvalid itself.
+ * - For string and string_view types, it returns WhyInvalid::Unknown.
+ * - For WhyObject type objects, it will return `object.getWhyInvalid()`.
+ * - For types T that have an appropriate getWhyInvalid() overload in the same namespace, it returns `getWhyInvalid(T)`.
+ *
+ * \param why Any ValidWhyType (so a select set of default types, a WhyObject type, or a type with a getWhyInvalid()
+ * overload).
+ * \return The result of calling the appropriate `getWhyInvalid()` function or a default.
+ */
+constexpr WhyInvalid getWhyInvalid(ValidWhyType auto why) noexcept;
+
+/*!
+ * \brief getInvalidInfo
+ * \param why
+ * \return
+ */
+constexpr string_view getInvalidInfo(WhyInvalid why) noexcept;
+
+/*!
+ * \brief getWhyInvalid
+ * \param view
+ * \return
+ */
+template <typename Char_T>
+constexpr WhyInvalid getWhyInvalid(std::basic_string_view<Char_T> view) noexcept;
+#endif
 
 /*!
  * Provides a simple interface to an error type object with a message and a "why" for the failure.
@@ -1342,7 +1365,7 @@ public:
      * \return A MaybeInv of the type returned by \p function. It may be initialized with this MaybeInv's Invalid.
      */
     template <typename... Arg_Ts>
-    constexpr auto then(MaybeTransform<Contained_T const &, Arg_Ts...> auto &function, Arg_Ts &&...args)
+    [[nodiscard]] constexpr auto then(MaybeTransform<Contained_T const &, Arg_Ts...> auto &function, Arg_Ts &&...args)
         const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Contained_T const &, Arg_Ts &&...>;
 
     /*!
@@ -1353,7 +1376,7 @@ public:
      * \return A MaybeInv of the type returned by \p function. It may be initialized with this MaybeInv's Invalid.
      */
     template <typename... Arg_Ts, MaybeTransform<Contained_T &&, Arg_Ts...> Function_T>
-    constexpr auto
+    [[nodiscard]] constexpr auto
     then(Function_T &function,
          Arg_Ts &&...args) && noexcept(safeMove and std::is_nothrow_invocable_v<Function_T, Contained_T &&, Arg_Ts...>)
         -> std::invoke_result_t<Function_T, Contained_T &&, Arg_Ts...>;
@@ -1368,7 +1391,8 @@ public:
      * \return
      */
     template <typename... Arg_Ts>
-    constexpr MaybeInv<Contained_T> &orElse(std::invocable<Arg_Ts &&...> auto &function, Arg_Ts &&...args);
+    [[nodiscard]] constexpr MaybeInv<Contained_T> &orElse(std::invocable<Arg_Ts &&...> auto &function,
+                                                          Arg_Ts &&...args);
 
     /*!
      * Monadic transform method that returns a modified MaybeInv, either with a new Invalid, or in a good state.
@@ -1386,7 +1410,7 @@ public:
      * \return The result of calling \p function on the failure() object and \p args, or unchanged if it hasn't failed.
      */
     template <typename... Arg_Ts>
-    constexpr auto orElse(MaybeTransform<Invalid const &, Arg_Ts &&...> auto &function, Arg_Ts &&...args)
+    [[nodiscard]] constexpr auto orElse(MaybeTransform<Invalid const &, Arg_Ts &&...> auto &function, Arg_Ts &&...args)
         const & -> std::invoke_result_t<std::remove_reference_t<decltype(function)>, Invalid const &, Arg_Ts &&...>;
 
     /*!
@@ -1412,12 +1436,40 @@ private:
      */
     constexpr static auto inpInvalid = Flags::typeEmplace<Invalid>;
 
+    /*!
+     * \internal
+     *
+     * RAII-style class that sets the Data object to an Invalid object upon destruction of the Invalidator.
+     */
     struct Invalidator
     {
+        /*!
+         * \internal
+         *
+         * Invalidator object constructor.
+         *
+         * You must pass a valid Data object to the constructor. The Data object must remain valid for the entire
+         * lifetime of the Invalidator object, or else the behavior is undefined. Okay, it overwrites the non-existent
+         * Data object with an Invalid object, but what that does may be a crash or something much worse.
+         *
+         * \param d The Data object that will be set to an Invalid object after this object is destroyed.
+         */
         Invalidator(Data &d);
 
+        /*!
+         * \internal
+         *
+         * Invalidator destructor.
+         *
+         * This destructor will set the passed-in Data object to the constructor into an Invalid object.
+         */
         ~Invalidator() noexcept;
 
+        /*!
+         * \internal
+         *
+         * The Data object (a std::variant of Contained_T and Invalid) that will be set to Invalid after destruction.
+         */
         Data &dat;
     };
 

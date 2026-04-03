@@ -85,7 +85,9 @@ KH_EXPORT std::string tryGetStackTrace() noexcept;
 /*!
  * \internal
  *
- * \brief The ErrorState class
+ * A complex ValidWhyType that is used for the internal state of the Error class.
+ *
+ * This type is necessary to ensure that an Error is a
  */
 template <WhyInvalid why>
 struct ErrorState final
@@ -94,10 +96,7 @@ struct ErrorState final
 
     string info, trace;
 
-    explicit inline ErrorState(string_view in) : info(in), trace(Detail::tryGetStackTrace())
-    {
-        // No further implementation.
-    }
+    explicit inline ErrorState(string_view in);
 
     explicit inline ErrorState(char const *in) : info(in), trace(Detail::tryGetStackTrace())
     {
@@ -121,6 +120,12 @@ struct ErrorState final
         return info;
     }
 };
+
+template <WhyInvalid why>
+ErrorState<why>::ErrorState(string_view in) : info(in), trace(Detail::tryGetStackTrace())
+{
+    // No further implementation.
+}
 
 template <typename T>
 constexpr bool isErrorTest = false;
